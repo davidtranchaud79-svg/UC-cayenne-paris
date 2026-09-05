@@ -43,6 +43,7 @@ const eventTypes = [
   "JEP",
   "Autre"
 ];
+const webAppUrl = "https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec";
 
 const headers = {
   membres: ["Nom", "Prenom", "Statut", "Cayenne", "Email", "Telephone", "Actif", "Notes"],
@@ -135,21 +136,22 @@ function buildParametres() {
   title(sheet, "A1:H1", "Paramètres du logiciel de présences");
   sheet.getRange("A3:C3").values = [["Paramètre", "Valeur", "Description"]];
   headerRow(sheet.getRange("A3:C3"));
-  sheet.getRange("A4:C8").values = [
+  sheet.getRange("A4:C9").values = [
     ["annee_active", 2026, "Année suivie par défaut"],
     ["cayenne_principale", "Paris", "Cayenne proposée en premier"],
     ["admin_pin", "1234", "Code d’accès au dashboard admin"],
     ["nom_application", "Présences Cayenne de Paris", "Titre affiché dans le formulaire"],
-    ["derniere_generation", "", "Champ réservé au script"]
+    ["derniere_generation", "", "Champ réservé au script"],
+    ["web_app_url", webAppUrl, "Lien public du formulaire Apps Script déployé"]
   ];
-  sheet.getRange("A4:A8").format = { font: { bold: true } };
+  sheet.getRange("A4:A9").format = { font: { bold: true } };
 
   writeList(sheet, "D3", "Statuts", statuses);
   writeList(sheet, "E3", "Cayennes", cayennes);
   writeList(sheet, "F3", "Réponses", responseTypes);
   writeList(sheet, "G3", "Causes", causes);
   writeList(sheet, "H3", "Types événements", eventTypes);
-  setWidths(sheet, [170, 110, 300, 140, 120, 170, 260, 190]);
+  setWidths(sheet, [170, 360, 300, 140, 120, 170, 260, 190]);
   sheet.freezePanes.freezeRows(3);
 }
 
@@ -271,6 +273,9 @@ function buildDashboard() {
   ];
   sheet.getRange("B3:B9").format = { font: { bold: true, size: 12 } };
   sheet.getRange("B3:B9").format.numberFormat = "0";
+
+  sheet.getRange("A11:B11").values = [["Formulaire public", webAppUrl]];
+  softLabel(sheet.getRange("A11:A11"));
 
   sheet.getRange("D3:H3").values = [["Type", "Événements", "Présents", "Excusés", "Aides"]];
   headerRow(sheet.getRange("D3:H3"));
