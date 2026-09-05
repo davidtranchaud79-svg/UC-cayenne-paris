@@ -1,0 +1,7 @@
+node_modules
+.DS_Store
+
+outputs/*.log
+outputs/*.ndjson
+outputs/*.zip
+outputs/previews/
