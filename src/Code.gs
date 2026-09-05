@@ -16,6 +16,7 @@ const UC_APP = {
   defaults: {
     activeYear: 2026,
     adminPin: '1234',
+    webAppUrl: 'https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec',
     statuses: ['Sociétaire', 'Aspirant', 'Compagnon'],
     cayennes: ['Paris', 'Autre'],
     reponses: ['Présent', 'Absent excusé', 'Disponible pour aider'],
@@ -297,7 +298,8 @@ function refreshDashboardSheet() {
   const ss = SpreadsheetApp.getActive();
   const sheet = ss.getSheetByName(UC_APP.sheets.dashboard);
   if (!sheet) return;
-  const year = Number(getSettings_().annee_active || UC_APP.defaults.activeYear);
+  const settings = getSettings_();
+  const year = Number(settings.annee_active || UC_APP.defaults.activeYear);
   const data = computeDashboard_(year);
 
   sheet.clear();
@@ -315,6 +317,17 @@ function refreshDashboardSheet() {
   ]);
   sheet.getRange('A3:A8').setFontWeight('bold').setBackground('#F2E7E9');
   sheet.getRange('B3:B8').setFontWeight('bold').setNumberFormat('0');
+
+  const webAppUrl = settings.web_app_url || UC_APP.defaults.webAppUrl;
+  if (webAppUrl) {
+    sheet.getRange('A10').setValue('Formulaire public').setFontWeight('bold').setBackground('#F2E7E9');
+    sheet.getRange('B10').setRichTextValue(
+      SpreadsheetApp.newRichTextValue()
+        .setText(webAppUrl)
+        .setLinkUrl(webAppUrl)
+        .build()
+    );
+  }
 
   sheet.getRange('D3:H3').setValues([['Événement', 'Date', 'Présents', 'Excusés', 'Sans réponse']]);
   sheet.getRange('D3:H3').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
@@ -377,12 +390,13 @@ function setupParametres_(sheet) {
   sheet.setHiddenGridlines(true);
   sheet.getRange('A1:C1').setValues([['Paramètre', 'Valeur', 'Description']]);
   sheet.getRange('A1:C1').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#7A1F2B');
-  sheet.getRange('A2:C6').setValues([
+  sheet.getRange('A2:C7').setValues([
     ['annee_active', UC_APP.defaults.activeYear, 'Année suivie par défaut'],
     ['cayenne_principale', 'Paris', 'Cayenne proposée en premier'],
     ['admin_pin', UC_APP.defaults.adminPin, 'Code d’accès au dashboard admin'],
     ['nom_application', 'Présences Cayenne de Paris', 'Titre affiché dans le formulaire'],
-    ['derniere_generation', '', 'Renseigné automatiquement si besoin']
+    ['derniere_generation', '', 'Renseigné automatiquement si besoin'],
+    ['web_app_url', UC_APP.defaults.webAppUrl, 'Lien public du formulaire Apps Script déployé']
   ]);
 
   writeVerticalList_(sheet, 'D', 'Statuts', UC_APP.defaults.statuses);
