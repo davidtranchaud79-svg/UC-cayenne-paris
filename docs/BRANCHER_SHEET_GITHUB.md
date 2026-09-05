@@ -8,6 +8,12 @@ Le Google Sheet ne se branche pas directement à GitHub. Le bon montage est :
 
 Les données nominatives, les excuses et les motifs d'absence restent dans le Google Sheet. Le dépôt GitHub public ne doit contenir que le code.
 
+## Liens actuels
+
+- Formulaire public : https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec
+- Google Sheet : https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit
+- Dépôt GitHub : https://github.com/davidtranchaud79-svg/UC-cayenne-paris
+
 ## Étape 1 - Récupérer l'ID Apps Script
 
 1. Ouvrir le Google Sheet.
