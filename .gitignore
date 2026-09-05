@@ -1,5 +1,7 @@
 node_modules
 .DS_Store
+.clasp.json
+.clasprc.json
 
 outputs/*.log
 outputs/*.ndjson

@@ -20,11 +20,20 @@ Ce pack contient une base Google Sheets + Apps Script pour suivre les présences
 
 Important : GitHub sert à stocker le code et la notice. Le formulaire public doit être déployé dans Google Apps Script depuis le Google Sheet, car le code utilise `google.script.run`.
 
+## Branchement Sheet et GitHub
+
+Le fichier `.clasp.json.example` prépare le lien entre le dépôt GitHub et le projet Apps Script attaché au Sheet. Il faut récupérer l'ID du script dans `Extensions > Apps Script > Paramètres du projet`, puis créer un fichier local `.clasp.json`.
+
+La procédure détaillée est dans [`docs/BRANCHER_SHEET_GITHUB.md`](docs/BRANCHER_SHEET_GITHUB.md).
+
 ## Fichiers
 
 | Fichier | Utilité |
 |---|---|
 | `index.html` | Page d'accueil GitHub avec liens vers le Sheet et les sources |
+| `.clasp.json.example` | Modèle de liaison GitHub / Apps Script |
+| `.github/workflows/deploy-apps-script.yml` | Déploiement manuel vers Apps Script avec secrets GitHub |
+| `docs/BRANCHER_SHEET_GITHUB.md` | Notice détaillée de branchement |
 | `Modele_Presences_Engagements_Cayenne.xlsx` | Modèle de classeur à importer dans Google Sheets |
 | `src/Code.gs` | Code serveur Apps Script |
 | `src/Index.html` | Interface formulaire + dashboard |
