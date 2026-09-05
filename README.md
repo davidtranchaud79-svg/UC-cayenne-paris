@@ -14,11 +14,12 @@ Ce pack contient une base Google Sheets + Apps Script pour suivre les présences
 
 | Élément | Lien |
 |---|---|
+| Formulaire public | [Ouvrir le formulaire](https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec) |
 | Google Sheet de suivi | [Ouvrir le Sheet](https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit) |
 | Page GitHub | [Ouvrir la page](https://davidtranchaud79-svg.github.io/UC-cayenne-paris/) |
 | Dépôt GitHub | [Voir le code](https://github.com/davidtranchaud79-svg/UC-cayenne-paris) |
 
-Important : GitHub sert à stocker le code et la notice. Le formulaire public doit être déployé dans Google Apps Script depuis le Google Sheet, car le code utilise `google.script.run`.
+Important : GitHub sert à stocker le code et la notice. Le formulaire public est déployé dans Google Apps Script, car le code utilise `google.script.run`.
 
 ## Branchement Sheet et GitHub
 
@@ -64,7 +65,7 @@ Structure conseillée :
 9. Choisir :
    - Exécuter en tant que : `Moi`
    - Accès : selon votre choix, par exemple les personnes disposant du lien
-10. Copier le lien du Web App et l'envoyer aux membres.
+10. Lien Web App actuel : https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec
 
 ## Utilisation bureau
 
