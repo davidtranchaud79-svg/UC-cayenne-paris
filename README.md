@@ -10,10 +10,21 @@ Ce pack contient une base Google Sheets + Apps Script pour suivre les présences
 - dashboard admin relié au Google Sheet ;
 - export PDF d'une feuille événement pour l'intégrer au compte rendu.
 
+## Liens directs
+
+| Élément | Lien |
+|---|---|
+| Google Sheet de suivi | [Ouvrir le Sheet](https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit) |
+| Page GitHub | [Ouvrir la page](https://davidtranchaud79-svg.github.io/UC-cayenne-paris/) |
+| Dépôt GitHub | [Voir le code](https://github.com/davidtranchaud79-svg/UC-cayenne-paris) |
+
+Important : GitHub sert à stocker le code et la notice. Le formulaire public doit être déployé dans Google Apps Script depuis le Google Sheet, car le code utilise `google.script.run`.
+
 ## Fichiers
 
 | Fichier | Utilité |
 |---|---|
+| `index.html` | Page d'accueil GitHub avec liens vers le Sheet et les sources |
 | `Modele_Presences_Engagements_Cayenne.xlsx` | Modèle de classeur à importer dans Google Sheets |
 | `src/Code.gs` | Code serveur Apps Script |
 | `src/Index.html` | Interface formulaire + dashboard |
