@@ -66,7 +66,24 @@ clasp push
 - `src/Admin.html`
 - `src/appsscript.json`
 
-## Étape 5 - Déployer le formulaire
+## Étape 5 - Automatiser avec GitHub Actions
+
+Le dépôt contient le workflow `.github/workflows/deploy-apps-script.yml`. À chaque modification dans `src/`, GitHub peut envoyer le code vers Apps Script automatiquement.
+
+Dans GitHub, ouvrir `Settings > Secrets and variables > Actions`, puis créer ces secrets :
+
+| Secret | Contenu attendu |
+|---|---|
+| `CLASP_SCRIPT_ID` | ID du projet Apps Script |
+| `CLASP_ACCESS_TOKEN` | Token d'accès Google créé par `clasp login` |
+| `CLASP_REFRESH_TOKEN` | Token de renouvellement Google créé par `clasp login` |
+| `CLASP_CLIENT_ID` | Client ID OAuth utilisé par clasp |
+| `CLASP_CLIENT_SECRET` | Client secret OAuth utilisé par clasp |
+| `CLASP_DEPLOYMENT_ID` | Optionnel : ID du déploiement Web App existant |
+
+Sans ces secrets, GitHub garde bien le code, mais il ne peut pas pousser vers Apps Script. Le workflow affichera alors le secret manquant dans l'onglet `Actions`.
+
+## Étape 6 - Déployer le formulaire
 
 Dans Apps Script :
 
