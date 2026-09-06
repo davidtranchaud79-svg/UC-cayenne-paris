@@ -7,20 +7,18 @@
     :root {
       --wine: #7A1F2B;
       --wine-dark: #55131D;
-      --ink: #1F2937;
-      --muted: #6B7280;
-      --line: #E5E7EB;
-      --bg: #F8F6F4;
+      --ink: #172033;
+      --muted: #697386;
+      --line: #E4E7EC;
+      --bg: #F6F4F1;
       --card: #FFFFFF;
-      --soft: #F2E7E9;
+      --soft: #F3E6E8;
       --green: #15803D;
       --amber: #B45309;
       --red: #B91C1C;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -29,28 +27,99 @@
       background: var(--bg);
     }
 
-    header {
-      background: var(--wine);
-      color: white;
-      padding: 18px 16px;
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 250px 1fr;
     }
 
-    header h1 {
+    aside {
+      background: var(--wine);
+      color: white;
+      padding: 20px 14px;
+    }
+
+    .brand {
+      padding: 0 8px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.18);
+      margin-bottom: 16px;
+    }
+
+    .brand h1 {
       margin: 0;
-      font-size: 22px;
+      font-size: 20px;
       line-height: 1.2;
     }
 
-    header p {
-      margin: 6px 0 0;
+    .brand p {
+      margin: 7px 0 0;
       color: #F9E8EC;
-      font-size: 14px;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav-btn {
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 12px;
+      background: transparent;
+      color: white;
+      text-align: left;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .nav-btn.active,
+    .nav-btn:hover {
+      background: rgba(255,255,255,.16);
+    }
+
+    .public-link {
+      display: block;
+      margin-top: 18px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      color: white;
+      border: 1px solid rgba(255,255,255,.35);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 13px;
     }
 
     main {
-      width: min(1180px, 100%);
-      margin: 0 auto;
-      padding: 16px;
+      padding: 22px;
+      width: min(1220px, 100%);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .topbar h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .topbar p {
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+
+    .login {
+      display: grid;
+      grid-template-columns: 160px 120px auto;
+      align-items: end;
+      gap: 10px;
     }
 
     .card {
@@ -60,101 +129,20 @@
       padding: 16px;
     }
 
-    h2 {
-      margin: 0 0 12px;
-      font-size: 18px;
-    }
+    .screen { display: none; }
+    .screen.active { display: block; }
 
-    label {
-      display: block;
-      font-size: 13px;
-      color: var(--muted);
-      margin: 12px 0 5px;
-      font-weight: 700;
-    }
-
-    input {
-      width: 100%;
-      border: 1px solid #D1D5DB;
-      border-radius: 8px;
-      padding: 10px 11px;
-      background: white;
-      color: var(--ink);
-      font-size: 14px;
-    }
-
-    button,
-    .button {
-      display: inline-block;
-      border: 0;
-      background: var(--wine);
-      color: white;
-      padding: 11px 14px;
-      border-radius: 8px;
-      font-weight: 700;
-      cursor: pointer;
-      text-decoration: none;
-    }
-
-    button.secondary,
-    .button.secondary {
-      background: #374151;
-    }
-
-    button.ghost,
-    .button.ghost {
-      background: white;
-      color: var(--wine);
-      border: 1px solid var(--wine);
-    }
-
-    button:disabled {
-      opacity: .55;
-      cursor: wait;
-    }
-
-    .toolbar {
-      display: flex;
-      align-items: end;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-    }
-
-    .toolbar .field {
-      width: 180px;
-    }
-
-    .admin-section {
-      margin-top: 18px;
-    }
-
-    .notice {
-      margin-top: 12px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      background: #FFFFFF;
-      font-size: 14px;
-    }
-
-    .notice.ok {
-      border-color: #BBF7D0;
-      background: #F0FDF4;
-      color: var(--green);
-    }
-
-    .notice.error {
-      border-color: #FECACA;
-      background: #FEF2F2;
-      color: var(--red);
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
     }
 
     .kpis {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 10px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .kpi {
@@ -174,7 +162,90 @@
     .kpi strong {
       display: block;
       margin-top: 6px;
-      font-size: 22px;
+      font-size: 24px;
+    }
+
+    label {
+      display: block;
+      margin: 0 0 5px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid #D0D5DD;
+      border-radius: 8px;
+      padding: 10px 11px;
+      background: white;
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    textarea {
+      min-height: 86px;
+      resize: vertical;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .full { grid-column: 1 / -1; }
+
+    button,
+    .button {
+      border: 0;
+      border-radius: 8px;
+      background: var(--wine);
+      color: white;
+      padding: 10px 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button.secondary {
+      background: #374151;
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: wait;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .notice {
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: white;
+      font-size: 14px;
+    }
+
+    .notice.ok {
+      border-color: #BBF7D0;
+      background: #F0FDF4;
+      color: var(--green);
+    }
+
+    .notice.error {
+      border-color: #FECACA;
+      background: #FEF2F2;
+      color: var(--red);
     }
 
     table {
@@ -201,9 +272,7 @@
       font-size: 12px;
     }
 
-    tr:last-child td {
-      border-bottom: 0;
-    }
+    tr:last-child td { border-bottom: 0; }
 
     .pill {
       display: inline-block;
@@ -215,20 +284,9 @@
       color: var(--wine-dark);
     }
 
-    .pill.green {
-      background: #DCFCE7;
-      color: var(--green);
-    }
-
-    .pill.amber {
-      background: #FEF3C7;
-      color: var(--amber);
-    }
-
-    .pill.red {
-      background: #FEE2E2;
-      color: var(--red);
-    }
+    .pill.green { background: #DCFCE7; color: var(--green); }
+    .pill.amber { background: #FEF3C7; color: var(--amber); }
+    .pill.red { background: #FEE2E2; color: var(--red); }
 
     .meta {
       color: var(--muted);
@@ -240,82 +298,290 @@
       padding: 18px;
       color: var(--muted);
       background: white;
-      border: 1px dashed #D1D5DB;
+      border: 1px dashed #D0D5DD;
       border-radius: 8px;
     }
 
-    @media (max-width: 860px) {
-      .kpis {
-        grid-template-columns: 1fr;
-      }
-
-      main {
-        padding: 12px;
-      }
-
-      table {
-        display: block;
-        overflow-x: auto;
-        white-space: nowrap;
-      }
+    @media (max-width: 940px) {
+      .app { grid-template-columns: 1fr; }
+      aside { position: static; }
+      nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      main { padding: 14px; }
+      .topbar { display: block; }
+      .login,
+      .grid,
+      .form-grid,
+      .kpis { grid-template-columns: 1fr; }
+      table { display: block; overflow-x: auto; white-space: nowrap; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Dashboard admin</h1>
-    <p>Suivi annuel, feuilles de compte rendu et pilotage bureau</p>
-  </header>
-
-  <main>
-    <div class="card">
-      <h2>Accès bureau</h2>
-      <div class="toolbar">
-        <div class="field">
-          <label for="adminPin">Code admin</label>
-          <input id="adminPin" type="password" inputmode="numeric" autocomplete="current-password">
-        </div>
-        <div class="field">
-          <label for="adminYear">Année</label>
-          <input id="adminYear" type="number" min="2020" max="2100">
-        </div>
-        <button id="loadDashboard" type="button">Charger</button>
-        <button id="generateAll" class="secondary" type="button">Créer toutes les feuilles CR</button>
-        <a id="publicLink" class="button ghost" target="_top" href="<?= publicUrl ?>">Formulaire public</a>
+  <div class="app">
+    <aside>
+      <div class="brand">
+        <h1>UC Cayenne Paris</h1>
+        <p>Application bureau pour présences, événements et comptes rendus.</p>
       </div>
-      <div id="adminNotice" class="notice" hidden></div>
-    </div>
+      <nav>
+        <button class="nav-btn active" type="button" data-screen="dashboard">Dashboard</button>
+        <button class="nav-btn" type="button" data-screen="events">Événements</button>
+        <button class="nav-btn" type="button" data-screen="members">Membres</button>
+        <button class="nav-btn" type="button" data-screen="reports">Comptes rendus</button>
+        <button class="nav-btn" type="button" data-screen="settings">Réglages</button>
+      </nav>
+      <a id="publicLink" class="public-link" target="_top" href="<?= publicUrl ?>">Formulaire public</a>
+    </aside>
 
-    <div id="dashboardContent" class="admin-section"></div>
-  </main>
+    <main>
+      <div class="topbar">
+        <div>
+          <h2 id="screenTitle">Dashboard</h2>
+          <p id="screenSubtitle">Vue rapide de l’année suivie.</p>
+        </div>
+        <div class="login">
+          <div>
+            <label for="adminPin">Code admin</label>
+            <input id="adminPin" type="password" inputmode="numeric" autocomplete="current-password">
+          </div>
+          <div>
+            <label for="adminYear">Année</label>
+            <input id="adminYear" type="number" min="2020" max="2100">
+          </div>
+          <button id="loadDashboard" type="button">Charger</button>
+        </div>
+      </div>
+
+      <div id="adminNotice" class="notice" hidden></div>
+
+      <section id="screen-dashboard" class="screen active">
+        <div id="kpiRoot" class="kpis"></div>
+        <div class="grid">
+          <div class="card">
+            <h3>Événements à suivre</h3>
+            <div id="dashboardEvents"></div>
+          </div>
+          <div class="card">
+            <h3>Causes d’absence</h3>
+            <div id="dashboardCauses"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-events" class="screen">
+        <div class="grid">
+          <div class="card">
+            <h3>Créer depuis la base d’événements</h3>
+            <div class="form-grid">
+              <div class="full">
+                <label for="templateSelect">Modèle</label>
+                <select id="templateSelect"></select>
+              </div>
+              <div>
+                <label for="eventDate">Date</label>
+                <input id="eventDate" type="date">
+              </div>
+              <div>
+                <label for="eventTitle">Titre</label>
+                <input id="eventTitle">
+              </div>
+              <div>
+                <label for="eventType">Type</label>
+                <select id="eventType"></select>
+              </div>
+              <div>
+                <label for="eventCayenne">Cayenne</label>
+                <select id="eventCayenne"></select>
+              </div>
+              <div>
+                <label for="eventStart">Début</label>
+                <input id="eventStart" placeholder="20:00">
+              </div>
+              <div>
+                <label for="eventEnd">Fin</label>
+                <input id="eventEnd" placeholder="22:00">
+              </div>
+              <div class="full">
+                <label for="eventPlace">Lieu</label>
+                <input id="eventPlace">
+              </div>
+              <div class="full">
+                <label for="eventComment">Commentaire</label>
+                <textarea id="eventComment"></textarea>
+              </div>
+            </div>
+            <div class="actions">
+              <button id="createEvent" type="button">Ajouter au calendrier</button>
+              <button id="resetEventForm" class="secondary" type="button">Réinitialiser</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Calendrier actif</h3>
+            <div id="eventsRoot"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-members" class="screen">
+        <div class="card">
+          <h3>Suivi par membre</h3>
+          <div id="membersRoot"></div>
+        </div>
+      </section>
+
+      <section id="screen-reports" class="screen">
+        <div class="card">
+          <h3>Comptes rendus par événement</h3>
+          <p class="meta">Chaque bouton crée ou actualise une feuille CR_ directement dans le Google Sheet.</p>
+          <div class="actions">
+            <button id="generateAll" type="button">Créer toutes les feuilles CR</button>
+          </div>
+          <div id="reportsRoot" style="margin-top:12px"></div>
+        </div>
+      </section>
+
+      <section id="screen-settings" class="screen">
+        <div class="card">
+          <h3>Réglages utiles</h3>
+          <table>
+            <tbody>
+              <tr><th>Formulaire public</th><td><a id="settingsPublicUrl" target="_top" href="<?= publicUrl ?>">Ouvrir</a></td></tr>
+              <tr><th>Dashboard admin</th><td><a id="settingsAdminUrl" target="_top" href="<?= adminUrl ?>">Ouvrir</a></td></tr>
+              <tr><th>Base événements</th><td>Onglet <strong>BASE_EVENEMENTS</strong> dans le Google Sheet. Tu peux ajouter tes modèles ici.</td></tr>
+              <tr><th>Code admin</th><td>Onglet <strong>PARAMETRES</strong>, ligne <strong>admin_pin</strong>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <script>
     const state = {
-      dashboard: null
+      config: null,
+      dashboard: null,
+      currentScreen: 'dashboard'
     };
 
+    const titles = {
+      dashboard: ['Dashboard', 'Vue rapide de l’année suivie.'],
+      events: ['Événements', 'Créer depuis une base, puis suivre les réponses.'],
+      members: ['Membres', 'Lecture annuelle des présences par personne.'],
+      reports: ['Comptes rendus', 'Générer les feuilles prêtes à intégrer au compte rendu.'],
+      settings: ['Réglages', 'Les liens et points de configuration importants.']
+    };
+
+    document.querySelectorAll('.nav-btn').forEach((button) => {
+      button.addEventListener('click', () => showScreen(button.dataset.screen));
+    });
     document.getElementById('loadDashboard').addEventListener('click', loadDashboard);
     document.getElementById('generateAll').addEventListener('click', generateAllSheets);
+    document.getElementById('createEvent').addEventListener('click', createEvent);
+    document.getElementById('resetEventForm').addEventListener('click', applySelectedTemplate);
+    document.getElementById('templateSelect').addEventListener('change', applySelectedTemplate);
 
     init();
 
     function init() {
       google.script.run
         .withSuccessHandler((config) => {
+          state.config = config;
           document.getElementById('adminYear').value = config.activeYear;
-          if (config.urls && config.urls.publicUrl) {
-            document.getElementById('publicLink').href = config.urls.publicUrl;
-          }
+          wireUrls(config.urls || {});
+          renderTemplateOptions(config);
+          applySelectedTemplate();
+          renderEmptyState();
         })
-        .withFailureHandler((error) => showNotice('adminNotice', error.message || error, 'error'))
+        .withFailureHandler((error) => showNotice(error.message || error, 'error'))
         .getBootstrapConfig();
+    }
+
+    function wireUrls(urls) {
+      if (urls.publicUrl) {
+        document.getElementById('publicLink').href = urls.publicUrl;
+        document.getElementById('settingsPublicUrl').href = urls.publicUrl;
+      }
+      if (urls.adminUrl) {
+        document.getElementById('settingsAdminUrl').href = urls.adminUrl;
+      }
+    }
+
+    function showScreen(screen) {
+      state.currentScreen = screen;
+      document.querySelectorAll('.screen').forEach((node) => node.classList.remove('active'));
+      document.getElementById('screen-' + screen).classList.add('active');
+      document.querySelectorAll('.nav-btn').forEach((button) => button.classList.toggle('active', button.dataset.screen === screen));
+      document.getElementById('screenTitle').textContent = titles[screen][0];
+      document.getElementById('screenSubtitle').textContent = titles[screen][1];
+    }
+
+    function renderTemplateOptions(config) {
+      fillSelect('templateSelect', config.eventTemplates || [], (tpl) => tpl.name, (tpl) => tpl.id);
+      fillSelect('eventType', config.eventTypes || [], (value) => value, (value) => value);
+      fillSelect('eventCayenne', config.cayennes || [], (value) => value, (value) => value);
+    }
+
+    function fillSelect(id, values, labelFn, valueFn) {
+      const select = document.getElementById(id);
+      select.innerHTML = values.map((value) => `<option value="${escapeHtml(valueFn(value))}">${escapeHtml(labelFn(value))}</option>`).join('');
+    }
+
+    function selectedTemplate() {
+      const id = document.getElementById('templateSelect').value;
+      return (state.config?.eventTemplates || []).find((tpl) => tpl.id === id) || {};
+    }
+
+    function applySelectedTemplate() {
+      const tpl = selectedTemplate();
+      document.getElementById('eventTitle').value = tpl.defaultTitle || tpl.name || '';
+      document.getElementById('eventType').value = tpl.type || 'Autre';
+      document.getElementById('eventCayenne').value = tpl.cayenne || 'Paris';
+      document.getElementById('eventStart').value = tpl.start || '';
+      document.getElementById('eventEnd').value = tpl.end || '';
+      document.getElementById('eventPlace').value = tpl.place || 'Cayenne de Paris';
+      document.getElementById('eventComment').value = tpl.comment || '';
+    }
+
+    function createEvent() {
+      const pin = document.getElementById('adminPin').value;
+      if (!pin) {
+        showNotice('Entre le code admin avant de créer un événement.', 'error');
+        return;
+      }
+      const payload = {
+        templateId: document.getElementById('templateSelect').value,
+        date: document.getElementById('eventDate').value,
+        title: document.getElementById('eventTitle').value,
+        type: document.getElementById('eventType').value,
+        cayenne: document.getElementById('eventCayenne').value,
+        start: document.getElementById('eventStart').value,
+        end: document.getElementById('eventEnd').value,
+        place: document.getElementById('eventPlace').value,
+        comment: document.getElementById('eventComment').value,
+        active: 'Oui'
+      };
+
+      setLoading(true, 'createEvent');
+      google.script.run
+        .withSuccessHandler((result) => {
+          showNotice(result.message || 'Événement créé.', 'ok');
+          document.getElementById('eventDate').value = '';
+          setLoading(false, 'createEvent');
+          loadDashboard();
+        })
+        .withFailureHandler((error) => {
+          showNotice(error.message || error, 'error');
+          setLoading(false, 'createEvent');
+        })
+        .createEventFromTemplate(payload, pin);
     }
 
     function loadDashboard() {
       const pin = document.getElementById('adminPin').value;
       const year = Number(document.getElementById('adminYear').value);
       if (!pin) {
-        showNotice('adminNotice', 'Entre le code admin.', 'error');
+        showNotice('Entre le code admin.', 'error');
         return;
       }
       setLoading(true, 'loadDashboard');
@@ -323,11 +589,11 @@
         .withSuccessHandler((dashboard) => {
           state.dashboard = dashboard;
           renderDashboard(dashboard);
-          showNotice('adminNotice', 'Dashboard chargé.', 'ok');
+          showNotice('Dashboard chargé.', 'ok');
           setLoading(false, 'loadDashboard');
         })
         .withFailureHandler((error) => {
-          showNotice('adminNotice', error.message || error, 'error');
+          showNotice(error.message || error, 'error');
           setLoading(false, 'loadDashboard');
         })
         .getDashboardData(year, pin);
@@ -337,18 +603,18 @@
       const pin = document.getElementById('adminPin').value;
       const year = Number(document.getElementById('adminYear').value);
       if (!pin) {
-        showNotice('adminNotice', 'Entre le code admin.', 'error');
+        showNotice('Entre le code admin.', 'error');
         return;
       }
       setLoading(true, 'generateAll');
       google.script.run
         .withSuccessHandler((results) => {
-          showNotice('adminNotice', `${results.length} feuille(s) de compte rendu générée(s).`, 'ok');
+          showNotice(`${results.length} feuille(s) de compte rendu générée(s).`, 'ok');
           setLoading(false, 'generateAll');
           loadDashboard();
         })
         .withFailureHandler((error) => {
-          showNotice('adminNotice', error.message || error, 'error');
+          showNotice(error.message || error, 'error');
           setLoading(false, 'generateAll');
         })
         .generateAllEventSheets(year, pin);
@@ -357,52 +623,47 @@
     function generateOneSheet(eventId) {
       const pin = document.getElementById('adminPin').value;
       if (!pin) {
-        showNotice('adminNotice', 'Entre le code admin.', 'error');
+        showNotice('Entre le code admin.', 'error');
         return;
       }
       google.script.run
         .withSuccessHandler((result) => {
-          showNotice('adminNotice', `Feuille créée : ${result.sheetName}`, 'ok');
+          showNotice(`Feuille créée : ${result.sheetName}`, 'ok');
           loadDashboard();
         })
-        .withFailureHandler((error) => showNotice('adminNotice', error.message || error, 'error'))
+        .withFailureHandler((error) => showNotice(error.message || error, 'error'))
         .generateEventSheet(eventId, pin);
     }
 
+    function renderEmptyState() {
+      document.getElementById('kpiRoot').innerHTML = kpi('Événements', '-') + kpi('Membres', '-') + kpi('Présents', '-') + kpi('Excusés', '-') + kpi('Sans réponse', '-') + kpi('Aides', '-');
+      document.getElementById('dashboardEvents').innerHTML = '<div class="empty">Charge le dashboard avec le code admin.</div>';
+      document.getElementById('dashboardCauses').innerHTML = '<div class="empty">Aucune donnée chargée.</div>';
+      document.getElementById('eventsRoot').innerHTML = '<div class="empty">Charge le dashboard pour voir le calendrier actif.</div>';
+      document.getElementById('membersRoot').innerHTML = '<div class="empty">Charge le dashboard pour voir les membres.</div>';
+      document.getElementById('reportsRoot').innerHTML = '<div class="empty">Charge le dashboard pour générer les CR événement par événement.</div>';
+    }
+
     function renderDashboard(data) {
-      const root = document.getElementById('dashboardContent');
-      root.innerHTML = `
-        <div class="kpis">
-          ${kpi('Événements', data.kpis.events)}
-          ${kpi('Membres', data.kpis.members)}
-          ${kpi('Présents', data.kpis.presents)}
-          ${kpi('Excusés', data.kpis.excused)}
-          ${kpi('Sans réponse', data.kpis.noResponse)}
-          ${kpi('Aides', data.kpis.aids)}
-        </div>
-
-        <div class="card admin-section">
-          <h2>Suivi par événement</h2>
-          ${renderEventTable(data.events)}
-        </div>
-
-        <div class="card admin-section">
-          <h2>Suivi par personne</h2>
-          ${renderMemberTable(data.members)}
-        </div>
-
-        <div class="card admin-section">
-          <h2>Causes d’absence</h2>
-          ${renderCauseTable(data.causes)}
-        </div>
-      `;
+      document.getElementById('kpiRoot').innerHTML =
+        kpi('Événements', data.kpis.events) +
+        kpi('Membres', data.kpis.members) +
+        kpi('Présents', data.kpis.presents) +
+        kpi('Excusés', data.kpis.excused) +
+        kpi('Sans réponse', data.kpis.noResponse) +
+        kpi('Aides', data.kpis.aids);
+      document.getElementById('dashboardEvents').innerHTML = renderEventTable(data.events, false);
+      document.getElementById('dashboardCauses').innerHTML = renderCauseTable(data.causes);
+      document.getElementById('eventsRoot').innerHTML = renderEventTable(data.events, false);
+      document.getElementById('membersRoot').innerHTML = renderMemberTable(data.members);
+      document.getElementById('reportsRoot').innerHTML = renderEventTable(data.events, true);
     }
 
     function kpi(label, value) {
       return `<div class="kpi"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
     }
 
-    function renderEventTable(events) {
+    function renderEventTable(events, withAction) {
       if (!events.length) return '<div class="empty">Aucun événement actif.</div>';
       return `
         <table>
@@ -414,7 +675,7 @@
               <th>Excusés</th>
               <th>Sans réponse</th>
               <th>Aides</th>
-              <th>Feuille CR</th>
+              ${withAction ? '<th>Feuille CR</th>' : ''}
             </tr>
           </thead>
           <tbody>
@@ -426,7 +687,7 @@
                 <td><span class="pill amber">${escapeHtml(event.excused)}</span></td>
                 <td><span class="pill red">${escapeHtml(event.noResponse)}</span></td>
                 <td><span class="pill">${escapeHtml(event.aids)}</span></td>
-                <td><button type="button" onclick="generateOneSheet('${escapeJs(event.id)}')">Créer / actualiser</button></td>
+                ${withAction ? `<td><button type="button" onclick="generateOneSheet('${escapeJs(event.id)}')">Créer / actualiser</button></td>` : ''}
               </tr>
             `).join('')}
           </tbody>
@@ -474,16 +735,14 @@
         <table>
           <thead><tr><th>Cause</th><th>Total</th></tr></thead>
           <tbody>
-            ${causes.map((cause) => `
-              <tr><td>${escapeHtml(cause.cause)}</td><td>${escapeHtml(cause.count)}</td></tr>
-            `).join('')}
+            ${causes.map((cause) => `<tr><td>${escapeHtml(cause.cause)}</td><td>${escapeHtml(cause.count)}</td></tr>`).join('')}
           </tbody>
         </table>
       `;
     }
 
-    function showNotice(id, message, type) {
-      const node = document.getElementById(id);
+    function showNotice(message, type) {
+      const node = document.getElementById('adminNotice');
       node.hidden = false;
       node.className = 'notice ' + type;
       node.textContent = message;
@@ -491,8 +750,7 @@
 
     function setLoading(isLoading, buttonId) {
       const button = document.getElementById(buttonId);
-      if (!button) return;
-      button.disabled = isLoading;
+      if (button) button.disabled = isLoading;
     }
 
     function escapeHtml(value) {

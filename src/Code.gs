@@ -6,12 +6,14 @@ const UC_APP = {
     reponses: 'REPONSES',
     suivi: 'SUIVI_ANNUEL',
     dashboard: 'DASHBOARD',
-    modeleCr: 'MODELE_CR_EVENEMENT'
+    modeleCr: 'MODELE_CR_EVENEMENT',
+    eventBase: 'BASE_EVENEMENTS'
   },
   headers: {
     membres: ['Nom', 'Prenom', 'Statut', 'Cayenne', 'Email', 'Telephone', 'Actif', 'Notes'],
     calendrier: ['ID_Evenement', 'Annee', 'Date', 'Titre', 'Type_Evenement', 'Heure_Debut', 'Heure_Fin', 'Lieu', 'Cayenne', 'Categorie_CR', 'Actif', 'Commentaire'],
-    reponses: ['ID_Reponse', 'Horodatage', 'Source', 'Annee', 'ID_Evenement', 'Date_Evenement', 'Titre_Evenement', 'Type_Evenement', 'Nom', 'Prenom', 'Email', 'Telephone', 'Statut', 'Cayenne', 'Reponse', 'Causes', 'Precision', 'Aide_Disponible', 'Heure_Debut_Aide', 'Heure_Fin_Aide', 'Commentaire', 'Cle_Personne', 'Mois', 'Semaine', 'Feuille_CR']
+    reponses: ['ID_Reponse', 'Horodatage', 'Source', 'Annee', 'ID_Evenement', 'Date_Evenement', 'Titre_Evenement', 'Type_Evenement', 'Nom', 'Prenom', 'Email', 'Telephone', 'Statut', 'Cayenne', 'Reponse', 'Causes', 'Precision', 'Aide_Disponible', 'Heure_Debut_Aide', 'Heure_Fin_Aide', 'Commentaire', 'Cle_Personne', 'Mois', 'Semaine', 'Feuille_CR'],
+    eventBase: ['Template_ID', 'Nom_Modele', 'Type_Evenement', 'Titre_Par_Defaut', 'Heure_Debut', 'Heure_Fin', 'Lieu', 'Cayenne', 'Categorie_CR', 'Actif', 'Commentaire']
   },
   defaults: {
     activeYear: 2026,
@@ -39,6 +41,16 @@ const UC_APP = {
       'Fête de novembre',
       'JEP',
       'Autre'
+    ],
+    eventTemplates: [
+      ['TPL-JEUNES', 'Réunion des jeunes', 'Réunion des jeunes', 'Réunion des jeunes', '20:00', '22:00', 'Cayenne de Paris', 'Paris', 'Réunion', 'Oui', 'Réunion mensuelle des jeunes'],
+      ['TPL-COMPAGNONS', 'Réunion compagnon', 'Réunion compagnon', 'Réunion compagnon', '20:00', '22:00', 'Cayenne de Paris', 'Paris', 'Réunion', 'Oui', 'Réunion des compagnons'],
+      ['TPL-COURS', 'Cours en Cayenne', 'Cours en Cayenne', 'Cours en Cayenne', '09:00', '12:00', 'Cayenne de Paris', 'Paris', 'Cours', 'Oui', 'Cours ou atelier à préciser'],
+      ['TPL-FETE-JUIN', 'Fête de juin', 'Fête de juin', 'Fête de juin', '08:00', '23:00', 'Cayenne de Paris', 'Paris', 'Événement', 'Oui', 'Fête annuelle de juin'],
+      ['TPL-FETE-NOVEMBRE', 'Fête de novembre', 'Fête de novembre', 'Fête de novembre', '08:00', '23:00', 'Cayenne de Paris', 'Paris', 'Événement', 'Oui', 'Fête annuelle de novembre'],
+      ['TPL-JEP', 'Journées européennes du patrimoine', 'JEP', 'Journées européennes du patrimoine', '09:00', '18:00', 'Cayenne de Paris', 'Paris', 'Événement', 'Oui', 'JEP'],
+      ['TPL-AG', 'Assemblée générale', 'Autre', 'Assemblée générale', '19:30', '22:00', 'Cayenne de Paris', 'Paris', 'Réunion', 'Oui', 'Assemblée générale'],
+      ['TPL-TRAVAIL-UC', 'Travail UC', 'Autre', 'Travail UC', '09:00', '17:00', 'Cayenne de Paris', 'Paris', 'Travail', 'Oui', 'Travail compagnonnique à préciser']
     ]
   }
 };
@@ -80,11 +92,14 @@ function setupSystem() {
   ensureSheet_(ss, UC_APP.sheets.suivi);
   ensureSheet_(ss, UC_APP.sheets.dashboard);
   ensureSheet_(ss, UC_APP.sheets.modeleCr);
+  ensureSheet_(ss, UC_APP.sheets.eventBase);
 
   setupParametres_(ss.getSheetByName(UC_APP.sheets.parametres));
   setupTable_(ss.getSheetByName(UC_APP.sheets.membres), UC_APP.headers.membres);
   setupTable_(ss.getSheetByName(UC_APP.sheets.calendrier), UC_APP.headers.calendrier);
   setupTable_(ss.getSheetByName(UC_APP.sheets.reponses), UC_APP.headers.reponses);
+  setupTable_(ss.getSheetByName(UC_APP.sheets.eventBase), UC_APP.headers.eventBase);
+  seedEventBase_(ss.getSheetByName(UC_APP.sheets.eventBase));
   seedCalendar_(ss.getSheetByName(UC_APP.sheets.calendrier));
   setupSuiviSheet_(ss.getSheetByName(UC_APP.sheets.suivi));
   refreshDashboardSheet();
@@ -119,7 +134,76 @@ function getBootstrapConfig() {
   const settings = getSettings_();
   return {
     activeYear: Number(settings.annee_active || UC_APP.defaults.activeYear),
-    urls: getAppUrls_(settings)
+    urls: getAppUrls_(settings),
+    eventTemplates: getEventTemplates_(),
+    eventTypes: getOptionList_('H', UC_APP.defaults.eventTypes),
+    cayennes: getOptionList_('E', UC_APP.defaults.cayennes)
+  };
+}
+
+function getAdminConfig(adminPin) {
+  assertAdmin_(adminPin);
+  setupSystemIfMissing_();
+  const settings = getSettings_();
+  return {
+    activeYear: Number(settings.annee_active || UC_APP.defaults.activeYear),
+    urls: getAppUrls_(settings),
+    eventTemplates: getEventTemplates_(),
+    eventTypes: getOptionList_('H', UC_APP.defaults.eventTypes),
+    cayennes: getOptionList_('E', UC_APP.defaults.cayennes)
+  };
+}
+
+function createEventFromTemplate(payload, adminPin) {
+  assertAdmin_(adminPin);
+  setupSystemIfMissing_();
+  payload = payload || {};
+
+  const date = parseInputDate_(payload.date);
+  if (!date) throw new Error('Date obligatoire pour créer l’événement.');
+
+  const templates = getEventTemplates_();
+  const template = templates.filter(function(row) { return row.id === clean_(payload.templateId); })[0] || {};
+  const title = clean_(payload.title || template.defaultTitle || template.name);
+  if (!title) throw new Error('Titre obligatoire.');
+
+  const event = {
+    ID_Evenement: makeEventId_(date, title),
+    Annee: date.getFullYear(),
+    Date: date,
+    Titre: title,
+    Type_Evenement: clean_(payload.type || template.type || 'Autre'),
+    Heure_Debut: clean_(payload.start || template.start),
+    Heure_Fin: clean_(payload.end || template.end),
+    Lieu: clean_(payload.place || template.place || 'Cayenne de Paris'),
+    Cayenne: clean_(payload.cayenne || template.cayenne || 'Paris'),
+    Categorie_CR: clean_(payload.category || template.category || 'Événement'),
+    Actif: clean_(payload.active || template.active || 'Oui'),
+    Commentaire: clean_(payload.comment || template.comment)
+  };
+
+  const sheet = SpreadsheetApp.getActive().getSheetByName(UC_APP.sheets.calendrier);
+  sheet.appendRow([
+    event.ID_Evenement,
+    event.Annee,
+    event.Date,
+    event.Titre,
+    event.Type_Evenement,
+    event.Heure_Debut,
+    event.Heure_Fin,
+    event.Lieu,
+    event.Cayenne,
+    event.Categorie_CR,
+    event.Actif,
+    event.Commentaire
+  ]);
+  sheet.getRange(sheet.getLastRow(), 3).setNumberFormat('yyyy-mm-dd');
+  refreshDashboardSheet();
+
+  return {
+    ok: true,
+    event: formatEventForClient_(event),
+    message: 'Événement créé : ' + event.Titre
   };
 }
 
@@ -494,6 +578,20 @@ function seedCalendar_(sheet) {
   sheet.getRange(2, 3, rows.length, 1).setNumberFormat('yyyy-mm-dd');
 }
 
+function seedEventBase_(sheet) {
+  const existing = getRowsAsObjects_(UC_APP.sheets.eventBase)
+    .map(function(row) { return clean_(row.Template_ID); })
+    .filter(Boolean);
+  const existingMap = {};
+  existing.forEach(function(id) { existingMap[id] = true; });
+  const missing = UC_APP.defaults.eventTemplates.filter(function(row) {
+    return !existingMap[row[0]];
+  });
+  if (!missing.length) return;
+  sheet.getRange(sheet.getLastRow() + 1, 1, missing.length, UC_APP.headers.eventBase.length).setValues(missing);
+  sheet.autoResizeColumns(1, UC_APP.headers.eventBase.length);
+}
+
 function applyValidations_() {
   const ss = SpreadsheetApp.getActive();
   const membres = ss.getSheetByName(UC_APP.sheets.membres);
@@ -510,6 +608,12 @@ function applyValidations_() {
   setListValidation_(calendrier.getRange('E2:E500'), eventTypes);
   setListValidation_(calendrier.getRange('I2:I500'), cayennes);
   setListValidation_(calendrier.getRange('K2:K500'), ['Oui', 'Non']);
+  const eventBase = ss.getSheetByName(UC_APP.sheets.eventBase);
+  if (eventBase) {
+    setListValidation_(eventBase.getRange('C2:C200'), eventTypes);
+    setListValidation_(eventBase.getRange('H2:H200'), cayennes);
+    setListValidation_(eventBase.getRange('J2:J200'), ['Oui', 'Non']);
+  }
   setListValidation_(reponses.getRange('M2:M2000'), statuses);
   setListValidation_(reponses.getRange('N2:N2000'), cayennes);
   setListValidation_(reponses.getRange('O2:O2000'), responseTypes);
@@ -610,6 +714,58 @@ function formatEventForClient_(event) {
     place: event.Lieu,
     cayenne: event.Cayenne
   };
+}
+
+function getEventTemplates_() {
+  const rows = getRowsAsObjects_(UC_APP.sheets.eventBase);
+  const source = rows.length ? rows : UC_APP.defaults.eventTemplates.map(function(row) {
+    return {
+      Template_ID: row[0],
+      Nom_Modele: row[1],
+      Type_Evenement: row[2],
+      Titre_Par_Defaut: row[3],
+      Heure_Debut: row[4],
+      Heure_Fin: row[5],
+      Lieu: row[6],
+      Cayenne: row[7],
+      Categorie_CR: row[8],
+      Actif: row[9],
+      Commentaire: row[10]
+    };
+  });
+
+  return source
+    .filter(function(row) { return clean_(row.Template_ID) && isActive_(row.Actif); })
+    .map(function(row) {
+      return {
+        id: clean_(row.Template_ID),
+        name: clean_(row.Nom_Modele),
+        type: clean_(row.Type_Evenement),
+        defaultTitle: clean_(row.Titre_Par_Defaut),
+        start: clean_(row.Heure_Debut),
+        end: clean_(row.Heure_Fin),
+        place: clean_(row.Lieu),
+        cayenne: clean_(row.Cayenne),
+        category: clean_(row.Categorie_CR),
+        active: clean_(row.Actif || 'Oui'),
+        comment: clean_(row.Commentaire)
+      };
+    });
+}
+
+function makeEventId_(date, title) {
+  const base = 'EVT-' +
+    Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyyMMdd') +
+    '-' +
+    slug_(title).substring(0, 40);
+  const existing = {};
+  getRowsAsObjects_(UC_APP.sheets.calendrier).forEach(function(row) {
+    existing[clean_(row.ID_Evenement)] = true;
+  });
+  if (!existing[base]) return base;
+  let suffix = 2;
+  while (existing[base + '-' + suffix]) suffix++;
+  return base + '-' + suffix;
 }
 
 function computeDashboard_(year) {
@@ -877,6 +1033,13 @@ function asDate_(value) {
   if (!value) return null;
   const date = new Date(value);
   return isNaN(date) ? null : date;
+}
+
+function parseInputDate_(value) {
+  const text = clean_(value);
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return asDate_(value);
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
 function formatDate_(value) {

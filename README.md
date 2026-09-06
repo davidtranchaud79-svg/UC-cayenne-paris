@@ -5,6 +5,7 @@ Ce pack contient une base Google Sheets + Apps Script pour suivre les présences
 - formulaire public séparé pour les sociétaires, aspirants et compagnons ;
 - excuses possibles en avance sur plusieurs dates ;
 - disponibilités pour aider sur les événements ;
+- base d’événements types pour créer un calendrier sans repartir de zéro ;
 - génération d'une feuille `CR_...` par événement ;
 - suivi annuel par personne ;
 - dashboard admin séparé, relié au Google Sheet et protégé par code ;
@@ -53,6 +54,7 @@ Structure conseillée :
 - `src/Index.html` : page routeur ;
 - `src/Public.html` : formulaire public ;
 - `src/Admin.html` : dashboard admin ;
+- `BASE_EVENEMENTS` : bibliothèque de modèles pour créer rapidement les réunions, fêtes, JEP, cours et travaux UC ;
 - `src/appsscript.json` : configuration Apps Script ;
 - `outputs/Modele_Presences_Engagements_Cayenne.xlsx` : modèle Excel de départ ;
 - `README.md` : notice d'installation.
@@ -66,7 +68,7 @@ Structure conseillée :
 5. Coller les contenus de `src/Index.html`, `src/Public.html` et `src/Admin.html` dans les fichiers correspondants.
 6. Vérifier le fichier `appsscript.json` ou recopier les autorisations depuis `src/appsscript.json`.
 7. Dans Apps Script, lancer la fonction `setupSystem`.
-8. Retourner dans le Sheet et compléter les onglets `MEMBRES` et `CALENDRIER`.
+8. Retourner dans le Sheet et compléter `MEMBRES`. Pour les événements, utiliser l’admin ou l’onglet `BASE_EVENEMENTS`.
 9. Dans Apps Script, cliquer sur `Déployer > Nouveau déploiement > Application Web`.
 10. Choisir :
    - Exécuter en tant que : `Moi`
@@ -85,6 +87,12 @@ Depuis le Google Sheet, le menu `Présences UC` permet de :
 - exporter la feuille active en PDF.
 
 Le code admin par défaut est `1234`. Il se modifie dans l'onglet `PARAMETRES`, ligne `admin_pin`.
+
+## Base d’événements
+
+L’onglet `BASE_EVENEMENTS` contient les modèles réutilisables : réunion des jeunes, réunion compagnon, cours en Cayenne, fête de juin, fête de novembre, JEP, assemblée générale et travail UC.
+
+Dans le dashboard admin, choisir un modèle, renseigner la date, ajuster le titre ou le lieu si besoin, puis cliquer sur `Ajouter au calendrier`.
 
 ## Logique de suivi
 

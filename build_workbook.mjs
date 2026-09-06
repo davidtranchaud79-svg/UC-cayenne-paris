@@ -44,19 +44,31 @@ const eventTypes = [
   "JEP",
   "Autre"
 ];
+const eventTemplates = [
+  ["TPL-JEUNES", "Réunion des jeunes", "Réunion des jeunes", "Réunion des jeunes", "20:00", "22:00", "Cayenne de Paris", "Paris", "Réunion", "Oui", "Réunion mensuelle des jeunes"],
+  ["TPL-COMPAGNONS", "Réunion compagnon", "Réunion compagnon", "Réunion compagnon", "20:00", "22:00", "Cayenne de Paris", "Paris", "Réunion", "Oui", "Réunion des compagnons"],
+  ["TPL-COURS", "Cours en Cayenne", "Cours en Cayenne", "Cours en Cayenne", "09:00", "12:00", "Cayenne de Paris", "Paris", "Cours", "Oui", "Cours ou atelier à préciser"],
+  ["TPL-FETE-JUIN", "Fête de juin", "Fête de juin", "Fête de juin", "08:00", "23:00", "Cayenne de Paris", "Paris", "Événement", "Oui", "Fête annuelle de juin"],
+  ["TPL-FETE-NOVEMBRE", "Fête de novembre", "Fête de novembre", "Fête de novembre", "08:00", "23:00", "Cayenne de Paris", "Paris", "Événement", "Oui", "Fête annuelle de novembre"],
+  ["TPL-JEP", "Journées européennes du patrimoine", "JEP", "Journées européennes du patrimoine", "09:00", "18:00", "Cayenne de Paris", "Paris", "Événement", "Oui", "JEP"],
+  ["TPL-AG", "Assemblée générale", "Autre", "Assemblée générale", "19:30", "22:00", "Cayenne de Paris", "Paris", "Réunion", "Oui", "Assemblée générale"],
+  ["TPL-TRAVAIL-UC", "Travail UC", "Autre", "Travail UC", "09:00", "17:00", "Cayenne de Paris", "Paris", "Travail", "Oui", "Travail compagnonnique à préciser"]
+];
 const webAppUrl = "https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec";
 const adminAppUrl = `${webAppUrl}?page=admin`;
 
 const headers = {
   membres: ["Nom", "Prenom", "Statut", "Cayenne", "Email", "Telephone", "Actif", "Notes"],
   calendrier: ["ID_Evenement", "Annee", "Date", "Titre", "Type_Evenement", "Heure_Debut", "Heure_Fin", "Lieu", "Cayenne", "Categorie_CR", "Actif", "Commentaire"],
-  reponses: ["ID_Reponse", "Horodatage", "Source", "Annee", "ID_Evenement", "Date_Evenement", "Titre_Evenement", "Type_Evenement", "Nom", "Prenom", "Email", "Telephone", "Statut", "Cayenne", "Reponse", "Causes", "Precision", "Aide_Disponible", "Heure_Debut_Aide", "Heure_Fin_Aide", "Commentaire", "Cle_Personne", "Mois", "Semaine", "Feuille_CR"]
+  reponses: ["ID_Reponse", "Horodatage", "Source", "Annee", "ID_Evenement", "Date_Evenement", "Titre_Evenement", "Type_Evenement", "Nom", "Prenom", "Email", "Telephone", "Statut", "Cayenne", "Reponse", "Causes", "Precision", "Aide_Disponible", "Heure_Debut_Aide", "Heure_Fin_Aide", "Commentaire", "Cle_Personne", "Mois", "Semaine", "Feuille_CR"],
+  eventBase: ["Template_ID", "Nom_Modele", "Type_Evenement", "Titre_Par_Defaut", "Heure_Debut", "Heure_Fin", "Lieu", "Cayenne", "Categorie_CR", "Actif", "Commentaire"]
 };
 
 const workbook = Workbook.create();
 const sheets = {
   parametres: workbook.worksheets.add("PARAMETRES"),
   membres: workbook.worksheets.add("MEMBRES"),
+  eventBase: workbook.worksheets.add("BASE_EVENEMENTS"),
   calendrier: workbook.worksheets.add("CALENDRIER"),
   reponses: workbook.worksheets.add("REPONSES"),
   suivi: workbook.worksheets.add("SUIVI_ANNUEL"),
@@ -75,6 +87,7 @@ for (const sheet of Object.values(sheets)) {
 
 buildParametres();
 buildMembres();
+buildEventBase();
 buildCalendrier();
 buildReponses();
 buildSuivi();
@@ -178,6 +191,20 @@ function buildMembres() {
   sheet.getRange("G4:G203").dataValidation = { rule: { type: "list", values: ["Oui", "Non"] } };
   sheet.getRange("A3:H203").format.borders = { preset: "outside", style: "thin", color: palette.line };
   setWidths(sheet, [140, 140, 120, 100, 220, 140, 80, 280]);
+  sheet.freezePanes.freezeRows(3);
+}
+
+function buildEventBase() {
+  const sheet = sheets.eventBase;
+  title(sheet, "A1:K1", "Base d’événements types");
+  sheet.getRange("A3:K3").values = [headers.eventBase];
+  headerRow(sheet.getRange("A3:K3"));
+  sheet.getRangeByIndexes(3, 0, eventTemplates.length, headers.eventBase.length).values = eventTemplates;
+  sheet.getRange("C4:C203").dataValidation = { rule: { type: "list", values: eventTypes } };
+  sheet.getRange("H4:H203").dataValidation = { rule: { type: "list", values: cayennes } };
+  sheet.getRange("J4:J203").dataValidation = { rule: { type: "list", values: ["Oui", "Non"] } };
+  sheet.getRange("A3:K203").format.borders = { preset: "outside", style: "thin", color: palette.line };
+  setWidths(sheet, [150, 220, 170, 250, 90, 90, 180, 100, 120, 70, 260]);
   sheet.freezePanes.freezeRows(3);
 }
 
@@ -430,6 +457,7 @@ async function verifyWorkbook() {
   const renderRanges = {
     PARAMETRES: "A1:H20",
     MEMBRES: "A1:H30",
+    BASE_EVENEMENTS: "A1:K30",
     CALENDRIER: "A1:L30",
     REPONSES: "A1:Y20",
     SUIVI_ANNUEL: "A1:K40",

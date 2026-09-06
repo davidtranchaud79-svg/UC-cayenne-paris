@@ -80,6 +80,16 @@ Dans Apps Script :
 
 Le lien public se termine par `/exec`. Le lien admin utilise le même déploiement avec `?page=admin` à la fin.
 
+## Base d’événements
+
+L’onglet `BASE_EVENEMENTS` sert de bibliothèque. Le bureau n’a pas besoin de recréer chaque événement de zéro :
+
+1. ouvrir le dashboard admin ;
+2. choisir un modèle ;
+3. renseigner la date ;
+4. ajuster titre, horaires ou lieu ;
+5. ajouter au calendrier.
+
 ## Utilisation ensuite
 
 Quand le code change :

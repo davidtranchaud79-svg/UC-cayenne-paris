@@ -1,7 +1,16 @@
 name: Deploy Apps Script
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - ".github/workflows/deploy-apps-script.yml"
   workflow_dispatch:
+
+env:
+  CLASP_DEPLOYMENT_ID: ${{ secrets.CLASP_DEPLOYMENT_ID }}
 
 jobs:
   deploy:
@@ -50,3 +59,11 @@ jobs:
 
       - name: Push sources to Apps Script
         run: clasp push --force
+
+      - name: Deploy existing Web App
+        if: ${{ env.CLASP_DEPLOYMENT_ID != '' }}
+        run: clasp deploy --deploymentId "$CLASP_DEPLOYMENT_ID" --description "GitHub $GITHUB_SHA"
+
+      - name: Deployment note
+        if: ${{ env.CLASP_DEPLOYMENT_ID == '' }}
+        run: echo "Code pushed to Apps Script. Add CLASP_DEPLOYMENT_ID secret to update the Web App automatically."
