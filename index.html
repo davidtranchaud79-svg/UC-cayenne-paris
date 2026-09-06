@@ -136,6 +136,7 @@
         <p>Le suivi se fait dans le Google Sheet. Les réponses, le calendrier, le dashboard et les feuilles <code>CR_...</code> sont centralisés dedans.</p>
         <div class="actions">
           <a class="button" href="https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec">Ouvrir le formulaire</a>
+          <a class="button secondary" href="https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec?page=admin">Dashboard admin</a>
           <a class="button" href="https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit">Ouvrir le Sheet</a>
           <a class="button secondary" href="https://github.com/davidtranchaud79-svg/UC-cayenne-paris">Voir le dépôt</a>
         </div>
@@ -144,7 +145,8 @@
       <section class="warning">
         <h2>Important</h2>
         <p>Cette page GitHub sert de porte d’entrée. L’application ne peut pas fonctionner seule ici, car elle dépend de Google Apps Script et du Google Sheet.</p>
-        <p>Le formulaire public est déployé ici : <a href="https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec">ouvrir l’application</a>.</p>
+        <p>Le lien membres est public : <a href="https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec">ouvrir le formulaire</a>.</p>
+        <p>Le lien bureau est séparé et protégé par code : <a href="https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec?page=admin">ouvrir le dashboard admin</a>.</p>
       </section>
 
       <section>
@@ -153,8 +155,8 @@
           <li>Ouvrir le Google Sheet.</li>
           <li>Aller dans <code>Extensions &gt; Apps Script</code>.</li>
           <li>Coller l’onglet <code>CODE_GS</code> dans <code>Code.gs</code>.</li>
-          <li>Créer un fichier HTML nommé <code>Index</code>.</li>
-          <li>Coller l’onglet <code>INDEX_HTML</code>.</li>
+          <li>Créer trois fichiers HTML : <code>Index</code>, <code>Public</code>, <code>Admin</code>.</li>
+          <li>Coller les onglets <code>INDEX_HTML</code>, <code>PUBLIC_HTML</code>, <code>ADMIN_HTML</code>.</li>
           <li>Lancer <code>setupSystem</code>.</li>
           <li>Déployer en application Web.</li>
         </ol>
@@ -166,6 +168,8 @@
         <div class="actions">
           <a class="button" href="src/Code.gs">Code.gs</a>
           <a class="button" href="src/Index.html">Index.html</a>
+          <a class="button" href="src/Public.html">Public.html</a>
+          <a class="button" href="src/Admin.html">Admin.html</a>
           <a class="button secondary" href="src/appsscript.json">Manifest</a>
           <a class="button secondary" href="docs/BRANCHER_SHEET_GITHUB.md">Brancher GitHub / Sheet</a>
         </div>

@@ -2,12 +2,12 @@
 
 Ce pack contient une base Google Sheets + Apps Script pour suivre les présences sur l'année :
 
-- formulaire public pour les sociétaires, aspirants et compagnons ;
+- formulaire public séparé pour les sociétaires, aspirants et compagnons ;
 - excuses possibles en avance sur plusieurs dates ;
 - disponibilités pour aider sur les événements ;
 - génération d'une feuille `CR_...` par événement ;
 - suivi annuel par personne ;
-- dashboard admin relié au Google Sheet ;
+- dashboard admin séparé, relié au Google Sheet et protégé par code ;
 - export PDF d'une feuille événement pour l'intégrer au compte rendu.
 
 ## Liens directs
@@ -15,11 +15,12 @@ Ce pack contient une base Google Sheets + Apps Script pour suivre les présences
 | Élément | Lien |
 |---|---|
 | Formulaire public | [Ouvrir le formulaire](https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec) |
+| Dashboard admin | [Ouvrir le dashboard](https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec?page=admin) |
 | Google Sheet de suivi | [Ouvrir le Sheet](https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit) |
 | Page GitHub | [Ouvrir la page](https://davidtranchaud79-svg.github.io/UC-cayenne-paris/) |
 | Dépôt GitHub | [Voir le code](https://github.com/davidtranchaud79-svg/UC-cayenne-paris) |
 
-Important : GitHub sert à stocker le code et la notice. Le formulaire public est déployé dans Google Apps Script, car le code utilise `google.script.run`.
+Important : GitHub sert à stocker le code et la notice. Le formulaire public et le dashboard admin sont déployés dans Google Apps Script, car le code utilise `google.script.run`.
 
 ## Branchement Sheet et GitHub
 
@@ -37,7 +38,9 @@ La procédure détaillée est dans [`docs/BRANCHER_SHEET_GITHUB.md`](docs/BRANCH
 | `docs/BRANCHER_SHEET_GITHUB.md` | Notice détaillée de branchement |
 | `Modele_Presences_Engagements_Cayenne.xlsx` | Modèle de classeur à importer dans Google Sheets |
 | `src/Code.gs` | Code serveur Apps Script |
-| `src/Index.html` | Interface formulaire + dashboard |
+| `src/Index.html` | Petite page routeur avec les deux accès |
+| `src/Public.html` | Formulaire public membres |
+| `src/Admin.html` | Dashboard bureau |
 | `src/appsscript.json` | Manifest Apps Script pour déploiement propre |
 
 ## GitHub
@@ -47,7 +50,9 @@ Le dépôt peut être poussé tel quel sur GitHub. Les fichiers temporaires, ape
 Structure conseillée :
 
 - `src/Code.gs` : logique Google Sheets, dashboard, génération des feuilles `CR_...` ;
-- `src/Index.html` : formulaire public et vue admin ;
+- `src/Index.html` : page routeur ;
+- `src/Public.html` : formulaire public ;
+- `src/Admin.html` : dashboard admin ;
 - `src/appsscript.json` : configuration Apps Script ;
 - `outputs/Modele_Presences_Engagements_Cayenne.xlsx` : modèle Excel de départ ;
 - `README.md` : notice d'installation.
@@ -57,15 +62,18 @@ Structure conseillée :
 1. Ouvrir le Google Sheet modèle.
 2. Aller dans `Extensions > Apps Script`.
 3. Créer ou remplacer le fichier `Code.gs` avec le contenu de `src/Code.gs`.
-4. Créer un fichier HTML nommé `Index` et coller le contenu de `src/Index.html`.
-5. Vérifier le fichier `appsscript.json` ou recopier les autorisations depuis `src/appsscript.json`.
-6. Dans Apps Script, lancer la fonction `setupSystem`.
-7. Retourner dans le Sheet et compléter les onglets `MEMBRES` et `CALENDRIER`.
-8. Dans Apps Script, cliquer sur `Déployer > Nouveau déploiement > Application Web`.
-9. Choisir :
+4. Créer trois fichiers HTML nommés `Index`, `Public` et `Admin`.
+5. Coller les contenus de `src/Index.html`, `src/Public.html` et `src/Admin.html` dans les fichiers correspondants.
+6. Vérifier le fichier `appsscript.json` ou recopier les autorisations depuis `src/appsscript.json`.
+7. Dans Apps Script, lancer la fonction `setupSystem`.
+8. Retourner dans le Sheet et compléter les onglets `MEMBRES` et `CALENDRIER`.
+9. Dans Apps Script, cliquer sur `Déployer > Nouveau déploiement > Application Web`.
+10. Choisir :
    - Exécuter en tant que : `Moi`
    - Accès : selon votre choix, par exemple les personnes disposant du lien
-10. Lien Web App actuel : https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec
+11. Liens Web App actuels :
+    - Public : https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec
+    - Admin : https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec?page=admin
 
 ## Utilisation bureau
 

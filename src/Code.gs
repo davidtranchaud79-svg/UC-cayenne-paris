@@ -17,6 +17,7 @@ const UC_APP = {
     activeYear: 2026,
     adminPin: '1234',
     webAppUrl: 'https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec',
+    adminAppUrl: 'https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec?page=admin',
     statuses: ['Sociétaire', 'Aspirant', 'Compagnon'],
     cayennes: ['Paris', 'Autre'],
     reponses: ['Présent', 'Absent excusé', 'Disponible pour aider'],
@@ -52,11 +53,17 @@ function onOpen() {
     .addToUi();
 }
 
-function doGet() {
-  return HtmlService
-    .createTemplateFromFile('Index')
+function doGet(e) {
+  const page = String(e && e.parameter && e.parameter.page || 'public').toLowerCase();
+  const templateName = page === 'admin' ? 'Admin' : 'Public';
+  const template = HtmlService.createTemplateFromFile(templateName);
+  const urls = getAppUrls_();
+  template.publicUrl = urls.publicUrl;
+  template.adminUrl = urls.adminUrl;
+
+  return template
     .evaluate()
-    .setTitle('Présences Cayenne de Paris')
+    .setTitle(page === 'admin' ? 'Dashboard admin - Présences Cayenne de Paris' : 'Présences Cayenne de Paris')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -97,12 +104,22 @@ function getPublicConfig() {
   const year = Number(settings.annee_active || UC_APP.defaults.activeYear);
   return {
     activeYear: year,
+    urls: getAppUrls_(settings),
     statuses: getOptionList_('D', UC_APP.defaults.statuses),
     cayennes: getOptionList_('E', UC_APP.defaults.cayennes),
     responseTypes: getOptionList_('F', UC_APP.defaults.reponses),
     causes: getOptionList_('G', UC_APP.defaults.causes),
     eventTypes: getOptionList_('H', UC_APP.defaults.eventTypes),
     events: getEventsForYear_(year).map(formatEventForClient_)
+  };
+}
+
+function getBootstrapConfig() {
+  setupSystemIfMissing_();
+  const settings = getSettings_();
+  return {
+    activeYear: Number(settings.annee_active || UC_APP.defaults.activeYear),
+    urls: getAppUrls_(settings)
   };
 }
 
@@ -318,15 +335,15 @@ function refreshDashboardSheet() {
   sheet.getRange('A3:A8').setFontWeight('bold').setBackground('#F2E7E9');
   sheet.getRange('B3:B8').setFontWeight('bold').setNumberFormat('0');
 
-  const webAppUrl = settings.web_app_url || UC_APP.defaults.webAppUrl;
-  if (webAppUrl) {
-    sheet.getRange('A10').setValue('Formulaire public').setFontWeight('bold').setBackground('#F2E7E9');
-    sheet.getRange('B10').setRichTextValue(
-      SpreadsheetApp.newRichTextValue()
-        .setText(webAppUrl)
-        .setLinkUrl(webAppUrl)
-        .build()
-    );
+  const urls = getAppUrls_(settings);
+  if (urls.publicUrl || urls.adminUrl) {
+    sheet.getRange('A10:B11').clearContent();
+    sheet.getRange('A10:A11')
+      .setValues([['Formulaire public'], ['Dashboard admin']])
+      .setFontWeight('bold')
+      .setBackground('#F2E7E9');
+    setLinkedText_(sheet.getRange('B10'), 'Ouvrir le formulaire public', urls.publicUrl);
+    setLinkedText_(sheet.getRange('B11'), 'Ouvrir le dashboard admin', urls.adminUrl);
   }
 
   sheet.getRange('D3:H3').setValues([['Événement', 'Date', 'Présents', 'Excusés', 'Sans réponse']]);
@@ -339,9 +356,9 @@ function refreshDashboardSheet() {
   const causeRows = data.causes.map(function(cause) {
     return [cause.cause, cause.count];
   });
-  sheet.getRange('A11:B11').setValues([['Causes d’absence', 'Total']]);
-  sheet.getRange('A11:B11').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
-  if (causeRows.length) sheet.getRange(12, 1, causeRows.length, 2).setValues(causeRows);
+  sheet.getRange('A13:B13').setValues([['Causes d’absence', 'Total']]);
+  sheet.getRange('A13:B13').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
+  if (causeRows.length) sheet.getRange(14, 1, causeRows.length, 2).setValues(causeRows);
 
   const memberRows = data.members.map(function(member) {
     return [member.nom, member.prenom, member.statut, member.cayenne, member.presents, member.excused, member.noResponse, member.aids, member.presenceRate];
@@ -386,17 +403,22 @@ function setupTable_(sheet, headers) {
 }
 
 function setupParametres_(sheet) {
+  const existingSettings = getSettingsFromSheet_(sheet);
+  const publicUrl = clean_(existingSettings.web_app_url || UC_APP.defaults.webAppUrl);
+  const adminUrl = clean_(existingSettings.admin_app_url || makeAdminUrl_(publicUrl));
+
   sheet.clear();
   sheet.setHiddenGridlines(true);
   sheet.getRange('A1:C1').setValues([['Paramètre', 'Valeur', 'Description']]);
   sheet.getRange('A1:C1').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#7A1F2B');
-  sheet.getRange('A2:C7').setValues([
-    ['annee_active', UC_APP.defaults.activeYear, 'Année suivie par défaut'],
-    ['cayenne_principale', 'Paris', 'Cayenne proposée en premier'],
-    ['admin_pin', UC_APP.defaults.adminPin, 'Code d’accès au dashboard admin'],
-    ['nom_application', 'Présences Cayenne de Paris', 'Titre affiché dans le formulaire'],
+  sheet.getRange('A2:C8').setValues([
+    ['annee_active', existingSettings.annee_active || UC_APP.defaults.activeYear, 'Année suivie par défaut'],
+    ['cayenne_principale', existingSettings.cayenne_principale || 'Paris', 'Cayenne proposée en premier'],
+    ['admin_pin', existingSettings.admin_pin || UC_APP.defaults.adminPin, 'Code d’accès au dashboard admin'],
+    ['nom_application', existingSettings.nom_application || 'Présences Cayenne de Paris', 'Titre affiché dans le formulaire'],
     ['derniere_generation', '', 'Renseigné automatiquement si besoin'],
-    ['web_app_url', UC_APP.defaults.webAppUrl, 'Lien public du formulaire Apps Script déployé']
+    ['web_app_url', publicUrl, 'Lien public du formulaire Apps Script déployé'],
+    ['admin_app_url', adminUrl, 'Lien séparé du dashboard admin']
   ]);
 
   writeVerticalList_(sheet, 'D', 'Statuts', UC_APP.defaults.statuses);
@@ -518,13 +540,49 @@ function getOptionList_(columnLetter, fallback) {
 
 function getSettings_() {
   const sheet = SpreadsheetApp.getActive().getSheetByName(UC_APP.sheets.parametres);
-  if (!sheet) return {};
-  const values = sheet.getRange('A2:B50').getValues();
+  return getSettingsFromSheet_(sheet);
+}
+
+function getSettingsFromSheet_(sheet) {
+  if (!sheet || sheet.getLastRow() < 2) return {};
+  const lastRow = Math.min(sheet.getLastRow(), 50);
+  const values = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
   return values.reduce(function(settings, row) {
     const key = clean_(row[0]);
     if (key) settings[key] = row[1];
     return settings;
   }, {});
+}
+
+function getAppUrls_(settings) {
+  settings = settings || getSettings_();
+  const publicUrl = clean_(settings.web_app_url || UC_APP.defaults.webAppUrl);
+  const adminUrl = clean_(settings.admin_app_url || UC_APP.defaults.adminAppUrl || makeAdminUrl_(publicUrl));
+  return {
+    publicUrl: publicUrl,
+    adminUrl: adminUrl
+  };
+}
+
+function makeAdminUrl_(publicUrl) {
+  const url = clean_(publicUrl || UC_APP.defaults.webAppUrl);
+  if (!url) return '';
+  if (url.indexOf('page=admin') !== -1) return url;
+  return url + (url.indexOf('?') === -1 ? '?' : '&') + 'page=admin';
+}
+
+function setLinkedText_(range, text, url) {
+  const label = clean_(text);
+  if (!label) {
+    range.clearContent();
+    return;
+  }
+  range.setRichTextValue(
+    SpreadsheetApp.newRichTextValue()
+      .setText(label)
+      .setLinkUrl(clean_(url || label))
+      .build()
+  );
 }
 
 function assertAdmin_(pin) {

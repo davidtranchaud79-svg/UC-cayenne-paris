@@ -1,8 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { SpreadsheetFile, Workbook } from "@oai/artifact-tool";
 
-const rootDir = "/workspace/scratch/81558b80529b/uc-presences-annuelles";
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const outputDir = path.join(rootDir, "outputs");
 const previewDir = path.join(outputDir, "previews");
 const workbookPath = path.join(outputDir, "Modele_Presences_Engagements_Cayenne.xlsx");
@@ -44,6 +45,7 @@ const eventTypes = [
   "Autre"
 ];
 const webAppUrl = "https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec";
+const adminAppUrl = `${webAppUrl}?page=admin`;
 
 const headers = {
   membres: ["Nom", "Prenom", "Statut", "Cayenne", "Email", "Telephone", "Actif", "Notes"],
@@ -62,6 +64,8 @@ const sheets = {
   modele: workbook.worksheets.add("MODELE_CR_EVENEMENT"),
   code: workbook.worksheets.add("CODE_GS"),
   html: workbook.worksheets.add("INDEX_HTML"),
+  publicHtml: workbook.worksheets.add("PUBLIC_HTML"),
+  adminHtml: workbook.worksheets.add("ADMIN_HTML"),
   notice: workbook.worksheets.add("NOTICE")
 };
 
@@ -136,15 +140,16 @@ function buildParametres() {
   title(sheet, "A1:H1", "Paramètres du logiciel de présences");
   sheet.getRange("A3:C3").values = [["Paramètre", "Valeur", "Description"]];
   headerRow(sheet.getRange("A3:C3"));
-  sheet.getRange("A4:C9").values = [
+  sheet.getRange("A4:C10").values = [
     ["annee_active", 2026, "Année suivie par défaut"],
     ["cayenne_principale", "Paris", "Cayenne proposée en premier"],
     ["admin_pin", "1234", "Code d’accès au dashboard admin"],
     ["nom_application", "Présences Cayenne de Paris", "Titre affiché dans le formulaire"],
     ["derniere_generation", "", "Champ réservé au script"],
-    ["web_app_url", webAppUrl, "Lien public du formulaire Apps Script déployé"]
+    ["web_app_url", webAppUrl, "Lien public du formulaire Apps Script déployé"],
+    ["admin_app_url", adminAppUrl, "Lien séparé du dashboard admin"]
   ];
-  sheet.getRange("A4:A9").format = { font: { bold: true } };
+  sheet.getRange("A4:A10").format = { font: { bold: true } };
 
   writeList(sheet, "D3", "Statuts", statuses);
   writeList(sheet, "E3", "Cayennes", cayennes);
@@ -274,8 +279,11 @@ function buildDashboard() {
   sheet.getRange("B3:B9").format = { font: { bold: true, size: 12 } };
   sheet.getRange("B3:B9").format.numberFormat = "0";
 
-  sheet.getRange("A11:B11").values = [["Formulaire public", webAppUrl]];
-  softLabel(sheet.getRange("A11:A11"));
+  sheet.getRange("A11:B12").values = [
+    ["Formulaire public", "Ouvrir le formulaire public"],
+    ["Dashboard admin", "Ouvrir le dashboard admin"]
+  ];
+  softLabel(sheet.getRange("A11:A12"));
 
   sheet.getRange("D3:H3").values = [["Type", "Événements", "Présents", "Excusés", "Aides"]];
   headerRow(sheet.getRange("D3:H3"));
@@ -293,11 +301,11 @@ function buildDashboard() {
   sheet.getRangeByIndexes(3, 4, typeRows.length, 4).formulas = typeRows.map((row) => row.slice(1));
   sheet.getRange("E4:H10").format.numberFormat = "0";
 
-  sheet.getRange("A12:B12").values = [["Causes d’absence", "Total"]];
-  headerRow(sheet.getRange("A12:B12"));
-  sheet.getRangeByIndexes(12, 0, causes.length, 1).values = causes.map((cause) => [cause]);
-  sheet.getRangeByIndexes(12, 1, causes.length, 1).formulas = causes.map((cause, idx) => {
-    const row = 13 + idx;
+  sheet.getRange("A14:B14").values = [["Causes d’absence", "Total"]];
+  headerRow(sheet.getRange("A14:B14"));
+  sheet.getRangeByIndexes(14, 0, causes.length, 1).values = causes.map((cause) => [cause]);
+  sheet.getRangeByIndexes(14, 1, causes.length, 1).formulas = causes.map((cause, idx) => {
+    const row = 15 + idx;
     return [`=COUNTIFS('REPONSES'!$D$4:$D$2003,$B$3,'REPONSES'!$O$4:$O$2003,"Absent excusé",'REPONSES'!$P$4:$P$2003,"*"&A${row}&"*")`];
   });
 
@@ -321,7 +329,7 @@ function buildDashboard() {
   sheet.getRangeByIndexes(23, 0, formulas.length, formulas[0].length).formulas = formulas;
   sheet.getRange("E24:H73").format.numberFormat = "0";
   sheet.getRange("I24:I73").format.numberFormat = "0%";
-  sheet.getRange("A3:H20").format.borders = { preset: "outside", style: "thin", color: palette.line };
+  sheet.getRange("A3:H22").format.borders = { preset: "outside", style: "thin", color: palette.line };
   sheet.getRange("A23:I73").format.borders = { preset: "outside", style: "thin", color: palette.line };
 
   try {
@@ -335,7 +343,7 @@ function buildDashboard() {
     console.warn("Chart creation skipped:", error.message);
   }
 
-  setWidths(sheet, [220, 80, 90, 240, 100, 100, 115, 100, 55, 90, 90, 90, 90, 90, 90, 90, 90]);
+  setWidths(sheet, [220, 210, 90, 240, 100, 100, 115, 100, 55, 90, 90, 90, 90, 90, 90, 90, 90]);
   sheet.freezePanes.freezeRows(3);
 }
 
@@ -367,8 +375,12 @@ function buildModeleCr() {
 async function buildCodeSheets() {
   const code = await fs.readFile(path.join(rootDir, "src", "Code.gs"), "utf8");
   const html = await fs.readFile(path.join(rootDir, "src", "Index.html"), "utf8");
+  const publicHtml = await fs.readFile(path.join(rootDir, "src", "Public.html"), "utf8");
+  const adminHtml = await fs.readFile(path.join(rootDir, "src", "Admin.html"), "utf8");
   writeCodeSheet(sheets.code, "Code.gs", code);
   writeCodeSheet(sheets.html, "Index.html", html);
+  writeCodeSheet(sheets.publicHtml, "Public.html", publicHtml);
+  writeCodeSheet(sheets.adminHtml, "Admin.html", adminHtml);
 }
 
 function writeCodeSheet(sheet, filename, content) {
@@ -425,6 +437,8 @@ async function verifyWorkbook() {
     MODELE_CR_EVENEMENT: "A1:I25",
     CODE_GS: "A1:C80",
     INDEX_HTML: "A1:C80",
+    PUBLIC_HTML: "A1:C80",
+    ADMIN_HTML: "A1:C80",
     NOTICE: "A1:C80"
   };
 

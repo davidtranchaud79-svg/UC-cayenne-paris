@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --wine: #7A1F2B;
+      --wine-dark: #55131D;
+      --ink: #1F2937;
+      --muted: #6B7280;
+      --line: #E5E7EB;
+      --bg: #F8F6F4;
+      --card: #FFFFFF;
+      --soft: #F2E7E9;
+      --green: #15803D;
+      --red: #B91C1C;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    header {
+      background: var(--wine);
+      color: white;
+      padding: 18px 16px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    header p {
+      margin: 6px 0 0;
+      color: #F9E8EC;
+      font-size: 14px;
+    }
+
+    main {
+      width: min(980px, 100%);
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    h3 {
+      margin: 18px 0 10px;
+      font-size: 15px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin: 12px 0 5px;
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid #D1D5DB;
+      border-radius: 8px;
+      padding: 10px 11px;
+      background: white;
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    button {
+      border: 0;
+      background: var(--wine);
+      color: white;
+      padding: 11px 14px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.ghost {
+      background: white;
+      color: var(--wine);
+      border: 1px solid var(--wine);
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: wait;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .choices,
+    .events {
+      display: grid;
+      gap: 8px;
+    }
+
+    .choice,
+    .event {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      border: 1px solid var(--line);
+      background: #FFFFFF;
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .choice input,
+    .event input {
+      width: auto;
+      margin-top: 2px;
+    }
+
+    .event strong {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .notice {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #FFFFFF;
+      font-size: 14px;
+    }
+
+    .notice.ok {
+      border-color: #BBF7D0;
+      background: #F0FDF4;
+      color: var(--green);
+    }
+
+    .notice.error {
+      border-color: #FECACA;
+      background: #FEF2F2;
+      color: var(--red);
+    }
+
+    .empty {
+      padding: 18px;
+      color: var(--muted);
+      background: white;
+      border: 1px dashed #D1D5DB;
+      border-radius: 8px;
+    }
+
+    @media (max-width: 860px) {
+      .layout,
+      .row {
+        grid-template-columns: 1fr;
+      }
+
+      main {
+        padding: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Formulaire public</h1>
+    <p>Présences, excuses et engagements - Cayenne de Paris</p>
+  </header>
+
+  <main>
+    <form id="presenceForm" class="layout">
+      <div class="card">
+        <h2>Votre identité</h2>
+        <div class="row">
+          <div>
+            <label for="nom">Nom</label>
+            <input id="nom" name="nom" autocomplete="family-name" required>
+          </div>
+          <div>
+            <label for="prenom">Prénom</label>
+            <input id="prenom" name="prenom" autocomplete="given-name" required>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email">
+          </div>
+          <div>
+            <label for="telephone">Téléphone</label>
+            <input id="telephone" name="telephone" autocomplete="tel">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="statut">Statut</label>
+            <select id="statut" name="statut" required></select>
+          </div>
+          <div>
+            <label for="cayenne">Cayenne</label>
+            <select id="cayenne" name="cayenne" required></select>
+          </div>
+        </div>
+
+        <label for="reponse">Je réponds pour les dates sélectionnées</label>
+        <select id="reponse" name="reponse" required></select>
+
+        <div id="absenceBlock">
+          <h3>Cause d’absence</h3>
+          <div id="causes" class="choices"></div>
+          <label for="precision">Précision</label>
+          <textarea id="precision" name="precision" placeholder="Exemple : travail UC ailleurs, réunion dans une autre Cayenne, service du soir..."></textarea>
+        </div>
+
+        <div id="aidBlock">
+          <h3>Disponibilité pour aider</h3>
+          <div class="row">
+            <div>
+              <label for="heureDebutAide">Début</label>
+              <input id="heureDebutAide" name="heureDebutAide" type="time">
+            </div>
+            <div>
+              <label for="heureFinAide">Fin</label>
+              <input id="heureFinAide" name="heureFinAide" type="time">
+            </div>
+          </div>
+        </div>
+
+        <label for="commentaire">Commentaire</label>
+        <textarea id="commentaire" name="commentaire"></textarea>
+      </div>
+
+      <div class="card">
+        <h2>Événements de l’année</h2>
+        <div class="actions">
+          <button type="button" class="ghost" id="selectAll">Tout sélectionner</button>
+          <button type="button" class="ghost" id="clearAll">Tout enlever</button>
+        </div>
+        <div id="events" class="events" style="margin-top: 12px;"></div>
+        <div class="actions">
+          <button id="submitBtn" type="submit">Enregistrer ma réponse</button>
+        </div>
+        <div id="publicNotice" class="notice" hidden></div>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    const state = {
+      config: null
+    };
+
+    document.getElementById('reponse').addEventListener('change', updateConditionalBlocks);
+    document.getElementById('selectAll').addEventListener('click', () => setAllEvents(true));
+    document.getElementById('clearAll').addEventListener('click', () => setAllEvents(false));
+    document.getElementById('presenceForm').addEventListener('submit', submitForm);
+
+    init();
+
+    function init() {
+      google.script.run
+        .withSuccessHandler((config) => {
+          state.config = config;
+          fillSelect('statut', config.statuses);
+          fillSelect('cayenne', config.cayennes);
+          fillSelect('reponse', config.responseTypes);
+          renderCauses(config.causes);
+          renderEvents(config.events);
+          updateConditionalBlocks();
+        })
+        .withFailureHandler((error) => showNotice('publicNotice', error.message || error, 'error'))
+        .getPublicConfig();
+    }
+
+    function fillSelect(id, values) {
+      const select = document.getElementById(id);
+      select.innerHTML = '<option value="">Choisir</option>' + values.map((value) => {
+        return `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`;
+      }).join('');
+    }
+
+    function renderCauses(causes) {
+      const container = document.getElementById('causes');
+      container.innerHTML = causes.map((cause, index) => {
+        return `
+          <label class="choice" for="cause_${index}">
+            <input id="cause_${index}" type="checkbox" name="causes" value="${escapeHtml(cause)}">
+            <span>${escapeHtml(cause)}</span>
+          </label>
+        `;
+      }).join('');
+    }
+
+    function renderEvents(events) {
+      const container = document.getElementById('events');
+      if (!events.length) {
+        container.innerHTML = '<div class="empty">Aucun événement actif dans le calendrier.</div>';
+        return;
+      }
+      container.innerHTML = events.map((event) => {
+        return `
+          <label class="event">
+            <input type="checkbox" name="eventIds" value="${escapeHtml(event.id)}">
+            <span>
+              <strong>${escapeHtml(event.title)}</strong>
+              <span class="meta">${escapeHtml(event.date)} - ${escapeHtml(event.type)} - ${escapeHtml(event.start || '')}${event.end ? ' à ' + escapeHtml(event.end) : ''}</span>
+            </span>
+          </label>
+        `;
+      }).join('');
+    }
+
+    function updateConditionalBlocks() {
+      const value = document.getElementById('reponse').value;
+      document.getElementById('absenceBlock').style.display = value === 'Absent excusé' ? 'block' : 'none';
+      document.getElementById('aidBlock').style.display = value === 'Disponible pour aider' ? 'block' : 'none';
+    }
+
+    function setAllEvents(checked) {
+      document.querySelectorAll('input[name="eventIds"]').forEach((input) => {
+        input.checked = checked;
+      });
+    }
+
+    function submitForm(event) {
+      event.preventDefault();
+      setLoading(true, 'submitBtn');
+      const form = document.getElementById('presenceForm');
+      const formData = new FormData(form);
+      const eventIds = Array.from(document.querySelectorAll('input[name="eventIds"]:checked')).map((input) => input.value);
+      const causes = Array.from(document.querySelectorAll('input[name="causes"]:checked')).map((input) => input.value);
+      const payload = {
+        nom: formData.get('nom'),
+        prenom: formData.get('prenom'),
+        email: formData.get('email'),
+        telephone: formData.get('telephone'),
+        statut: formData.get('statut'),
+        cayenne: formData.get('cayenne'),
+        reponse: formData.get('reponse'),
+        causes,
+        precision: formData.get('precision'),
+        heureDebutAide: formData.get('heureDebutAide'),
+        heureFinAide: formData.get('heureFinAide'),
+        commentaire: formData.get('commentaire'),
+        eventIds,
+        source: eventIds.length > 1 ? 'Réponse anticipée' : 'Réponse événement'
+      };
+
+      google.script.run
+        .withSuccessHandler((result) => {
+          showNotice('publicNotice', result.message, 'ok');
+          form.reset();
+          updateConditionalBlocks();
+          setLoading(false, 'submitBtn');
+        })
+        .withFailureHandler((error) => {
+          showNotice('publicNotice', error.message || error, 'error');
+          setLoading(false, 'submitBtn');
+        })
+        .submitResponses(payload);
+    }
+
+    function showNotice(id, message, type) {
+      const node = document.getElementById(id);
+      node.hidden = false;
+      node.className = 'notice ' + type;
+      node.textContent = message;
+    }
+
+    function setLoading(isLoading, buttonId) {
+      const button = document.getElementById(buttonId);
+      if (!button) return;
+      button.disabled = isLoading;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+  </script>
+</body>
+</html>

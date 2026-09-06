@@ -11,6 +11,7 @@ Les données nominatives, les excuses et les motifs d'absence restent dans le Go
 ## Liens actuels
 
 - Formulaire public : https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec
+- Dashboard admin : https://script.google.com/macros/s/AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ/exec?page=admin
 - Google Sheet : https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit
 - Dépôt GitHub : https://github.com/davidtranchaud79-svg/UC-cayenne-paris
 
@@ -61,6 +62,8 @@ clasp push
 
 - `src/Code.gs`
 - `src/Index.html`
+- `src/Public.html`
+- `src/Admin.html`
 - `src/appsscript.json`
 
 ## Étape 5 - Déployer le formulaire
@@ -73,7 +76,9 @@ Dans Apps Script :
 4. Choisir `Application Web`.
 5. Choisir `Exécuter en tant que : Moi`.
 6. Choisir l'accès souhaité.
-7. Copier le lien du Web App et l'envoyer aux membres.
+7. Copier le lien public du Web App et l'envoyer aux membres.
+
+Le lien public se termine par `/exec`. Le lien admin utilise le même déploiement avec `?page=admin` à la fin.
 
 ## Utilisation ensuite
 
