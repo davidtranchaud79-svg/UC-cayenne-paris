@@ -15,35 +15,47 @@ test('rejects a failed command even if it prints JSON', () => {
   assert.throws(() => parseClaspResult({ status: 1, stdout: JSON.stringify(fresh) }), /échoué/);
 });
 
-test('does not publish to a project that does not own the public link', () => {
+test('does not publish to a project that does not own the public link', async () => {
   const calls = [];
-  assert.throws(() => deployExisting({ deploymentId, description, run(args) {
+  await assert.rejects(() => deployExisting({ deploymentId, description, run(args) {
     calls.push(args);
     return [{ ...old, deploymentId: 'AKfy-another-app' }];
   } }), /ne correspond pas/);
   assert.deepEqual(calls, [['list-deployments']]);
 });
 
-test('rejects a response for another deployment or an unchanged version', () => {
+test('rejects a response for another deployment or an unchanged version', async () => {
   for (const bad of [{ ...fresh, deploymentId: 'AKfy-another-app' }, { ...fresh, versionNumber: 4 }, {}]) {
     let call = 0;
-    assert.throws(() => deployExisting({ deploymentId, description, run: () => call++ ? bad : [old] }), /pas été confirmée/);
+    await assert.rejects(() => deployExisting({ deploymentId, description, run: () => call++ ? bad : [old] }), /pas été confirmée/);
   }
 });
 
-test('rejects an apparent success when Google still lists the old version', () => {
-  const results = [[old], fresh, [old]];
-  assert.throws(() => deployExisting({ deploymentId, description, run: () => results.shift() }), /ne retrouve pas/);
+test('rejects an apparent success when Google keeps listing the old version', async () => {
+  const results = [[old], fresh];
+  await assert.rejects(() => deployExisting({ deploymentId, description,
+    run: () => results.length ? results.shift() : [old], wait: async () => {}
+  }), /ne retrouve pas/);
 });
 
-test('accepts only a matching new version read back from Google', () => {
+test('accepts only a matching new version read back from Google', async () => {
   const results = [[old], fresh, [fresh]];
   const calls = [];
-  const result = deployExisting({ deploymentId, description, run(args) {
+  const result = await deployExisting({ deploymentId, description, run(args) {
     calls.push(args);
     return results.shift();
   } });
   assert.deepEqual(result, fresh);
   assert.deepEqual(calls[1], ['update-deployment', deploymentId, '--description', description]);
   assert.equal(calls.length, 3);
+});
+
+test('waits for Google to list the new version after a delayed update', async () => {
+  const results = [[old], fresh, [old], [old], [fresh]];
+  let waits = 0;
+  const result = await deployExisting({ deploymentId, description,
+    run: () => results.shift(), wait: async () => { waits++; }
+  });
+  assert.deepEqual(result, fresh);
+  assert.equal(waits, 2);
 });

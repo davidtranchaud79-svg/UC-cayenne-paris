@@ -23,7 +23,12 @@ function runClasp(args) {
   }));
 }
 
-export function deployExisting({ deploymentId, description, run = runClasp }) {
+export async function deployExisting({
+  deploymentId,
+  description,
+  run = runClasp,
+  wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+}) {
   if (!/^AKfy[A-Za-z0-9_-]+$/.test(deploymentId || '')) {
     throw new Error('Identifiant du déploiement invalide dans le workflow.');
   }
@@ -42,17 +47,24 @@ export function deployExisting({ deploymentId, description, run = runClasp }) {
     throw new Error('La nouvelle version du déploiement attendu n’a pas été confirmée.');
   }
 
-  const current = run(['list-deployments']);
-  const verified = Array.isArray(current) && current.find(item => item.deploymentId === deploymentId);
-  if (!verified || verified.versionNumber !== published.versionNumber || verified.description !== description) {
-    throw new Error('La vérification Google ne retrouve pas la version publiée.');
+  // The list endpoint can briefly return the previous version after an update.
+  let verified;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    if (attempt) await wait(3000);
+    const current = run(['list-deployments']);
+    verified = Array.isArray(current) && current.find(item => item.deploymentId === deploymentId);
+    if (verified && verified.versionNumber === published.versionNumber && verified.description === description) {
+      return verified;
+    }
   }
-  return verified;
+  throw new Error('La vérification Google ne retrouve pas la version publiée ' +
+    `(attendue : ${published.versionNumber}, observée : ${verified?.versionNumber ?? 'absente'}, ` +
+    `référence GitHub conforme : ${verified?.description === description ? 'oui' : 'non'}).`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    const deployment = deployExisting({
+    const deployment = await deployExisting({
       deploymentId: process.env.CLASP_DEPLOYMENT_ID,
       description: `GitHub ${process.env.GITHUB_SHA}`
     });
