@@ -15,87 +15,92 @@ Les données nominatives, les excuses et les motifs d'absence restent dans le Go
 - Google Sheet : https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit
 - Dépôt GitHub : https://github.com/davidtranchaud79-svg/UC-cayenne-paris
 
-## Étape 1 - Récupérer l'ID Apps Script
+## Étape 1 - Ajouter l'ID Apps Script à GitHub
 
 1. Ouvrir le Google Sheet.
 2. Aller dans `Extensions > Apps Script`.
 3. Dans Apps Script, ouvrir `Paramètres du projet`.
 4. Copier `ID du script`.
+5. Dans [les secrets GitHub](https://github.com/davidtranchaud79-svg/UC-cayenne-paris/settings/secrets/actions), cliquer sur `New repository secret`.
+6. Mettre `CLASP_SCRIPT_ID` dans `Name`, coller l'ID dans `Secret`, puis cliquer sur `Add secret`.
 
-## Étape 2 - Créer le fichier `.clasp.json`
+## Étape 2 - Activer l'API Apps Script
 
-À la racine du dépôt, copier `.clasp.json.example` en `.clasp.json`, puis remplacer :
+Avec le compte Google propriétaire de l'application, ouvrir [les paramètres Apps Script](https://script.google.com/home/usersettings) et activer `API Google Apps Script`.
 
-```json
-{
-  "scriptId": "COLLER_ICI_ID_DU_SCRIPT_APPS_SCRIPT",
-  "rootDir": "src"
-}
-```
+## Étape 3 - Autoriser la connexion Google sur le Mac
 
-par :
-
-```json
-{
-  "scriptId": "VOTRE_ID_DU_SCRIPT",
-  "rootDir": "src"
-}
-```
-
-## Étape 3 - Activer l'API Apps Script
-
-Dans le compte Google utilisé pour le Sheet, activer l'API Apps Script :
-
-`https://script.google.com/home/usersettings`
-
-## Étape 4 - Envoyer GitHub vers Apps Script
-
-Depuis un ordinateur :
+Ouvrir Terminal avec `Commande + Espace`, puis saisir `Terminal`. Vérifier Node.js et npm :
 
 ```bash
-npm install -g @google/clasp
-clasp login
-clasp push
+node --version
+npm --version
 ```
 
-`clasp push` envoie dans Apps Script :
+Si une commande est introuvable, installer [Node.js](https://nodejs.org/en/download) dans une version compatible avec le Mac. Utiliser une version LTS encore prise en charge, puis rouvrir Terminal.
 
-- `src/Code.gs`
-- `src/Index.html`
-- `src/Public.html`
-- `src/Admin.html`
-- `src/appsscript.json`
+Lancer la connexion :
 
-## Étape 5 - Automatiser avec GitHub Actions
+```bash
+npx --yes @google/clasp@3.4.1 login
+```
 
-Le dépôt contient le workflow `.github/workflows/deploy-apps-script.yml`. À chaque modification dans `src/`, GitHub peut envoyer le code vers Apps Script automatiquement.
+Le navigateur ouvre Google. Choisir le compte propriétaire de l'application et autoriser les accès demandés par clasp. Attendre le message de connexion réussie dans Terminal.
 
-Dans GitHub, ouvrir `Settings > Secrets and variables > Actions`, puis créer ces secrets :
+## Étape 4 - Ajouter la connexion Google à GitHub
+
+Dans Terminal, copier directement le fichier de connexion dans le presse-papiers :
+
+```bash
+pbcopy < "$HOME/.clasprc.json"
+```
+
+La commande ne montre aucun texte : c'est normal. Dans [les secrets GitHub](https://github.com/davidtranchaud79-svg/UC-cayenne-paris/settings/secrets/actions) :
+
+1. Cliquer sur `New repository secret`.
+2. Dans `Name`, écrire `CLASPRC_JSON`.
+3. Dans `Secret`, coller avec `Commande + V`.
+4. Cliquer sur `Add secret`.
+
+Ce fichier permet d'accéder aux projets Apps Script du compte. Le coller uniquement dans le champ `Secret` de GitHub, sans le publier dans le dépôt, le Sheet ou une conversation.
+
+`CLASPRC_JSON` remplace les quatre anciens secrets `CLASP_ACCESS_TOKEN`, `CLASP_REFRESH_TOKEN`, `CLASP_CLIENT_ID` et `CLASP_CLIENT_SECRET`. Le workflow utilise le fichier produit par clasp 3.4.1 avec le compte `default`.
+
+## Étape 5 - Conserver le lien de l'application existante
+
+Créer un autre secret nommé `CLASP_DEPLOYMENT_ID` avec cette valeur, extraite du lien public actuel :
+
+```text
+AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ
+```
+
+Les trois secrets requis sont :
 
 | Secret | Contenu attendu |
 |---|---|
 | `CLASP_SCRIPT_ID` | ID du projet Apps Script |
-| `CLASP_ACCESS_TOKEN` | Token d'accès Google créé par `clasp login` |
-| `CLASP_REFRESH_TOKEN` | Token de renouvellement Google créé par `clasp login` |
-| `CLASP_CLIENT_ID` | Client ID OAuth utilisé par clasp |
-| `CLASP_CLIENT_SECRET` | Client secret OAuth utilisé par clasp |
-| `CLASP_DEPLOYMENT_ID` | Optionnel : ID du déploiement Web App existant |
+| `CLASPRC_JSON` | Fichier de connexion complet copié par `pbcopy` |
+| `CLASP_DEPLOYMENT_ID` | ID du déploiement existant indiqué ci-dessus |
 
-Sans ces secrets, GitHub garde bien le code, mais il ne peut pas pousser vers Apps Script. Le workflow affichera alors le secret manquant dans l'onglet `Actions`.
+## Étape 6 - Lancer la première mise à jour
 
-## Étape 6 - Déployer le formulaire
+1. Ouvrir [Deploy Apps Script](https://github.com/davidtranchaud79-svg/UC-cayenne-paris/actions/workflows/deploy-apps-script.yml).
+2. Cliquer sur `Run workflow`, choisir `main`, puis confirmer avec `Run workflow`.
+3. Attendre que `Push sources to Apps Script` et `Update existing Web App` réussissent.
+4. Ouvrir le formulaire public et le dashboard admin pour vérifier la nouvelle version.
 
-Dans Apps Script :
+Le workflow crée sa configuration, envoie les fichiers de `src/` vers Apps Script, puis met à jour le déploiement existant. Le lien partagé reste le même. Les prochaines modifications de `src/` sur `main` déclenchent cette mise à jour automatiquement.
 
-1. Lancer `setupSystem`.
-2. Accepter les autorisations.
-3. Cliquer sur `Déployer > Nouveau déploiement`.
-4. Choisir `Application Web`.
-5. Choisir `Exécuter en tant que : Moi`.
-6. Choisir l'accès souhaité.
-7. Copier le lien public du Web App et l'envoyer aux membres.
+Si l'initialisation n'a jamais été faite, ouvrir Apps Script depuis le Sheet, sélectionner `setupSystem`, cliquer sur `Exécuter` et accepter les autorisations Google.
 
 Le lien public se termine par `/exec`. Le lien admin utilise le même déploiement avec `?page=admin` à la fin.
+
+En cas d'échec :
+
+- `Secret GitHub manquant` : ajouter le secret nommé dans l'erreur, puis relancer le workflow.
+- `CLASPRC_JSON doit contenir le fichier JSON complet` ou `Connexion Google incomplète` : refaire les étapes 3 et 4.
+- API désactivée : refaire l'étape 2 avec le compte utilisé lors de la connexion.
+- Accès refusé ou connexion révoquée : reconnecter le compte propriétaire avec la commande de l'étape 3, puis remplacer `CLASPRC_JSON`.
 
 ## Base d’événements
 
@@ -109,18 +114,8 @@ L’onglet `BASE_EVENEMENTS` sert de bibliothèque. Le bureau n’a pas besoin d
 
 ## Utilisation ensuite
 
-Quand le code change :
+Modifier le code dans le dépôt GitHub. Une modification directe dans Apps Script sera remplacée lors de la prochaine synchronisation depuis GitHub : la reporter d'abord dans le dépôt avant de relancer le workflow.
 
-```bash
-git pull
-clasp push
-```
+Les présences, excuses et événements continuent d'être saisis dans l'application et stockés dans le Sheet.
 
-Si vous modifiez directement dans Apps Script :
-
-```bash
-clasp pull
-git add .
-git commit -m "Update Apps Script"
-git push
-```
+Référence : [documentation Google sur clasp et GitHub Actions](https://developers.google.com/apps-script/guides/clasp#cicd_for_apps_script_with_clasp_and_github_actions).
