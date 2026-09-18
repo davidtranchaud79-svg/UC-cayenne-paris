@@ -68,28 +68,31 @@ Ce fichier permet d'accéder aux projets Apps Script du compte. Le coller unique
 
 ## Étape 5 - Conserver le lien de l'application existante
 
-Créer un autre secret nommé `CLASP_DEPLOYMENT_ID` avec cette valeur, extraite du lien public actuel :
+Le workflow contient déjà l’identifiant public du déploiement, extrait du lien partagé :
 
 ```text
 AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ
 ```
 
-Les trois secrets requis sont :
+Cet identifiant n’est pas un mot de passe. Il est conservé dans `.github/workflows/deploy-apps-script.yml` pour que la publication vise exactement le lien partagé. L’ancien secret `CLASP_DEPLOYMENT_ID` n’est plus utilisé et peut rester en place.
+
+Les deux secrets requis sont :
 
 | Secret | Contenu attendu |
 |---|---|
 | `CLASP_SCRIPT_ID` | ID du projet Apps Script |
 | `CLASPRC_JSON` | Fichier de connexion complet copié par `pbcopy` |
-| `CLASP_DEPLOYMENT_ID` | ID du déploiement existant indiqué ci-dessus |
 
 ## Étape 6 - Lancer la première mise à jour
 
 1. Ouvrir [Deploy Apps Script](https://github.com/davidtranchaud79-svg/UC-cayenne-paris/actions/workflows/deploy-apps-script.yml).
 2. Cliquer sur `Run workflow`, choisir `main`, puis confirmer avec `Run workflow`.
-3. Attendre que `Push sources to Apps Script` et `Update existing Web App` réussissent.
+3. Attendre que `Push sources to Apps Script` et `Update existing Web App` réussissent. Cette dernière étape doit indiquer `Publication vérifiée auprès de Google : version …`.
 4. Ouvrir le formulaire public et le dashboard admin pour vérifier la nouvelle version.
 
-Le workflow crée sa configuration, envoie les fichiers de `src/` vers Apps Script, puis met à jour le déploiement existant. Le lien partagé reste le même. Les prochaines modifications de `src/` sur `main` déclenchent cette mise à jour automatiquement.
+Le workflow crée sa configuration, envoie les fichiers de `src/` vers Apps Script, vérifie que le déploiement appartient bien au projet, puis publie une nouvelle version au même lien. Il relit ensuite la version auprès de Google avant d’annoncer une réussite. Les prochaines modifications de `src/` sur `main` déclenchent cette mise à jour automatiquement.
+
+Une ancienne exécution verte peut contenir `Invalid deployment ID` dans son journal : clasp 3.4.1 peut afficher cette erreur sans renvoyer de code d’échec. Le contrôle actuel refuse cette fausse réussite.
 
 Si l'initialisation n'a jamais été faite, ouvrir Apps Script depuis le Sheet, sélectionner `setupSystem`, cliquer sur `Exécuter` et accepter les autorisations Google.
 
@@ -101,6 +104,7 @@ En cas d'échec :
 - `CLASPRC_JSON doit contenir le fichier JSON complet` ou `Connexion Google incomplète` : refaire les étapes 3 et 4.
 - API désactivée : refaire l'étape 2 avec le compte utilisé lors de la connexion.
 - Accès refusé ou connexion révoquée : reconnecter le compte propriétaire avec la commande de l'étape 3, puis remplacer `CLASPRC_JSON`.
+- `Le lien public ne correspond pas au projet configuré` : vérifier que `CLASP_SCRIPT_ID` est bien l’ID du projet qui possède le déploiement partagé.
 
 ## Base d’événements
 

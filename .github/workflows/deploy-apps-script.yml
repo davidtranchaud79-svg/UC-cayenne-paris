@@ -7,6 +7,8 @@ on:
     paths:
       - "src/**"
       - ".github/workflows/deploy-apps-script.yml"
+      - "scripts/deploy-apps-script.mjs"
+      - "tests/deploy-apps-script.test.mjs"
   workflow_dispatch:
 
 permissions:
@@ -22,7 +24,8 @@ jobs:
     timeout-minutes: 10
     env:
       CLASP_SCRIPT_ID: ${{ secrets.CLASP_SCRIPT_ID }}
-      CLASP_DEPLOYMENT_ID: ${{ secrets.CLASP_DEPLOYMENT_ID }}
+      # Public identifier from the application's shared URL; it is not a credential.
+      CLASP_DEPLOYMENT_ID: AKfycbwKD8Z_kgeNQmDqPgpKT4QtHyQ9O0ZhQbaYJla5QsKdt8VkZmW9_QRU1A6WwhXuBI7HIQ
 
     steps:
       - name: Checkout repository
@@ -38,7 +41,7 @@ jobs:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: |
           missing=0
-          for name in CLASP_SCRIPT_ID CLASPRC_JSON CLASP_DEPLOYMENT_ID; do
+          for name in CLASP_SCRIPT_ID CLASPRC_JSON; do
             if [ -z "${!name}" ]; then
               echo "::error::Secret GitHub manquant: $name"
               missing=1
@@ -52,6 +55,9 @@ jobs:
 
       - name: Install clasp
         run: npm install -g @google/clasp@3.4.1
+
+      - name: Test deployment verification
+        run: node --test tests/deploy-apps-script.test.mjs
 
       - name: Write clasp configuration
         env:
@@ -90,7 +96,7 @@ jobs:
         run: clasp push --force
 
       - name: Update existing Web App
-        run: clasp create-deployment --deploymentId "$CLASP_DEPLOYMENT_ID" --description "GitHub $GITHUB_SHA"
+        run: node scripts/deploy-apps-script.mjs
 
       - name: Remove runner credentials
         if: always()
