@@ -15,8 +15,8 @@ Ce pack contient une base Google Sheets + Apps Script pour suivre les présences
 
 | Élément | Lien |
 |---|---|
-| Formulaire public | [Ouvrir le formulaire](https://script.google.com/macros/s/AKfycbyV1W4Y_-xMyoz9w9YOKYhw6dN_UI9XIS34GblkIRuD5W8KhbnZzk2eg67oHTKvXLWLNQ/exec) |
-| Dashboard admin | [Ouvrir le dashboard](https://script.google.com/macros/s/AKfycbyV1W4Y_-xMyoz9w9YOKYhw6dN_UI9XIS34GblkIRuD5W8KhbnZzk2eg67oHTKvXLWLNQ/exec?page=admin) |
+| Formulaire public | [Ouvrir le formulaire](https://script.google.com/macros/s/AKfycbxQA8luuKcMnUiPUi4ZqVzV01wNbMekp533YPBCPIcA00rTEdfpbFucTH_uluTEBg7HsQ/exec) |
+| Dashboard admin | [Ouvrir le dashboard](https://script.google.com/macros/s/AKfycbxQA8luuKcMnUiPUi4ZqVzV01wNbMekp533YPBCPIcA00rTEdfpbFucTH_uluTEBg7HsQ/exec?page=admin) |
 | Google Sheet de suivi | [Ouvrir le Sheet](https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit) |
 | Page GitHub | [Ouvrir la page](https://davidtranchaud79-svg.github.io/UC-cayenne-paris/) |
 | Dépôt GitHub | [Voir le code](https://github.com/davidtranchaud79-svg/UC-cayenne-paris) |
@@ -77,8 +77,8 @@ Structure conseillée :
    - Exécuter en tant que : `Moi`
    - Accès : selon votre choix, par exemple les personnes disposant du lien
 11. Liens Web App actuels :
-    - Public : https://script.google.com/macros/s/AKfycbyV1W4Y_-xMyoz9w9YOKYhw6dN_UI9XIS34GblkIRuD5W8KhbnZzk2eg67oHTKvXLWLNQ/exec
-    - Admin : https://script.google.com/macros/s/AKfycbyV1W4Y_-xMyoz9w9YOKYhw6dN_UI9XIS34GblkIRuD5W8KhbnZzk2eg67oHTKvXLWLNQ/exec?page=admin
+    - Public : https://script.google.com/macros/s/AKfycbxQA8luuKcMnUiPUi4ZqVzV01wNbMekp533YPBCPIcA00rTEdfpbFucTH_uluTEBg7HsQ/exec
+    - Admin : https://script.google.com/macros/s/AKfycbxQA8luuKcMnUiPUi4ZqVzV01wNbMekp533YPBCPIcA00rTEdfpbFucTH_uluTEBg7HsQ/exec?page=admin
 
 ## Utilisation bureau
 
