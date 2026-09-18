@@ -1,770 +1,146 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root {
-      --wine: #7A1F2B;
-      --wine-dark: #55131D;
-      --ink: #172033;
-      --muted: #697386;
-      --line: #E4E7EC;
-      --bg: #F6F4F1;
-      --card: #FFFFFF;
-      --soft: #F3E6E8;
-      --green: #15803D;
-      --amber: #B45309;
-      --red: #B91C1C;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      color: var(--ink);
-      background: var(--bg);
-    }
-
-    .app {
-      min-height: 100vh;
-      display: grid;
-      grid-template-columns: 250px 1fr;
-    }
-
-    aside {
-      background: var(--wine);
-      color: white;
-      padding: 20px 14px;
-    }
-
-    .brand {
-      padding: 0 8px 18px;
-      border-bottom: 1px solid rgba(255,255,255,.18);
-      margin-bottom: 16px;
-    }
-
-    .brand h1 {
-      margin: 0;
-      font-size: 20px;
-      line-height: 1.2;
-    }
-
-    .brand p {
-      margin: 7px 0 0;
-      color: #F9E8EC;
-      font-size: 13px;
-      line-height: 1.35;
-    }
-
-    nav {
-      display: grid;
-      gap: 8px;
-    }
-
-    .nav-btn {
-      width: 100%;
-      border: 0;
-      border-radius: 8px;
-      padding: 11px 12px;
-      background: transparent;
-      color: white;
-      text-align: left;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .nav-btn.active,
-    .nav-btn:hover {
-      background: rgba(255,255,255,.16);
-    }
-
-    .public-link {
-      display: block;
-      margin-top: 18px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      color: white;
-      border: 1px solid rgba(255,255,255,.35);
-      text-decoration: none;
-      font-weight: 700;
-      font-size: 13px;
-    }
-
-    main {
-      padding: 22px;
-      width: min(1220px, 100%);
-    }
-
-    .topbar {
-      display: flex;
-      align-items: end;
-      justify-content: space-between;
-      gap: 14px;
-      margin-bottom: 18px;
-    }
-
-    .topbar h2 {
-      margin: 0;
-      font-size: 24px;
-    }
-
-    .topbar p {
-      margin: 6px 0 0;
-      color: var(--muted);
-    }
-
-    .login {
-      display: grid;
-      grid-template-columns: 160px 120px auto;
-      align-items: end;
-      gap: 10px;
-    }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 16px;
-    }
-
-    .screen { display: none; }
-    .screen.active { display: block; }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-    }
-
-    .kpis {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-
-    .kpi {
-      background: white;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 12px;
-    }
-
-    .kpi span {
-      display: block;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .kpi strong {
-      display: block;
-      margin-top: 6px;
-      font-size: 24px;
-    }
-
-    label {
-      display: block;
-      margin: 0 0 5px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    input,
-    select,
-    textarea {
-      width: 100%;
-      border: 1px solid #D0D5DD;
-      border-radius: 8px;
-      padding: 10px 11px;
-      background: white;
-      color: var(--ink);
-      font-size: 14px;
-    }
-
-    textarea {
-      min-height: 86px;
-      resize: vertical;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .full { grid-column: 1 / -1; }
-
-    button,
-    .button {
-      border: 0;
-      border-radius: 8px;
-      background: var(--wine);
-      color: white;
-      padding: 10px 13px;
-      font-weight: 700;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-block;
-    }
-
-    button.secondary {
-      background: #374151;
-    }
-
-    button:disabled {
-      opacity: .55;
-      cursor: wait;
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .notice {
-      margin: 0 0 14px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      background: white;
-      font-size: 14px;
-    }
-
-    .notice.ok {
-      border-color: #BBF7D0;
-      background: #F0FDF4;
-      color: var(--green);
-    }
-
-    .notice.error {
-      border-color: #FECACA;
-      background: #FEF2F2;
-      color: var(--red);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      overflow: hidden;
-      font-size: 13px;
-    }
-
-    th,
-    td {
-      padding: 9px 10px;
-      border-bottom: 1px solid var(--line);
-      text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      background: var(--wine);
-      color: white;
-      font-size: 12px;
-    }
-
-    tr:last-child td { border-bottom: 0; }
-
-    .pill {
-      display: inline-block;
-      padding: 4px 7px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      background: var(--soft);
-      color: var(--wine-dark);
-    }
-
-    .pill.green { background: #DCFCE7; color: var(--green); }
-    .pill.amber { background: #FEF3C7; color: var(--amber); }
-    .pill.red { background: #FEE2E2; color: var(--red); }
-
-    .meta {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.35;
-    }
-
-    .empty {
-      padding: 18px;
-      color: var(--muted);
-      background: white;
-      border: 1px dashed #D0D5DD;
-      border-radius: 8px;
-    }
-
-    @media (max-width: 940px) {
-      .app { grid-template-columns: 1fr; }
-      aside { position: static; }
-      nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      main { padding: 14px; }
-      .topbar { display: block; }
-      .login,
-      .grid,
-      .form-grid,
-      .kpis { grid-template-columns: 1fr; }
-      table { display: block; overflow-x: auto; white-space: nowrap; }
-    }
-  </style>
+  <?!= include('Styles'); ?>
 </head>
 <body>
-  <div class="app">
-    <aside>
-      <div class="brand">
-        <h1>UC Cayenne Paris</h1>
-        <p>Application bureau pour présences, événements et comptes rendus.</p>
-      </div>
-      <nav>
-        <button class="nav-btn active" type="button" data-screen="dashboard">Dashboard</button>
-        <button class="nav-btn" type="button" data-screen="events">Événements</button>
-        <button class="nav-btn" type="button" data-screen="members">Membres</button>
-        <button class="nav-btn" type="button" data-screen="reports">Comptes rendus</button>
-        <button class="nav-btn" type="button" data-screen="settings">Réglages</button>
+  <?!= include('Ui'); ?>
+  <div class="admin-app">
+    <aside class="sidebar">
+      <div class="brand"><?!= include('Brand'); ?><div><div class="brand-name">Cayenne<br>de Paris</div><span class="brand-subtitle">Union Compagnonnique</span></div></div>
+      <div class="nav-label">Votre espace bureau</div>
+      <nav class="admin-nav" aria-label="Navigation du bureau">
+        <button class="nav-btn active" type="button" data-screen="dashboard" aria-current="page"><span data-icon="grid"></span><span>Vue d’ensemble</span></button>
+        <button class="nav-btn" type="button" data-screen="events"><span data-icon="calendar"></span><span>Événements</span></button>
+        <button class="nav-btn" type="button" data-screen="members"><span data-icon="users"></span><span>Membres</span></button>
+        <button class="nav-btn" type="button" data-screen="reports"><span data-icon="file"></span><span>Comptes rendus</span></button>
+        <button class="nav-btn" type="button" data-screen="settings"><span data-icon="settings"></span><span>Réglages</span></button>
       </nav>
-      <a id="publicLink" class="public-link" target="_top" href="<?= publicUrl ?>">Formulaire public</a>
+      <div class="sidebar-bottom"><a id="publicLink" class="btn secondary block" target="_top" href="<?= publicUrl ?>">Espace membres <span data-icon="external"></span></a><p>Présences &amp; engagements<br>La vie de notre Cayenne.</p></div>
     </aside>
-
-    <main>
-      <div class="topbar">
-        <div>
-          <h2 id="screenTitle">Dashboard</h2>
-          <p id="screenSubtitle">Vue rapide de l’année suivie.</p>
-        </div>
-        <div class="login">
-          <div>
-            <label for="adminPin">Code admin</label>
-            <input id="adminPin" type="password" inputmode="numeric" autocomplete="current-password">
-          </div>
-          <div>
-            <label for="adminYear">Année</label>
-            <input id="adminYear" type="number" min="2020" max="2100">
-          </div>
-          <button id="loadDashboard" type="button">Charger</button>
-        </div>
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div class="breadcrumb"><span>Bureau</span><span data-icon="chevron"></span><b id="breadcrumbTitle">Vue d’ensemble</b></div>
+        <div class="topbar-tools"><span class="tag"><span data-icon="lock"></span>Administration</span><div class="year-control"><span data-icon="calendar"></span><label class="sr-only" for="adminYear">Année du suivi</label><input id="adminYear" type="number" min="2020" max="2100" value="2026"></div><button class="btn secondary compact" id="refreshDashboard" type="button" title="Actualiser les données" aria-label="Actualiser les données" disabled><span data-icon="refresh"></span><span>Actualiser</span></button></div>
       </div>
-
-      <div id="adminNotice" class="notice" hidden></div>
-
-      <section id="screen-dashboard" class="screen active">
-        <div id="kpiRoot" class="kpis"></div>
-        <div class="grid">
-          <div class="card">
-            <h3>Événements à suivre</h3>
-            <div id="dashboardEvents"></div>
-          </div>
-          <div class="card">
-            <h3>Causes d’absence</h3>
-            <div id="dashboardCauses"></div>
-          </div>
+      <div class="heading-row"><div><div class="eyebrow">Présences &amp; engagements</div><h1 class="serif" id="screenTitle">Vue d’ensemble</h1><p id="screenSubtitle">La vie de votre Cayenne, en un regard.</p></div><button class="btn" type="button" data-go="events" aria-label="Préparer un événement"><span data-icon="plus"></span><span>Nouvel événement</span></button></div>
+      <div id="adminNotice" class="notice" role="status" aria-live="polite" hidden></div>
+      <section class="panel access-panel" id="accessPanel" aria-labelledby="accessTitle">
+        <div class="access-copy"><div class="access-icon"><span data-icon="lock"></span></div><div><h2 id="accessTitle">Bienvenue dans l’espace bureau.</h2><p>Entrez votre code pour retrouver les présences, préparer les événements et générer les comptes rendus.</p></div></div>
+        <form class="access-form" id="accessForm"><div class="field"><label for="adminPin">Votre code administrateur</label><input id="adminPin" type="password" autocomplete="current-password" placeholder="Code administrateur" required></div><button class="btn" id="loadDashboard" type="submit">Ouvrir mon espace <span data-icon="arrow"></span></button></form>
+      </section>
+      <div class="session-bar" id="sessionBar" hidden><span class="dot"></span><span id="sessionStatus"></span><button class="text-button" type="button" id="lockSession"><span data-icon="logout"></span>Verrouiller l’espace</button></div>
+      <section id="screen-dashboard" class="screen active" aria-label="Vue d’ensemble">
+        <div id="kpiRoot" class="kpi-grid"></div>
+        <div class="dashboard-grid">
+          <div class="panel panel-pad"><div class="section-head"><div><h2>À l’agenda</h2><p id="agendaCaption">Les rendez-vous à suivre.</p></div><button class="text-button" type="button" data-go="events">Tout voir <span data-icon="arrow"></span></button></div><div id="dashboardEvents"></div></div>
+          <div class="dashboard-side"><div class="panel panel-pad"><div class="section-head"><div><h2>Motifs d’absence</h2><p>Les raisons transmises au bureau.</p></div></div><div id="dashboardCauses"></div></div><div class="panel panel-pad quick-panel"><h3>Le prochain rendez-vous<br>commence ici.</h3><p>Réunion, cours, fête ou JEP : partez d’un modèle et ajoutez simplement votre date.</p><button class="btn" type="button" data-go="events" aria-label="Préparer un événement">Préparer un événement <span data-icon="plus"></span></button></div></div>
         </div>
       </section>
-
-      <section id="screen-events" class="screen">
-        <div class="grid">
-          <div class="card">
-            <h3>Créer depuis la base d’événements</h3>
-            <div class="form-grid">
-              <div class="full">
-                <label for="templateSelect">Modèle</label>
-                <select id="templateSelect"></select>
-              </div>
-              <div>
-                <label for="eventDate">Date</label>
-                <input id="eventDate" type="date">
-              </div>
-              <div>
-                <label for="eventTitle">Titre</label>
-                <input id="eventTitle">
-              </div>
-              <div>
-                <label for="eventType">Type</label>
-                <select id="eventType"></select>
-              </div>
-              <div>
-                <label for="eventCayenne">Cayenne</label>
-                <select id="eventCayenne"></select>
-              </div>
-              <div>
-                <label for="eventStart">Début</label>
-                <input id="eventStart" placeholder="20:00">
-              </div>
-              <div>
-                <label for="eventEnd">Fin</label>
-                <input id="eventEnd" placeholder="22:00">
-              </div>
-              <div class="full">
-                <label for="eventPlace">Lieu</label>
-                <input id="eventPlace">
-              </div>
-              <div class="full">
-                <label for="eventComment">Commentaire</label>
-                <textarea id="eventComment"></textarea>
-              </div>
+      <section id="screen-events" class="screen" aria-label="Gestion des événements">
+        <div class="event-management">
+          <form id="eventForm" class="panel panel-pad event-form">
+            <div class="event-form-head"><span class="tag wine" style="margin-bottom:12px"><span data-icon="plus"></span>Nouvel événement</span><h2>Un modèle, une date.</h2><p>Les horaires et le lieu sont préremplis. Ajustez-les si besoin.</p></div>
+            <div class="fields">
+              <div class="field full"><label for="templateSelect">Partir d’un modèle</label><select id="templateSelect"></select></div>
+              <div class="field full"><label for="eventDate">Date de l’événement *</label><input id="eventDate" type="date" required></div>
+              <div class="field full"><label for="eventTitle">Nom de l’événement *</label><input id="eventTitle" required></div>
+              <div class="field"><label for="eventStart">Début</label><input id="eventStart" type="time"></div><div class="field"><label for="eventEnd">Fin</label><input id="eventEnd" type="time"></div>
+              <div class="field full"><label for="eventPlace">Lieu</label><input id="eventPlace" placeholder="Cayenne de Paris"></div>
             </div>
-            <div class="actions">
-              <button id="createEvent" type="button">Ajouter au calendrier</button>
-              <button id="resetEventForm" class="secondary" type="button">Réinitialiser</button>
-            </div>
-          </div>
-
-          <div class="card">
-            <h3>Calendrier actif</h3>
-            <div id="eventsRoot"></div>
-          </div>
+            <details><summary>Autres informations</summary><div class="fields"><div class="field"><label for="eventType">Type</label><select id="eventType"></select></div><div class="field"><label for="eventCayenne">Cayenne</label><select id="eventCayenne"></select></div><div class="field full"><label for="eventComment">Commentaire</label><textarea id="eventComment" placeholder="Une information pour cet événement…"></textarea></div></div></details>
+            <button class="btn block" id="createEvent" type="submit" data-protected disabled><span data-icon="plus"></span>Ajouter au calendrier</button><button class="text-button" id="resetEventForm" type="button">Rétablir les informations du modèle</button>
+          </form>
+          <div><div class="section-head"><div><h2>Le calendrier</h2><p>Tous les rendez-vous de l’année sélectionnée.</p></div></div><div class="toolbar"><div class="search-box"><span data-icon="search"></span><label class="sr-only" for="adminEventSearch">Rechercher dans le calendrier</label><input id="adminEventSearch" type="search" placeholder="Rechercher un événement…"></div></div><div class="result-count" id="calendarCount"></div><div id="eventsRoot" class="calendar-list"></div></div>
         </div>
       </section>
-
-      <section id="screen-members" class="screen">
-        <div class="card">
-          <h3>Suivi par membre</h3>
-          <div id="membersRoot"></div>
-        </div>
+      <section id="screen-members" class="screen" aria-label="Suivi des membres">
+        <div class="panel panel-pad"><div class="section-head"><div><h2>Les membres de la Cayenne</h2><p>Présences et engagements déclarés sur l’année.</p></div><span id="memberCount" class="tag wine">—</span></div><div class="toolbar"><div class="search-box"><span data-icon="search"></span><label class="sr-only" for="memberSearch">Rechercher un membre</label><input id="memberSearch" type="search" placeholder="Rechercher un nom, un prénom…"></div><label class="sr-only" for="memberStatusFilter">Filtrer par statut</label><select id="memberStatusFilter"><option value="">Tous les statuts</option><option>Sociétaire</option><option>Aspirant</option><option>Compagnon</option></select></div><div id="membersRoot"></div><p class="small muted" style="margin-top:18px">Le taux de présence porte sur l’année sélectionnée, événements futurs inclus.</p></div>
       </section>
-
-      <section id="screen-reports" class="screen">
-        <div class="card">
-          <h3>Comptes rendus par événement</h3>
-          <p class="meta">Chaque bouton crée ou actualise une feuille CR_ directement dans le Google Sheet.</p>
-          <div class="actions">
-            <button id="generateAll" type="button">Créer toutes les feuilles CR</button>
-          </div>
-          <div id="reportsRoot" style="margin-top:12px"></div>
-        </div>
+      <section id="screen-reports" class="screen" aria-label="Comptes rendus">
+        <div class="section-head"><div><h2>Une feuille par événement</h2><p>Retrouvez les présences dans une feuille prête pour votre compte rendu.</p></div><button id="generateAll" class="btn" type="button" data-protected disabled><span data-icon="file"></span>Tout générer</button></div><div id="reportsRoot" class="reports-grid"></div>
       </section>
-
-      <section id="screen-settings" class="screen">
-        <div class="card">
-          <h3>Réglages utiles</h3>
-          <table>
-            <tbody>
-              <tr><th>Formulaire public</th><td><a id="settingsPublicUrl" target="_top" href="<?= publicUrl ?>">Ouvrir</a></td></tr>
-              <tr><th>Dashboard admin</th><td><a id="settingsAdminUrl" target="_top" href="<?= adminUrl ?>">Ouvrir</a></td></tr>
-              <tr><th>Base événements</th><td>Onglet <strong>BASE_EVENEMENTS</strong> dans le Google Sheet. Tu peux ajouter tes modèles ici.</td></tr>
-              <tr><th>Code admin</th><td>Onglet <strong>PARAMETRES</strong>, ligne <strong>admin_pin</strong>.</td></tr>
-            </tbody>
-          </table>
+      <section id="screen-settings" class="screen" aria-label="Réglages et liens utiles">
+        <div class="settings-grid">
+          <div class="panel panel-pad settings-card"><span data-icon="user"></span><h2>Espace membres</h2><p>Le formulaire à partager pour les présences, les excuses et les propositions d’aide.</p><a id="settingsPublicUrl" class="btn secondary" target="_top" href="<?= publicUrl ?>">Ouvrir le formulaire <span data-icon="external"></span></a></div>
+          <div class="panel panel-pad settings-card"><span data-icon="sheet"></span><h2>Votre classeur de suivi</h2><p>Retrouvez le calendrier, les membres, les réponses et les feuilles de compte rendu.</p><a class="btn secondary" target="_blank" rel="noopener" href="https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit">Ouvrir Google Sheets <span data-icon="external"></span></a></div>
+          <div class="panel panel-pad settings-card"><span data-icon="calendar"></span><h2>La bibliothèque d’événements</h2><p>Personnalisez vos modèles habituels dans l’onglet <strong>BASE_EVENEMENTS</strong> du classeur.</p><button class="text-button" type="button" data-go="events">Créer depuis un modèle <span data-icon="arrow"></span></button></div>
+          <div class="panel panel-pad settings-card"><span data-icon="lock"></span><h2>Accès au bureau</h2><p>Le code administrateur se règle dans l’onglet <strong>PARAMETRES</strong>, à la ligne <strong>admin_pin</strong>.</p><a id="settingsAdminUrl" class="text-button" target="_top" href="<?= adminUrl ?>">Lien de l’administration <span data-icon="external"></span></a></div>
         </div>
+        <div class="settings-note">L’espace membres et l’espace bureau disposent de liens séparés.</div>
       </section>
+      <footer class="page-footer"><span>Cayenne de Paris · Union Compagnonnique</span><span>Le lien entre nos rendez-vous.</span></footer>
     </main>
   </div>
-
   <script>
-    const state = {
-      config: null,
-      dashboard: null,
-      currentScreen: 'dashboard'
-    };
-
-    const titles = {
-      dashboard: ['Dashboard', 'Vue rapide de l’année suivie.'],
-      events: ['Événements', 'Créer depuis une base, puis suivre les réponses.'],
-      members: ['Membres', 'Lecture annuelle des présences par personne.'],
-      reports: ['Comptes rendus', 'Générer les feuilles prêtes à intégrer au compte rendu.'],
-      settings: ['Réglages', 'Les liens et points de configuration importants.']
-    };
-
-    document.querySelectorAll('.nav-btn').forEach((button) => {
-      button.addEventListener('click', () => showScreen(button.dataset.screen));
-    });
-    document.getElementById('loadDashboard').addEventListener('click', loadDashboard);
-    document.getElementById('generateAll').addEventListener('click', generateAllSheets);
-    document.getElementById('createEvent').addEventListener('click', createEvent);
-    document.getElementById('resetEventForm').addEventListener('click', applySelectedTemplate);
-    document.getElementById('templateSelect').addEventListener('change', applySelectedTemplate);
-
-    init();
-
-    function init() {
-      google.script.run
-        .withSuccessHandler((config) => {
-          state.config = config;
-          document.getElementById('adminYear').value = config.activeYear;
-          wireUrls(config.urls || {});
-          renderTemplateOptions(config);
-          applySelectedTemplate();
-          renderEmptyState();
-        })
-        .withFailureHandler((error) => showNotice(error.message || error, 'error'))
-        .getBootstrapConfig();
-    }
-
-    function wireUrls(urls) {
-      if (urls.publicUrl) {
-        document.getElementById('publicLink').href = urls.publicUrl;
-        document.getElementById('settingsPublicUrl').href = urls.publicUrl;
-      }
-      if (urls.adminUrl) {
-        document.getElementById('settingsAdminUrl').href = urls.adminUrl;
-      }
-    }
-
-    function showScreen(screen) {
-      state.currentScreen = screen;
-      document.querySelectorAll('.screen').forEach((node) => node.classList.remove('active'));
-      document.getElementById('screen-' + screen).classList.add('active');
-      document.querySelectorAll('.nav-btn').forEach((button) => button.classList.toggle('active', button.dataset.screen === screen));
-      document.getElementById('screenTitle').textContent = titles[screen][0];
-      document.getElementById('screenSubtitle').textContent = titles[screen][1];
-    }
-
-    function renderTemplateOptions(config) {
-      fillSelect('templateSelect', config.eventTemplates || [], (tpl) => tpl.name, (tpl) => tpl.id);
-      fillSelect('eventType', config.eventTypes || [], (value) => value, (value) => value);
-      fillSelect('eventCayenne', config.cayennes || [], (value) => value, (value) => value);
-    }
-
-    function fillSelect(id, values, labelFn, valueFn) {
-      const select = document.getElementById(id);
-      select.innerHTML = values.map((value) => `<option value="${escapeHtml(valueFn(value))}">${escapeHtml(labelFn(value))}</option>`).join('');
-    }
-
-    function selectedTemplate() {
-      const id = document.getElementById('templateSelect').value;
-      return (state.config?.eventTemplates || []).find((tpl) => tpl.id === id) || {};
-    }
-
-    function applySelectedTemplate() {
-      const tpl = selectedTemplate();
-      document.getElementById('eventTitle').value = tpl.defaultTitle || tpl.name || '';
-      document.getElementById('eventType').value = tpl.type || 'Autre';
-      document.getElementById('eventCayenne').value = tpl.cayenne || 'Paris';
-      document.getElementById('eventStart').value = tpl.start || '';
-      document.getElementById('eventEnd').value = tpl.end || '';
-      document.getElementById('eventPlace').value = tpl.place || 'Cayenne de Paris';
-      document.getElementById('eventComment').value = tpl.comment || '';
-    }
-
-    function createEvent() {
-      const pin = document.getElementById('adminPin').value;
-      if (!pin) {
-        showNotice('Entre le code admin avant de créer un événement.', 'error');
-        return;
-      }
-      const payload = {
-        templateId: document.getElementById('templateSelect').value,
-        date: document.getElementById('eventDate').value,
-        title: document.getElementById('eventTitle').value,
-        type: document.getElementById('eventType').value,
-        cayenne: document.getElementById('eventCayenne').value,
-        start: document.getElementById('eventStart').value,
-        end: document.getElementById('eventEnd').value,
-        place: document.getElementById('eventPlace').value,
-        comment: document.getElementById('eventComment').value,
-        active: 'Oui'
-      };
-
-      setLoading(true, 'createEvent');
-      google.script.run
-        .withSuccessHandler((result) => {
-          showNotice(result.message || 'Événement créé.', 'ok');
-          document.getElementById('eventDate').value = '';
-          setLoading(false, 'createEvent');
-          loadDashboard();
-        })
-        .withFailureHandler((error) => {
-          showNotice(error.message || error, 'error');
-          setLoading(false, 'createEvent');
-        })
-        .createEventFromTemplate(payload, pin);
-    }
-
-    function loadDashboard() {
-      const pin = document.getElementById('adminPin').value;
-      const year = Number(document.getElementById('adminYear').value);
-      if (!pin) {
-        showNotice('Entre le code admin.', 'error');
-        return;
-      }
-      setLoading(true, 'loadDashboard');
-      google.script.run
-        .withSuccessHandler((dashboard) => {
-          state.dashboard = dashboard;
-          renderDashboard(dashboard);
-          showNotice('Dashboard chargé.', 'ok');
-          setLoading(false, 'loadDashboard');
-        })
-        .withFailureHandler((error) => {
-          showNotice(error.message || error, 'error');
-          setLoading(false, 'loadDashboard');
-        })
-        .getDashboardData(year, pin);
-    }
-
-    function generateAllSheets() {
-      const pin = document.getElementById('adminPin').value;
-      const year = Number(document.getElementById('adminYear').value);
-      if (!pin) {
-        showNotice('Entre le code admin.', 'error');
-        return;
-      }
-      setLoading(true, 'generateAll');
-      google.script.run
-        .withSuccessHandler((results) => {
-          showNotice(`${results.length} feuille(s) de compte rendu générée(s).`, 'ok');
-          setLoading(false, 'generateAll');
-          loadDashboard();
-        })
-        .withFailureHandler((error) => {
-          showNotice(error.message || error, 'error');
-          setLoading(false, 'generateAll');
-        })
-        .generateAllEventSheets(year, pin);
-    }
-
-    function generateOneSheet(eventId) {
-      const pin = document.getElementById('adminPin').value;
-      if (!pin) {
-        showNotice('Entre le code admin.', 'error');
-        return;
-      }
-      google.script.run
-        .withSuccessHandler((result) => {
-          showNotice(`Feuille créée : ${result.sheetName}`, 'ok');
-          loadDashboard();
-        })
-        .withFailureHandler((error) => showNotice(error.message || error, 'error'))
-        .generateEventSheet(eventId, pin);
-    }
-
-    function renderEmptyState() {
-      document.getElementById('kpiRoot').innerHTML = kpi('Événements', '-') + kpi('Membres', '-') + kpi('Présents', '-') + kpi('Excusés', '-') + kpi('Sans réponse', '-') + kpi('Aides', '-');
-      document.getElementById('dashboardEvents').innerHTML = '<div class="empty">Charge le dashboard avec le code admin.</div>';
-      document.getElementById('dashboardCauses').innerHTML = '<div class="empty">Aucune donnée chargée.</div>';
-      document.getElementById('eventsRoot').innerHTML = '<div class="empty">Charge le dashboard pour voir le calendrier actif.</div>';
-      document.getElementById('membersRoot').innerHTML = '<div class="empty">Charge le dashboard pour voir les membres.</div>';
-      document.getElementById('reportsRoot').innerHTML = '<div class="empty">Charge le dashboard pour générer les CR événement par événement.</div>';
-    }
-
-    function renderDashboard(data) {
-      document.getElementById('kpiRoot').innerHTML =
-        kpi('Événements', data.kpis.events) +
-        kpi('Membres', data.kpis.members) +
-        kpi('Présents', data.kpis.presents) +
-        kpi('Excusés', data.kpis.excused) +
-        kpi('Sans réponse', data.kpis.noResponse) +
-        kpi('Aides', data.kpis.aids);
-      document.getElementById('dashboardEvents').innerHTML = renderEventTable(data.events, false);
-      document.getElementById('dashboardCauses').innerHTML = renderCauseTable(data.causes);
-      document.getElementById('eventsRoot').innerHTML = renderEventTable(data.events, false);
-      document.getElementById('membersRoot').innerHTML = renderMemberTable(data.members);
-      document.getElementById('reportsRoot').innerHTML = renderEventTable(data.events, true);
-    }
-
-    function kpi(label, value) {
-      return `<div class="kpi"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
-    }
-
-    function renderEventTable(events, withAction) {
-      if (!events.length) return '<div class="empty">Aucun événement actif.</div>';
-      return `
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Événement</th>
-              <th>Présents</th>
-              <th>Excusés</th>
-              <th>Sans réponse</th>
-              <th>Aides</th>
-              ${withAction ? '<th>Feuille CR</th>' : ''}
-            </tr>
-          </thead>
-          <tbody>
-            ${events.map((event) => `
-              <tr>
-                <td>${escapeHtml(event.date)}</td>
-                <td><strong>${escapeHtml(event.title)}</strong><br><span class="meta">${escapeHtml(event.type)}</span></td>
-                <td><span class="pill green">${escapeHtml(event.presents)}</span></td>
-                <td><span class="pill amber">${escapeHtml(event.excused)}</span></td>
-                <td><span class="pill red">${escapeHtml(event.noResponse)}</span></td>
-                <td><span class="pill">${escapeHtml(event.aids)}</span></td>
-                ${withAction ? `<td><button type="button" onclick="generateOneSheet('${escapeJs(event.id)}')">Créer / actualiser</button></td>` : ''}
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
-    }
-
-    function renderMemberTable(members) {
-      if (!members.length) return '<div class="empty">Aucun membre actif.</div>';
-      return `
-        <table>
-          <thead>
-            <tr>
-              <th>Nom</th>
-              <th>Statut</th>
-              <th>Cayenne</th>
-              <th>Présences</th>
-              <th>Excusés</th>
-              <th>Sans réponse</th>
-              <th>Aides</th>
-              <th>Taux</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${members.map((member) => `
-              <tr>
-                <td><strong>${escapeHtml(member.nom)} ${escapeHtml(member.prenom)}</strong></td>
-                <td>${escapeHtml(member.statut)}</td>
-                <td>${escapeHtml(member.cayenne)}</td>
-                <td>${escapeHtml(member.presents)}</td>
-                <td>${escapeHtml(member.excused)}</td>
-                <td>${escapeHtml(member.noResponse)}</td>
-                <td>${escapeHtml(member.aids)}</td>
-                <td>${Math.round((member.presenceRate || 0) * 100)}%</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
-    }
-
-    function renderCauseTable(causes) {
-      if (!causes.length) return '<div class="empty">Aucune absence excusée enregistrée.</div>';
-      return `
-        <table>
-          <thead><tr><th>Cause</th><th>Total</th></tr></thead>
-          <tbody>
-            ${causes.map((cause) => `<tr><td>${escapeHtml(cause.cause)}</td><td>${escapeHtml(cause.count)}</td></tr>`).join('')}
-          </tbody>
-        </table>
-      `;
-    }
-
-    function showNotice(message, type) {
-      const node = document.getElementById('adminNotice');
-      node.hidden = false;
-      node.className = 'notice ' + type;
-      node.textContent = message;
-    }
-
-    function setLoading(isLoading, buttonId) {
-      const button = document.getElementById(buttonId);
-      if (button) button.disabled = isLoading;
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
-    }
-
-    function escapeJs(value) {
-      return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    }
+  const state={config:null,dashboard:null,currentScreen:'dashboard',request:0,session:0,reportUrls:new Map(),pending:new Set()};
+  const titles={dashboard:['Vue d’ensemble','La vie de votre Cayenne, en un regard.'],events:['Les rendez-vous','Préparez les événements et suivez les réponses.'],members:['Les membres','Un suivi lisible, personne par personne.'],reports:['Comptes rendus','Les présences réunies, prêtes à être partagées.'],settings:['Les réglages','Vos liens et vos outils, au même endroit.']};
+  Ui.mountIcons();
+  document.querySelectorAll('[data-screen]').forEach(b=>b.addEventListener('click',()=>showScreen(b.dataset.screen)));
+  document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>showScreen(b.dataset.go)));
+  document.getElementById('accessForm').addEventListener('submit',e=>{e.preventDefault();loadDashboard();});
+  document.getElementById('refreshDashboard').addEventListener('click',loadDashboard);
+  document.getElementById('adminYear').addEventListener('change',()=>{if(state.dashboard)loadDashboard();});
+  document.getElementById('eventForm').addEventListener('submit',e=>{e.preventDefault();createEvent();});
+  document.getElementById('templateSelect').addEventListener('change',applySelectedTemplate);
+  document.getElementById('resetEventForm').addEventListener('click',applySelectedTemplate);
+  document.getElementById('lockSession').addEventListener('click',lockSession);
+  document.getElementById('generateAll').addEventListener('click',generateAllSheets);
+  document.getElementById('adminEventSearch').addEventListener('input',renderCalendar);
+  ['memberSearch','memberStatusFilter'].forEach(id=>document.getElementById(id).addEventListener(id==='memberSearch'?'input':'change',renderMembers));
+  document.getElementById('reportsRoot').addEventListener('click',e=>{const button=e.target.closest('button[data-event-id]');if(button)generateOneSheet(button.dataset.eventId);});
+  function init(){google.script.run.withSuccessHandler(config=>{state.config=config;document.getElementById('adminYear').value=config.activeYear;wireUrls(config.urls || {});fillSelect('templateSelect',config.eventTemplates || [],x=>x.name,x=>x.id);fillSelect('eventType',config.eventTypes || []);fillSelect('eventCayenne',config.cayennes || []);applySelectedTemplate();}).withFailureHandler(e=>Ui.notice('adminNotice',e.message || e)).getBootstrapConfig();}
+  function wireUrls(urls){if(urls.publicUrl)['publicLink','settingsPublicUrl'].forEach(id=>document.getElementById(id).href=urls.publicUrl);if(urls.adminUrl)document.getElementById('settingsAdminUrl').href=urls.adminUrl;}
+  function fillSelect(id,values,label=x=>x,value=x=>x){document.getElementById(id).innerHTML=values.map(x=>'<option value="'+Ui.escape(value(x))+'">'+Ui.escape(label(x))+'</option>').join('');}
+  function showScreen(screen){if(!titles[screen])return;state.currentScreen=screen;document.querySelectorAll('.screen').forEach(n=>n.classList.toggle('active',n.id==='screen-'+screen));document.querySelectorAll('.nav-btn').forEach(b=>{const active=b.dataset.screen===screen;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});document.getElementById('screenTitle').textContent=titles[screen][0];document.getElementById('screenSubtitle').textContent=titles[screen][1];document.getElementById('breadcrumbTitle').textContent=titles[screen][0];}
+  function applySelectedTemplate(){const tpl=(state.config?.eventTemplates || []).find(t=>t.id===document.getElementById('templateSelect').value) || {};const values={eventTitle:tpl.defaultTitle || tpl.name || '',eventType:tpl.type || 'Autre',eventCayenne:tpl.cayenne || 'Paris',eventStart:tpl.start || '',eventEnd:tpl.end || '',eventPlace:tpl.place || 'Cayenne de Paris',eventComment:tpl.comment || ''};Object.entries(values).forEach(([id,value])=>document.getElementById(id).value=value);}
+  function pin(){return document.getElementById('adminPin').value;}
+  function year(){return Number(document.getElementById('adminYear').value);}
+  function loadDashboard(){
+    if(!pin()){document.getElementById('accessPanel').hidden=false;document.getElementById('adminPin').focus();return;}
+    if(!Number.isInteger(year()) || year()<2020 || year()>2100){Ui.notice('adminNotice','Choisissez une année entre 2020 et 2100.');return;}
+    const request=++state.request;Ui.loading('loadDashboard',true,'Ouverture…');Ui.loading('refreshDashboard',true,'Actualisation…');
+    google.script.run.withSuccessHandler(data=>{if(request!==state.request)return;state.dashboard=data;renderDashboard(data);document.getElementById('accessPanel').hidden=true;document.getElementById('sessionBar').hidden=false;document.getElementById('sessionStatus').textContent='Année '+data.year+' · Mise à jour à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});document.querySelectorAll('[data-protected]').forEach(b=>b.disabled=b.getAttribute('aria-busy')==='true');if(document.getElementById('adminNotice').classList.contains('error'))document.getElementById('adminNotice').hidden=true;Ui.loading('loadDashboard',false);Ui.loading('refreshDashboard',false);}).withFailureHandler(error=>{if(request!==state.request)return;state.session++;state.dashboard=null;state.reportUrls.clear();state.pending.clear();['generateAll','createEvent'].forEach(id=>Ui.loading(id,false));renderEmptyState();document.getElementById('accessPanel').hidden=false;document.getElementById('sessionBar').hidden=true;Ui.loading('loadDashboard',false);Ui.loading('refreshDashboard',false);document.getElementById('refreshDashboard').disabled=true;Ui.notice('adminNotice',error.message || error);}).getDashboardData(year(),pin());
+  }
+  function lockSession(){state.request++;state.session++;state.dashboard=null;state.reportUrls.clear();state.pending.clear();document.getElementById('adminPin').value='';document.getElementById('adminNotice').hidden=true;document.getElementById('accessPanel').hidden=false;document.getElementById('sessionBar').hidden=true;['loadDashboard','refreshDashboard','generateAll','createEvent'].forEach(id=>Ui.loading(id,false));renderEmptyState();showScreen('dashboard');document.getElementById('adminPin').focus();}
+  function createEvent(){
+    if(!state.dashboard || !pin())return;
+    const session=state.session;const payload={templateId:document.getElementById('templateSelect').value,date:document.getElementById('eventDate').value,title:document.getElementById('eventTitle').value,type:document.getElementById('eventType').value,cayenne:document.getElementById('eventCayenne').value,start:document.getElementById('eventStart').value,end:document.getElementById('eventEnd').value,place:document.getElementById('eventPlace').value,comment:document.getElementById('eventComment').value,active:'Oui'};
+    Ui.loading('createEvent',true,'Ajout au calendrier…');
+    google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;Ui.loading('createEvent',false);Ui.notice('adminNotice',result.message || 'Le rendez-vous a été ajouté.','ok');document.getElementById('eventDate').value='';document.getElementById('adminYear').value=Number(payload.date.slice(0,4));loadDashboard();}).withFailureHandler(error=>{if(session!==state.session)return;Ui.loading('createEvent',false);Ui.notice('adminNotice',error.message || error);}).createEventFromTemplate(payload,pin());
+  }
+  function safeSheetUrl(value){try{const url=new URL(value);return url.protocol==='https:'&&url.hostname==='docs.google.com'&&url.pathname.startsWith('/spreadsheets/')?url.href:'';}catch{return '';}}
+  function rememberReport(result){if(result?.sheetName&&safeSheetUrl(result.sheetUrl))state.reportUrls.set(result.sheetName,safeSheetUrl(result.sheetUrl));}
+  function generateOneSheet(eventId){
+    if(!state.dashboard || state.pending.has(eventId))return;const session=state.session;state.pending.add(eventId);renderReports();
+    google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;state.pending.delete(eventId);rememberReport(result);renderReports();Ui.notice('adminNotice','La feuille « '+result.sheetName+' » est prête.','ok');}).withFailureHandler(error=>{if(session!==state.session)return;state.pending.delete(eventId);renderReports();Ui.notice('adminNotice',error.message || error);}).generateEventSheet(eventId,pin());
+  }
+  function generateAllSheets(){
+    if(!state.dashboard)return;const session=state.session;Ui.loading('generateAll',true,'Génération…');
+    google.script.run.withSuccessHandler(results=>{if(session!==state.session)return;results.forEach(rememberReport);Ui.loading('generateAll',false);renderReports();Ui.notice('adminNotice',results.length+' feuille(s) de compte rendu prête(s).','ok');}).withFailureHandler(error=>{if(session!==state.session)return;Ui.loading('generateAll',false);Ui.notice('adminNotice',error.message || error);}).generateAllEventSheets(year(),pin());
+  }
+  const kpiSpecs=[['Événements','events','calendar','','Au calendrier'],['Membres suivis','members','users','','Dans la Cayenne'],['Présences','presents','check-circle','green','Cumul sur l’année'],['Absences excusées','excused','clock','amber','Cumul sur l’année'],['Sans réponse','noResponse','info','','Par membre et événement'],['Coups de main','aids','heart','blue','Présences avec aide']];
+  function renderKpis(data){document.getElementById('kpiRoot').innerHTML=kpiSpecs.map(([label,key,symbol,color,note])=>'<div class="kpi '+color+'"><div class="kpi-top"><span>'+label+'</span><span class="kpi-icon">'+Ui.icon(symbol)+'</span></div><strong>'+Ui.escape(data?Ui.count(data[key]):'—')+'</strong><small>'+note+'</small></div>').join('');}
+  function renderEmptyState(){renderKpis(null);document.querySelectorAll('[data-protected]').forEach(b=>b.disabled=true);document.getElementById('refreshDashboard').disabled=true;document.getElementById('dashboardEvents').innerHTML=Ui.empty('Votre agenda vous attend','Ouvrez votre espace pour retrouver les rendez-vous.');document.getElementById('dashboardCauses').innerHTML=Ui.empty('Un suivi réservé au bureau','Les motifs apparaîtront après connexion.','lock');document.getElementById('eventsRoot').innerHTML=Ui.empty('Le calendrier de la Cayenne','Entrez votre code pour consulter les événements.');document.getElementById('membersRoot').innerHTML=Ui.empty('Les membres, en un regard','Ouvrez votre espace pour afficher le suivi annuel.','users');document.getElementById('reportsRoot').innerHTML=Ui.empty('Vos comptes rendus','Ouvrez votre espace pour préparer les feuilles de présence.','file');document.getElementById('memberCount').textContent='—';document.getElementById('calendarCount').textContent='';}
+  function renderDashboard(data){renderKpis(data.kpis);renderAgenda();renderCauses();renderCalendar();renderMembers();renderReports();}
+  function counts(event){return '<div class="count-line"><span><i class="dot green"></i><b>'+Ui.count(event.presents)+'</b> présents</span><span><i class="dot amber"></i><b>'+Ui.count(event.excused)+'</b> excusés</span><span><b>'+Ui.count(event.noResponse)+'</b> sans réponse</span><span><b>'+Ui.count(event.aids)+'</b> aides</span></div>';}
+  function renderAgenda(){const events=state.dashboard?.events || [];const today=new Date();today.setHours(0,0,0,0);const upcoming=events.filter(e=>{const d=Ui.date(e.date).value;return d&&d>=today;});const selected=upcoming.length?upcoming.slice(0,4):events.slice(-4);document.getElementById('agendaCaption').textContent=upcoming.length?'Les prochains rendez-vous de '+state.dashboard.year+'.':'Les derniers rendez-vous de '+state.dashboard.year+'.';document.getElementById('dashboardEvents').innerHTML=selected.length?selected.map(e=>'<div class="agenda-row">'+Ui.dateTile(e.date)+'<div class="agenda-copy"><span class="event-type">'+Ui.escape(e.type)+'</span><h3>'+Ui.escape(e.title)+'</h3>'+counts(e)+'</div></div>').join(''):Ui.empty('Le calendrier est encore ouvert','Ajoutez votre premier rendez-vous depuis un modèle.');}
+  function renderCauses(){const causes=[...(state.dashboard?.causes || [])].sort((a,b)=>Ui.count(b.count)-Ui.count(a.count));const max=Math.max(1,...causes.map(c=>Ui.count(c.count)));document.getElementById('dashboardCauses').innerHTML=causes.length?causes.map(c=>'<div class="cause-row"><div class="cause-label"><span>'+Ui.escape(c.cause)+'</span><b>'+Ui.count(c.count)+'</b></div><div class="progress-track" aria-hidden="true"><span style="width:'+(Ui.count(c.count)/max*100)+'%"></span></div></div>').join(''):Ui.empty('Aucune excuse enregistrée','Les motifs transmis apparaîtront ici.','check-circle');}
+  function eventCard(e,withReport=false){const url=state.reportUrls.get(e.sheetName);const pending=state.pending.has(String(e.id));return '<article class="calendar-card"><div class="calendar-card-head">'+Ui.dateTile(e.date)+'<div><span class="event-type">'+Ui.escape(e.type)+'</span><h3>'+Ui.escape(e.title)+'</h3></div></div>'+counts(e)+(withReport?'<button class="btn '+(url?'secondary':'soft')+'" type="button" data-event-id="'+Ui.escape(e.id)+'" '+(pending?'disabled aria-busy="true"':'')+'>'+Ui.icon(pending?'clock':'file')+(pending?'Préparation…':url?'Actualiser la feuille':'Préparer le compte rendu')+'</button>'+(url?'<div class="report-links"><a class="btn" href="'+Ui.escape(url)+'" target="_blank" rel="noopener">Ouvrir la feuille '+Ui.icon('external')+'</a></div>':''):'')+'</article>';}
+  function renderCalendar(){if(!state.dashboard)return;const query=Ui.normalize(document.getElementById('adminEventSearch').value);const events=state.dashboard.events.filter(e=>Ui.normalize([e.title,e.type,e.date].join(' ')).includes(query));document.getElementById('calendarCount').textContent=events.length+' événement'+(events.length>1?'s':'')+' · '+state.dashboard.year;document.getElementById('eventsRoot').innerHTML=events.length?events.map(e=>eventCard(e)).join(''):Ui.empty('Aucun événement à afficher',query?'Essayez une autre recherche.':'Ajoutez un rendez-vous grâce au formulaire.');}
+  function renderReports(){if(!state.dashboard)return;document.getElementById('reportsRoot').innerHTML=state.dashboard.events.length?state.dashboard.events.map(e=>eventCard(e,true)).join(''):Ui.empty('Vos comptes rendus viendront ici','Ajoutez d’abord un événement au calendrier.','file');}
+  function renderMembers(){
+    if(!state.dashboard)return;const query=Ui.normalize(document.getElementById('memberSearch').value);const status=document.getElementById('memberStatusFilter').value;const members=state.dashboard.members.filter(m=>(!status||m.statut===status)&&Ui.normalize([m.nom,m.prenom,m.cayenne].join(' ')).includes(query));document.getElementById('memberCount').textContent=members.length+' membre'+(members.length>1?'s':'');
+    if(!members.length){document.getElementById('membersRoot').innerHTML=Ui.empty('Aucun membre à afficher',query||status?'Modifiez votre recherche ou votre filtre.':'Les membres apparaîtront au fil des réponses.','users');return;}
+    function identity(m){return '<div class="member-cell"><span class="avatar">'+Ui.escape((m.prenom || '').slice(0,1)+(m.nom || '').slice(0,1))+'</span><span><strong>'+Ui.escape(m.prenom)+' '+Ui.escape(m.nom)+'</strong><small>'+Ui.escape(m.cayenne)+'</small></span></div>';}
+    function rate(m){const p=Math.round(Math.max(0,Math.min(1,Number(m.presenceRate)||0))*100);return '<div class="rate"><div class="progress-track" aria-hidden="true"><span style="width:'+p+'%"></span></div><span>'+p+' %</span></div>';}
+    const rows=members.map(m=>'<tr><td>'+identity(m)+'</td><td><span class="pill neutral">'+Ui.escape(m.statut)+'</span></td><td>'+Ui.count(m.presents)+'</td><td>'+Ui.count(m.excused)+'</td><td>'+Ui.count(m.noResponse)+'</td><td>'+Ui.count(m.aids)+'</td><td>'+rate(m)+'</td></tr>').join('');
+    const cards=members.map(m=>'<article class="member-card"><div class="section-head" style="margin-bottom:0">'+identity(m)+'<span class="pill neutral">'+Ui.escape(m.statut)+'</span></div>'+counts(m)+rate(m)+'</article>').join('');
+    document.getElementById('membersRoot').innerHTML='<div class="member-table-wrap"><table class="member-table"><caption class="sr-only">Présences des membres en '+state.dashboard.year+'</caption><thead><tr><th scope="col">Membre</th><th scope="col">Statut</th><th scope="col">Présences</th><th scope="col">Excuses</th><th scope="col">Sans réponse</th><th scope="col">Aides</th><th scope="col">Taux</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="mobile-members">'+cards+'</div>';
+  }
+  renderEmptyState();init();
   </script>
 </body>
 </html>

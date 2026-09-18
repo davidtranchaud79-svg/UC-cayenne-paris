@@ -78,6 +78,9 @@ const sheets = {
   html: workbook.worksheets.add("INDEX_HTML"),
   publicHtml: workbook.worksheets.add("PUBLIC_HTML"),
   adminHtml: workbook.worksheets.add("ADMIN_HTML"),
+  stylesHtml: workbook.worksheets.add("STYLES_HTML"),
+  uiHtml: workbook.worksheets.add("UI_HTML"),
+  brandHtml: workbook.worksheets.add("BRAND_HTML"),
   notice: workbook.worksheets.add("NOTICE")
 };
 
@@ -408,6 +411,9 @@ async function buildCodeSheets() {
   writeCodeSheet(sheets.html, "Index.html", html);
   writeCodeSheet(sheets.publicHtml, "Public.html", publicHtml);
   writeCodeSheet(sheets.adminHtml, "Admin.html", adminHtml);
+  for (const [key, file] of [["stylesHtml", "Styles.html"], ["uiHtml", "Ui.html"], ["brandHtml", "Brand.html"]]) {
+    writeCodeSheet(sheets[key], file, await fs.readFile(path.join(rootDir, "src", file), "utf8"));
+  }
 }
 
 function writeCodeSheet(sheet, filename, content) {

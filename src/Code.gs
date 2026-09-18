@@ -97,6 +97,7 @@ function doGet(e) {
 
   return template
     .evaluate()
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setTitle(page === 'admin' ? 'Dashboard admin - Présences Cayenne de Paris' : 'Présences Cayenne de Paris')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }

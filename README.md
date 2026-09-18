@@ -33,15 +33,18 @@ La procédure détaillée est dans [`docs/BRANCHER_SHEET_GITHUB.md`](docs/BRANCH
 
 | Fichier | Utilité |
 |---|---|
-| `index.html` | Page d'accueil GitHub avec liens vers le Sheet et les sources |
+| `index.html` | Page d’accueil aux couleurs de la Cayenne avec accès membres et bureau |
 | `.clasp.json.example` | Modèle de liaison GitHub / Apps Script |
-| `.github/workflows/deploy-apps-script.yml` | Déploiement manuel vers Apps Script avec secrets GitHub |
+| `.github/workflows/deploy-apps-script.yml` | Tests puis déploiement automatique vers Apps Script |
 | `docs/BRANCHER_SHEET_GITHUB.md` | Notice détaillée de branchement |
 | `Modele_Presences_Engagements_Cayenne.xlsx` | Modèle de classeur à importer dans Google Sheets |
 | `src/Code.gs` | Code serveur Apps Script |
 | `src/Index.html` | Petite page routeur avec les deux accès |
 | `src/Public.html` | Formulaire public membres |
 | `src/Admin.html` | Dashboard bureau |
+| `src/Styles.html` | Styles partagés et adaptation mobile |
+| `src/Ui.html` | Icônes et fonctions de présentation |
+| `src/Brand.html` | Écusson de la Cayenne de Paris |
 | `src/appsscript.json` | Manifest Apps Script pour déploiement propre |
 
 ## GitHub
@@ -64,8 +67,8 @@ Structure conseillée :
 1. Ouvrir le Google Sheet modèle.
 2. Aller dans `Extensions > Apps Script`.
 3. Créer ou remplacer le fichier `Code.gs` avec le contenu de `src/Code.gs`.
-4. Créer trois fichiers HTML nommés `Index`, `Public` et `Admin`.
-5. Coller les contenus de `src/Index.html`, `src/Public.html` et `src/Admin.html` dans les fichiers correspondants.
+4. Créer six fichiers HTML nommés `Index`, `Public`, `Admin`, `Styles`, `Ui` et `Brand`.
+5. Coller chaque contenu `src/*.html` dans le fichier correspondant. Les onglets `INDEX_HTML`, `PUBLIC_HTML`, `ADMIN_HTML`, `STYLES_HTML`, `UI_HTML` et `BRAND_HTML` du Sheet contiennent aussi les copies du code.
 6. Vérifier le fichier `appsscript.json` ou recopier les autorisations depuis `src/appsscript.json`.
 7. Dans Apps Script, lancer la fonction `setupSystem`.
 8. Retourner dans le Sheet et compléter `MEMBRES`. Pour les événements, utiliser l’admin ou l’onglet `BASE_EVENEMENTS`.
@@ -101,3 +104,9 @@ Les feuilles `CR_...` sont générées automatiquement depuis `REPONSES`.
 Le suivi annuel et le dashboard sont recalculés depuis les mêmes données.
 
 Le bureau garde donc une source unique et évite les copies manuelles.
+
+## Interface et vérification
+
+L’identité graphique et la source de l’écusson sont décrites dans [`docs/IDENTITE_VISUELLE.md`](docs/IDENTITE_VISUELLE.md). Les styles sont partagés par les espaces membres et bureau ; le tableau des membres devient une liste de fiches sur téléphone.
+
+`npm ci` puis `npm test` vérifient les interactions des interfaces avec un serveur simulé et la validation des déploiements. Ces tests n’envoient aucune réponse dans le classeur réel.
