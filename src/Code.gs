@@ -1,4 +1,5 @@
 const UC_APP = {
+  spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
     membres: 'MEMBRES',
@@ -55,6 +56,27 @@ const UC_APP = {
   }
 };
 
+// Shared by web requests and spreadsheet menu actions; never depends on an open tab.
+let ucSpreadsheet_;
+function getSpreadsheet_() {
+  if (!ucSpreadsheet_) ucSpreadsheet_ = SpreadsheetApp.openById(UC_APP.spreadsheetId);
+  return ucSpreadsheet_;
+}
+
+// Run once in the Apps Script editor to grant access and verify the connection.
+function verifierConnexionSheet() {
+  const ss = getSpreadsheet_();
+  const result = {
+    ok: true,
+    spreadsheetId: ss.getId(),
+    spreadsheetName: ss.getName(),
+    events: getRowsAsObjects_(UC_APP.sheets.calendrier).length,
+    responses: getRowsAsObjects_(UC_APP.sheets.reponses).length
+  };
+  console.log(JSON.stringify(result));
+  return result;
+}
+
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Présences UC')
@@ -84,7 +106,7 @@ function include(filename) {
 }
 
 function setupSystem() {
-  const ss = SpreadsheetApp.getActive();
+  const ss = getSpreadsheet_();
   ensureSheet_(ss, UC_APP.sheets.parametres);
   ensureSheet_(ss, UC_APP.sheets.membres);
   ensureSheet_(ss, UC_APP.sheets.calendrier);
@@ -116,10 +138,11 @@ function setupSystem() {
 function getPublicConfig() {
   setupSystemIfMissing_();
   const settings = getSettings_();
+  const urls = getAppUrls_(settings);
   const year = Number(settings.annee_active || UC_APP.defaults.activeYear);
   return {
     activeYear: year,
-    urls: getAppUrls_(settings),
+    urls: { publicUrl: urls.publicUrl },
     statuses: getOptionList_('D', UC_APP.defaults.statuses),
     cayennes: getOptionList_('E', UC_APP.defaults.cayennes),
     responseTypes: getOptionList_('F', UC_APP.defaults.reponses),
@@ -182,7 +205,7 @@ function createEventFromTemplate(payload, adminPin) {
     Commentaire: clean_(payload.comment || template.comment)
   };
 
-  const sheet = SpreadsheetApp.getActive().getSheetByName(UC_APP.sheets.calendrier);
+  const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier);
   sheet.appendRow([
     event.ID_Evenement,
     event.Annee,
@@ -224,7 +247,7 @@ function submitResponses(payload) {
   if (!responseChoice) throw new Error('Type de réponse obligatoire.');
   if (!selectedEventIds.length) throw new Error('Sélectionnez au moins un événement.');
 
-  const ss = SpreadsheetApp.getActive();
+  const ss = getSpreadsheet_();
   const responseSheet = ss.getSheetByName(UC_APP.sheets.reponses);
   const eventsById = indexBy_(getRowsAsObjects_(UC_APP.sheets.calendrier), 'ID_Evenement');
   const now = new Date();
@@ -314,7 +337,7 @@ function generateEventSheet(eventId, adminPin) {
   const event = events.filter(function(row) { return row.ID_Evenement === eventId; })[0];
   if (!event) throw new Error('Événement introuvable.');
 
-  const ss = SpreadsheetApp.getActive();
+  const ss = getSpreadsheet_();
   const sheetName = makeCrSheetName_(event);
   let sheet = ss.getSheetByName(sheetName);
   if (!sheet) sheet = ss.insertSheet(sheetName);
@@ -396,7 +419,7 @@ function generateAllEventSheetsForActiveYear() {
 }
 
 function refreshDashboardSheet() {
-  const ss = SpreadsheetApp.getActive();
+  const ss = getSpreadsheet_();
   const sheet = ss.getSheetByName(UC_APP.sheets.dashboard);
   if (!sheet) return;
   const settings = getSettings_();
@@ -458,15 +481,15 @@ function refreshDashboardSheet() {
 }
 
 function exportActiveSheetPdf() {
-  const ss = SpreadsheetApp.getActive();
+  const ss = getSpreadsheet_();
   const sheet = ss.getActiveSheet();
   const file = exportSheetToPdf_(sheet);
   SpreadsheetApp.getUi().alert('PDF créé : ' + file.getUrl());
 }
 
 function setupSystemIfMissing_() {
-  const ss = SpreadsheetApp.getActive();
-  if (!ss.getSheetByName(UC_APP.sheets.reponses)) setupSystem();
+  const ss = getSpreadsheet_();
+  if (!ss.getSheetByName(UC_APP.sheets.reponses) || !ss.getSheetByName(UC_APP.sheets.eventBase)) setupSystem();
 }
 
 function ensureSheet_(ss, name) {
@@ -593,7 +616,7 @@ function seedEventBase_(sheet) {
 }
 
 function applyValidations_() {
-  const ss = SpreadsheetApp.getActive();
+  const ss = getSpreadsheet_();
   const membres = ss.getSheetByName(UC_APP.sheets.membres);
   const calendrier = ss.getSheetByName(UC_APP.sheets.calendrier);
   const reponses = ss.getSheetByName(UC_APP.sheets.reponses);
@@ -634,7 +657,7 @@ function writeVerticalList_(sheet, columnLetter, title, values) {
 }
 
 function getOptionList_(columnLetter, fallback) {
-  const sheet = SpreadsheetApp.getActive().getSheetByName(UC_APP.sheets.parametres);
+  const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.parametres);
   if (!sheet) return fallback;
   const values = sheet.getRange(columnLetter + '2:' + columnLetter + '100').getValues()
     .map(function(row) { return clean_(row[0]); })
@@ -643,7 +666,7 @@ function getOptionList_(columnLetter, fallback) {
 }
 
 function getSettings_() {
-  const sheet = SpreadsheetApp.getActive().getSheetByName(UC_APP.sheets.parametres);
+  const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.parametres);
   return getSettingsFromSheet_(sheet);
 }
 
@@ -920,38 +943,56 @@ function buildEventRows_(eventId) {
   });
 }
 
-function getRowsAsObjects_(sheetName) {
-  const sheet = SpreadsheetApp.getActive().getSheetByName(sheetName);
-  if (!sheet || sheet.getLastRow() < 2) return [];
+function getTableData_(sheetName) {
+  const sheet = getSpreadsheet_().getSheetByName(sheetName);
+  if (!sheet || sheet.getLastRow() === 0) return { rows: [], rowNumbers: [] };
   const values = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn()).getValues();
-  const headers = values.shift().map(clean_);
-  return values
-    .filter(function(row) { return row.some(function(cell) { return cell !== '' && cell !== null; }); })
-    .map(function(row) {
-      return headers.reduce(function(obj, header, index) {
-        obj[header] = row[index];
-        return obj;
-      }, {});
-    });
+  const tableKey = Object.keys(UC_APP.headers).find(function(key) {
+    return UC_APP.sheets[key] === sheetName;
+  });
+  const expected = tableKey ? UC_APP.headers[tableKey] : null;
+  const headerIndex = values.slice(0, 10).findIndex(function(row) {
+    if (expected) return expected.every(function(header, index) { return clean_(row[index]) === header; });
+    return row.filter(function(cell) { return clean_(cell); }).length > 1;
+  });
+  if (headerIndex < 0) throw new Error('Colonnes introuvables dans l’onglet ' + sheetName + '.');
+  const headers = values[headerIndex].map(clean_);
+  const result = { rows: [], rowNumbers: [] };
+  values.slice(headerIndex + 1).forEach(function(row, index) {
+    if (!row.some(function(cell) { return cell !== '' && cell !== null; })) return;
+    // A prior installation may have also written a header above the original table.
+    if (headers.every(function(header, column) { return !header || clean_(row[column]) === header; })) return;
+    result.rows.push(headers.reduce(function(obj, header, column) {
+      if (header) obj[header] = row[column];
+      return obj;
+    }, {}));
+    result.rowNumbers.push(headerIndex + index + 2);
+  });
+  return result;
+}
+
+function getRowsAsObjects_(sheetName) {
+  return getTableData_(sheetName).rows;
 }
 
 function upsertMember_(member) {
-  const sheet = SpreadsheetApp.getActive().getSheetByName(UC_APP.sheets.membres);
-  const members = getRowsAsObjects_(UC_APP.sheets.membres);
+  const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.membres);
+  const table = getTableData_(UC_APP.sheets.membres);
+  const members = table.rows;
   const key = personKey_(member.Nom, member.Prenom, member.Email);
   const index = members.findIndex(function(row) {
     return personKey_(row.Nom, row.Prenom, row.Email) === key;
   });
   const values = [[member.Nom, member.Prenom, member.Statut, member.Cayenne, member.Email, member.Telephone, 'Oui', member.Notes || '']];
   if (index >= 0) {
-    sheet.getRange(index + 2, 1, 1, values[0].length).setValues(values);
+    sheet.getRange(table.rowNumbers[index], 1, 1, values[0].length).setValues(values);
   } else {
     sheet.getRange(sheet.getLastRow() + 1, 1, 1, values[0].length).setValues(values);
   }
 }
 
 function markResponseReportSheet_(eventId, sheetName) {
-  const sheet = SpreadsheetApp.getActive().getSheetByName(UC_APP.sheets.reponses);
+  const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.reponses);
   if (!sheet || sheet.getLastRow() < 2) return;
   const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, UC_APP.headers.reponses.length).getValues();
   let changed = false;
@@ -975,7 +1016,7 @@ function colorResponseColumn_(sheet, startRow, rowCount) {
 }
 
 function exportSheetToPdf_(sheet) {
-  const ss = SpreadsheetApp.getActive();
+  const ss = getSpreadsheet_();
   const url = ss.getUrl().replace(/edit.*$/, '') +
     'export?format=pdf&portrait=false&size=A4&fitw=true&sheetnames=false&printtitle=false&pagenumbers=true&gridlines=false&fzr=true&gid=' +
     sheet.getSheetId();
