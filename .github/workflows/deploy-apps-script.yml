@@ -9,17 +9,20 @@ on:
       - ".github/workflows/deploy-apps-script.yml"
   workflow_dispatch:
 
-env:
-  CLASP_SCRIPT_ID: ${{ secrets.CLASP_SCRIPT_ID }}
-  CLASP_ACCESS_TOKEN: ${{ secrets.CLASP_ACCESS_TOKEN }}
-  CLASP_REFRESH_TOKEN: ${{ secrets.CLASP_REFRESH_TOKEN }}
-  CLASP_CLIENT_ID: ${{ secrets.CLASP_CLIENT_ID }}
-  CLASP_CLIENT_SECRET: ${{ secrets.CLASP_CLIENT_SECRET }}
-  CLASP_DEPLOYMENT_ID: ${{ secrets.CLASP_DEPLOYMENT_ID }}
+permissions:
+  contents: read
+
+concurrency:
+  group: apps-script-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLASP_SCRIPT_ID: ${{ secrets.CLASP_SCRIPT_ID }}
+      CLASP_DEPLOYMENT_ID: ${{ secrets.CLASP_DEPLOYMENT_ID }}
 
     steps:
       - name: Checkout repository
@@ -30,13 +33,12 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install clasp
-        run: npm install -g @google/clasp
-
       - name: Check deployment secrets
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: |
           missing=0
-          for name in CLASP_SCRIPT_ID CLASP_ACCESS_TOKEN CLASP_REFRESH_TOKEN CLASP_CLIENT_ID CLASP_CLIENT_SECRET; do
+          for name in CLASP_SCRIPT_ID CLASPRC_JSON CLASP_DEPLOYMENT_ID; do
             if [ -z "${!name}" ]; then
               echo "::error::Secret GitHub manquant: $name"
               missing=1
@@ -48,42 +50,48 @@ jobs:
             exit 1
           fi
 
-      - name: Write clasp config
-        run: |
-          cat > .clasp.json <<JSON
-          {
-            "scriptId": "$CLASP_SCRIPT_ID",
-            "rootDir": "src"
-          }
-          JSON
+      - name: Install clasp
+        run: npm install -g @google/clasp@3.4.1
 
-      - name: Write clasp credentials
+      - name: Write clasp configuration
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: |
-          cat > ~/.clasprc.json <<JSON
-          {
-            "token": {
-              "access_token": "$CLASP_ACCESS_TOKEN",
-              "refresh_token": "$CLASP_REFRESH_TOKEN",
-              "scope": "https://www.googleapis.com/auth/script.projects https://www.googleapis.com/auth/script.deployments https://www.googleapis.com/auth/script.webapp.deploy https://www.googleapis.com/auth/drive.file",
-              "token_type": "Bearer",
-              "expiry_date": 0
-            },
-            "oauth2ClientSettings": {
-              "clientId": "$CLASP_CLIENT_ID",
-              "clientSecret": "$CLASP_CLIENT_SECRET",
-              "redirectUri": "http://localhost"
-            },
-            "isLocalCreds": true
+          node <<'NODE'
+          const fs = require('node:fs');
+          const os = require('node:os');
+          const path = require('node:path');
+          const fail = message => {
+            console.error('::error::' + message);
+            process.exit(1);
+          };
+          let credentials;
+          try {
+            credentials = JSON.parse(process.env.CLASPRC_JSON);
+          } catch {
+            fail('CLASPRC_JSON doit contenir le fichier JSON complet obtenu après clasp login.');
           }
-          JSON
+          const token = credentials?.tokens?.default;
+          if (token?.type !== 'authorized_user' ||
+              ['client_id', 'client_secret', 'refresh_token'].some(key =>
+                typeof token[key] !== 'string' || !token[key].trim())) {
+            fail('Connexion Google incomplète. Relancez npx --yes @google/clasp@3.4.1 login et recopiez le fichier dans CLASPRC_JSON.');
+          }
+          const scriptId = process.env.CLASP_SCRIPT_ID.trim();
+          if (!/^[A-Za-z0-9_-]+$/.test(scriptId)) {
+            fail('CLASP_SCRIPT_ID doit contenir uniquement l’ID du script, sans URL.');
+          }
+          fs.writeFileSync('.clasp.json', JSON.stringify({scriptId, rootDir: 'src'}), {mode: 0o600});
+          fs.writeFileSync(path.join(os.homedir(), '.clasprc.json'),
+            JSON.stringify({tokens: {default: token}}), {mode: 0o600});
+          NODE
 
       - name: Push sources to Apps Script
         run: clasp push --force
 
-      - name: Deploy existing Web App if configured
-        run: |
-          if [ -n "$CLASP_DEPLOYMENT_ID" ]; then
-            clasp deploy --deploymentId "$CLASP_DEPLOYMENT_ID" --description "GitHub $GITHUB_SHA"
-          else
-            echo "Code pushed to Apps Script. Add CLASP_DEPLOYMENT_ID secret to update the Web App automatically."
-          fi
+      - name: Update existing Web App
+        run: clasp create-deployment --deploymentId "$CLASP_DEPLOYMENT_ID" --description "GitHub $GITHUB_SHA"
+
+      - name: Remove runner credentials
+        if: always()
+        run: rm -f "$HOME/.clasprc.json" .clasp.json
