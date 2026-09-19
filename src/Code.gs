@@ -19,8 +19,8 @@ const UC_APP = {
   defaults: {
     activeYear: 2026,
     adminPin: '1234',
-    webAppUrl: 'https://script.google.com/macros/s/AKfycbz_Ra9SNbvvkexqeNds_ndM_NWERyxSOnO9ug4jX-UFGC4ebrHylPbwPpMRY-Z0nmu3eA/exec',
-    adminAppUrl: 'https://script.google.com/macros/s/AKfycbz_Ra9SNbvvkexqeNds_ndM_NWERyxSOnO9ug4jX-UFGC4ebrHylPbwPpMRY-Z0nmu3eA/exec?page=admin',
+    webAppUrl: 'https://script.google.com/macros/s/AKfycbyxk7lHX1J7EC_FRRRSCacU4jvBWemPik9fanpQdWzlpIV4ZS1WKq-ZZ70w_mKh7aXCCg/exec',
+    adminAppUrl: 'https://script.google.com/macros/s/AKfycbyxk7lHX1J7EC_FRRRSCacU4jvBWemPik9fanpQdWzlpIV4ZS1WKq-ZZ70w_mKh7aXCCg/exec?page=admin',
     statuses: ['Sociétaire', 'Aspirant', 'Compagnon'],
     cayennes: ['Paris', 'Autre'],
     reponses: ['Présent', 'Absent excusé', 'Disponible pour aider'],
@@ -715,8 +715,18 @@ function getSettingsFromSheet_(sheet) {
 }
 
 function getAppUrls_(settings) {
-  settings = settings || getSettings_();
-  const publicUrl = UC_APP.defaults.webAppUrl;
+  // Use the deployed service URL so a newly published app does not send its
+  // visitors back to an older deployment. The fallback also supports editor
+  // actions and previews without exposing a /dev link to members.
+  let publicUrl = UC_APP.defaults.webAppUrl;
+  try {
+    const serviceUrl = clean_(ScriptApp.getService().getUrl());
+    if (/^https:\/\/script\.google\.com\/macros\/s\/AKfy[A-Za-z0-9_-]+\/exec$/.test(serviceUrl)) {
+      publicUrl = serviceUrl;
+    }
+  } catch (error) {
+    // The configured public URL remains available outside a web app context.
+  }
   const adminUrl = makeAdminUrl_(publicUrl);
   return {
     publicUrl: publicUrl,

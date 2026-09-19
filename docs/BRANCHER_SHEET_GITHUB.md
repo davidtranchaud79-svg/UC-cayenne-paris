@@ -10,8 +10,8 @@ Les données nominatives, les excuses et les motifs d'absence restent dans le Go
 
 ## Liens actuels
 
-- Formulaire public : https://script.google.com/macros/s/AKfycbz_Ra9SNbvvkexqeNds_ndM_NWERyxSOnO9ug4jX-UFGC4ebrHylPbwPpMRY-Z0nmu3eA/exec
-- Dashboard admin : https://script.google.com/macros/s/AKfycbz_Ra9SNbvvkexqeNds_ndM_NWERyxSOnO9ug4jX-UFGC4ebrHylPbwPpMRY-Z0nmu3eA/exec?page=admin
+- Formulaire public : https://script.google.com/macros/s/AKfycbyxk7lHX1J7EC_FRRRSCacU4jvBWemPik9fanpQdWzlpIV4ZS1WKq-ZZ70w_mKh7aXCCg/exec
+- Dashboard admin : https://script.google.com/macros/s/AKfycbyxk7lHX1J7EC_FRRRSCacU4jvBWemPik9fanpQdWzlpIV4ZS1WKq-ZZ70w_mKh7aXCCg/exec?page=admin
 - Google Sheet : https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit
 - Dépôt GitHub : https://github.com/davidtranchaud79-svg/UC-cayenne-paris
 
@@ -71,7 +71,7 @@ Ce fichier permet d'accéder aux projets Apps Script du compte. Le coller unique
 Le workflow contient déjà l’identifiant public du déploiement, extrait du lien partagé :
 
 ```text
-AKfycbz_Ra9SNbvvkexqeNds_ndM_NWERyxSOnO9ug4jX-UFGC4ebrHylPbwPpMRY-Z0nmu3eA
+AKfycbyxk7lHX1J7EC_FRRRSCacU4jvBWemPik9fanpQdWzlpIV4ZS1WKq-ZZ70w_mKh7aXCCg
 ```
 
 Cet identifiant n’est pas un mot de passe. Il est conservé dans `.github/workflows/deploy-apps-script.yml` pour que la publication vise exactement le lien partagé. L’ancien secret `CLASP_DEPLOYMENT_ID` n’est plus utilisé et peut rester en place.
@@ -106,6 +106,8 @@ Une ancienne exécution verte peut contenir `Invalid deployment ID` dans son jou
 Si l'initialisation n'a jamais été faite, ouvrir Apps Script depuis le Sheet, sélectionner `setupSystem_`, cliquer sur `Exécuter` et accepter les autorisations Google.
 
 Le lien public se termine par `/exec`. Le lien admin utilise le même déploiement avec `?page=admin` à la fin.
+
+Le code retrouve maintenant l’adresse publiée via `ScriptApp.getService().getUrl()` pour ses liens de navigation. Après la première publication de cette correction, un nouveau déploiement ne renverra plus vers l’ancienne adresse codée dans les sources. Les raccourcis externes de GitHub et du Sheet doivent toujours être actualisés si l’identifiant change.
 
 En cas d'échec :
 

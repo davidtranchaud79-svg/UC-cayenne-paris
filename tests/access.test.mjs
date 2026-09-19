@@ -118,3 +118,18 @@ test('maintenance functions cannot be called remotely from a member page',()=>{
   const {c}=fixture();
   for(const name of ['setupSystem','refreshDashboardSheet','generateAllEventSheetsForActiveYear','exportActiveSheetPdf','verifierConnexionSheet'])assert.equal(c[name],undefined);
 });
+
+test('a new deployment keeps bureau and member links on the same live app',()=>{
+  const {c}=fixture();
+  const current='https://script.google.com/macros/s/AKfy-current-deployment/exec';
+  const fallback=vm.runInContext('UC_APP.defaults.webAppUrl',c);
+  c.ScriptApp={getService:()=>({getUrl:()=>current})};
+  c.getSettings_=()=>{throw Error('Login page must not read private Sheet settings');};
+  const urls=c.getAppUrls_({web_app_url:'https://script.google.com/macros/s/AKfy-obsolete/exec'});
+  assert.equal(urls.publicUrl,current);
+  assert.equal(urls.adminUrl,current+'?page=admin');
+  for(const unpublished of [null,current.replace('/exec','/dev')]) {
+    c.ScriptApp.getService=()=>({getUrl:()=>unpublished});
+    assert.equal(c.getAppUrls_().publicUrl,fallback);
+  }
+});
