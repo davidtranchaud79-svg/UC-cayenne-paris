@@ -83,6 +83,11 @@ Les deux secrets requis sont :
 | `CLASP_SCRIPT_ID` | ID du projet Apps Script |
 | `CLASPRC_JSON` | Fichier de connexion complet copié par `pbcopy` |
 
+Pour contrôler les valeurs enregistrées, ouvrir `Actions > Vérifier les secrets Apps Script > Run workflow`.
+Ce contrôle vérifie la connexion Google et la présence du déploiement attendu dans le projet.
+Il ne publie pas de nouvelle version et n’affiche aucune valeur de secret. Le résumé précise aussi
+si l’ancien secret `CLASP_DEPLOYMENT_ID`, ignoré par la publication, contient un identifiant différent.
+
 ## Étape 6 - Lancer la première mise à jour
 
 1. Ouvrir [Deploy Apps Script](https://github.com/davidtranchaud79-svg/UC-cayenne-paris/actions/workflows/deploy-apps-script.yml).
