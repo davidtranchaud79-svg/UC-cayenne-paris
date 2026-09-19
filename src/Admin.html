@@ -29,7 +29,7 @@
       <div id="adminNotice" class="notice" role="status" aria-live="polite" hidden></div>
       <section class="panel access-panel" id="accessPanel" aria-labelledby="accessTitle">
         <div class="access-copy"><div class="access-icon"><span data-icon="lock"></span></div><div><h2 id="accessTitle">Bienvenue dans l’espace bureau.</h2><p>Entrez votre code pour retrouver les présences, préparer les événements et générer les comptes rendus.</p></div></div>
-        <form class="access-form" id="accessForm"><div class="field"><label for="adminPin">Votre code administrateur</label><input id="adminPin" type="password" autocomplete="current-password" placeholder="Code administrateur" required></div><button class="btn" id="loadDashboard" type="submit">Ouvrir mon espace <span data-icon="arrow"></span></button></form>
+        <form class="access-form" id="accessForm"><div class="field"><label for="adminPin">Code commun du bureau</label><input id="adminPin" type="password" autocomplete="current-password" placeholder="Code du bureau" required></div><button class="btn" id="loadDashboard" type="submit">Ouvrir l’espace bureau <span data-icon="arrow"></span></button></form>
       </section>
       <div class="session-bar" id="sessionBar" hidden><span class="dot"></span><span id="sessionStatus"></span><button class="text-button" type="button" id="lockSession"><span data-icon="logout"></span>Verrouiller l’espace</button></div>
       <section id="screen-dashboard" class="screen active" aria-label="Vue d’ensemble">
@@ -57,6 +57,27 @@
         </div>
       </section>
       <section id="screen-members" class="screen" aria-label="Suivi des membres">
+        <div class="access-management" id="memberAccessPanel" hidden>
+          <h2>Accès personnels</h2>
+          <div id="accessNotice" class="notice" role="status" hidden></div>
+          <details><summary>Ajouter un membre</summary>
+            <form id="newMemberForm" class="fields">
+              <div class="field"><label for="newPrenom">Prénom</label><input id="newPrenom" name="prenom" maxlength="200" required></div>
+              <div class="field"><label for="newNom">Nom</label><input id="newNom" name="nom" maxlength="200" required></div>
+              <div class="field"><label for="newStatut">Statut</label><select id="newStatut" name="statut" required><option>Sociétaire</option><option>Aspirant</option><option>Compagnon</option></select></div>
+              <div class="field"><label for="newCayenne">Cayenne</label><select id="newCayenne" name="cayenne" required><option>Paris</option><option>Autre</option></select></div>
+              <div class="field"><label for="newEmail">Email (facultatif)</label><input id="newEmail" type="email" name="email" maxlength="200"></div>
+              <div class="field"><label for="newTelephone">Téléphone (facultatif)</label><input id="newTelephone" name="telephone" maxlength="40"></div>
+              <button class="btn" id="newMemberBtn" type="submit" data-protected>Créer le membre et son code</button>
+            </form>
+          </details>
+          <div id="issuedCodePanel" class="issued-code" hidden>
+            <label for="issuedCode" id="issuedCodeLabel">Code personnel à transmettre</label><input id="issuedCode" readonly autocomplete="off">
+            <p>Le code est affiché une seule fois. Un code perdu peut être remplacé ici.</p>
+            <button id="copyMemberCode" class="btn secondary" type="button">Copier le code</button><button id="dismissMemberCode" class="text-button" type="button">Masquer</button>
+          </div>
+          <div id="memberAccessList" aria-live="polite"></div>
+        </div>
         <div class="panel panel-pad"><div class="section-head"><div><h2>Les membres de la Cayenne</h2><p>Présences et engagements déclarés sur l’année.</p></div><span id="memberCount" class="tag wine">—</span></div><div class="toolbar"><div class="search-box"><span data-icon="search"></span><label class="sr-only" for="memberSearch">Rechercher un membre</label><input id="memberSearch" type="search" placeholder="Rechercher un nom, un prénom…"></div><label class="sr-only" for="memberStatusFilter">Filtrer par statut</label><select id="memberStatusFilter"><option value="">Tous les statuts</option><option>Sociétaire</option><option>Aspirant</option><option>Compagnon</option></select></div><div id="membersRoot"></div><p class="small muted" style="margin-top:18px">Le taux de présence porte sur l’année sélectionnée, événements futurs inclus.</p></div>
       </section>
       <section id="screen-reports" class="screen" aria-label="Comptes rendus">
@@ -67,7 +88,7 @@
           <div class="panel panel-pad settings-card"><span data-icon="user"></span><h2>Espace membres</h2><p>Le formulaire à partager pour les présences, les excuses et les propositions d’aide.</p><a id="settingsPublicUrl" class="btn secondary" target="_top" href="<?= publicUrl ?>">Ouvrir le formulaire <span data-icon="external"></span></a></div>
           <div class="panel panel-pad settings-card"><span data-icon="sheet"></span><h2>Votre classeur de suivi</h2><p>Retrouvez le calendrier, les membres, les réponses et les feuilles de compte rendu.</p><a class="btn secondary" target="_blank" rel="noopener" href="https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit">Ouvrir Google Sheets <span data-icon="external"></span></a></div>
           <div class="panel panel-pad settings-card"><span data-icon="calendar"></span><h2>La bibliothèque d’événements</h2><p>Personnalisez vos modèles habituels dans l’onglet <strong>BASE_EVENEMENTS</strong> du classeur.</p><button class="text-button" type="button" data-go="events">Créer depuis un modèle <span data-icon="arrow"></span></button></div>
-          <div class="panel panel-pad settings-card"><span data-icon="lock"></span><h2>Accès au bureau</h2><p>Le code administrateur se règle dans l’onglet <strong>PARAMETRES</strong>, à la ligne <strong>admin_pin</strong>.</p><a id="settingsAdminUrl" class="text-button" target="_top" href="<?= adminUrl ?>">Lien de l’administration <span data-icon="external"></span></a></div>
+          <div class="panel panel-pad settings-card"><span data-icon="lock"></span><h2>Code commun du bureau</h2><p>Un seul code pour les membres du bureau. Le remplacer ferme les sessions en cours.</p><form id="bureauCodeForm" class="access-form"><div class="field"><label for="newBureauCode">Nouveau code (8 caractères minimum)</label><input id="newBureauCode" type="password" autocomplete="new-password" minlength="8" maxlength="80" required></div><div class="field"><label for="confirmBureauCode">Confirmer le code</label><input id="confirmBureauCode" type="password" autocomplete="new-password" required></div><button id="changeBureauCodeBtn" class="btn secondary" type="submit" data-protected disabled>Changer le code</button></form><a id="settingsAdminUrl" class="text-button" target="_top" href="<?= adminUrl ?>">Lien de l’administration <span data-icon="external"></span></a></div>
         </div>
         <div class="settings-note">L’espace membres et l’espace bureau disposent de liens séparés.</div>
       </section>
@@ -75,12 +96,12 @@
     </main>
   </div>
   <script>
-  const state={config:null,dashboard:null,currentScreen:'dashboard',request:0,session:0,reportUrls:new Map(),pending:new Set()};
+  const state={config:null,dashboard:null,currentScreen:'dashboard',request:0,session:0,token:'',accessMembers:[],accessBusy:false,reportUrls:new Map(),pending:new Set()};
   const titles={dashboard:['Vue d’ensemble','La vie de votre Cayenne, en un regard.'],events:['Les rendez-vous','Préparez les événements et suivez les réponses.'],members:['Les membres','Un suivi lisible, personne par personne.'],reports:['Comptes rendus','Les présences réunies, prêtes à être partagées.'],settings:['Les réglages','Vos liens et vos outils, au même endroit.']};
   Ui.mountIcons();
   document.querySelectorAll('[data-screen]').forEach(b=>b.addEventListener('click',()=>showScreen(b.dataset.screen)));
   document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>showScreen(b.dataset.go)));
-  document.getElementById('accessForm').addEventListener('submit',e=>{e.preventDefault();loadDashboard();});
+  document.getElementById('accessForm').addEventListener('submit',e=>{e.preventDefault();loginBureau();});
   document.getElementById('refreshDashboard').addEventListener('click',loadDashboard);
   document.getElementById('adminYear').addEventListener('change',()=>{if(state.dashboard)loadDashboard();});
   document.getElementById('eventForm').addEventListener('submit',e=>{e.preventDefault();createEvent();});
@@ -96,15 +117,63 @@
   function fillSelect(id,values,label=x=>x,value=x=>x){document.getElementById(id).innerHTML=values.map(x=>'<option value="'+Ui.escape(value(x))+'">'+Ui.escape(label(x))+'</option>').join('');}
   function showScreen(screen){if(!titles[screen])return;state.currentScreen=screen;document.querySelectorAll('.screen').forEach(n=>n.classList.toggle('active',n.id==='screen-'+screen));document.querySelectorAll('.nav-btn').forEach(b=>{const active=b.dataset.screen===screen;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});document.getElementById('screenTitle').textContent=titles[screen][0];document.getElementById('screenSubtitle').textContent=titles[screen][1];document.getElementById('breadcrumbTitle').textContent=titles[screen][0];}
   function applySelectedTemplate(){const tpl=(state.config?.eventTemplates || []).find(t=>t.id===document.getElementById('templateSelect').value) || {};const values={eventTitle:tpl.defaultTitle || tpl.name || '',eventType:tpl.type || 'Autre',eventCayenne:tpl.cayenne || 'Paris',eventStart:tpl.start || '',eventEnd:tpl.end || '',eventPlace:tpl.place || 'Cayenne de Paris',eventComment:tpl.comment || ''};Object.entries(values).forEach(([id,value])=>document.getElementById(id).value=value);}
-  function pin(){return document.getElementById('adminPin').value;}
+  function pin(){return state.token;}
+  function loginBureau(){
+    const session=++state.session;Ui.loading('loadDashboard',true,'Connexion…');
+    google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;state.token=result.token;document.getElementById('adminPin').value='';loadDashboard();loadMemberAccess();}).withFailureHandler(error=>{if(session!==state.session)return;Ui.loading('loadDashboard',false);Ui.notice('adminNotice',error.message || error);}).loginBureau(document.getElementById('adminPin').value);
+  }
   function year(){return Number(document.getElementById('adminYear').value);}
+  document.getElementById('newMemberForm').addEventListener('submit',event=>{
+    event.preventDefault();if(state.accessBusy||!state.token)return;
+    const payload=Object.fromEntries(new FormData(event.target));
+    accessAction(runner=>runner.createMemberAccess(payload,pin()),true);
+  });
+  document.getElementById('memberAccessList').addEventListener('click',event=>{
+    const button=event.target.closest('[data-access-action]');if(!button||state.accessBusy)return;
+    const action=button.dataset.accessAction,key=button.dataset.memberKey;
+    if(action!=='issue'&&!confirm(action==='reset'?'Remplacer ce code ? Le code actuel et les sessions du membre seront désactivés.':'Désactiver cet accès et les sessions du membre ?'))return;
+    accessAction(runner=>runner.manageMemberCode(key,action,pin()));
+  });
+  document.getElementById('dismissMemberCode').addEventListener('click',hideIssuedCode);
+  document.getElementById('copyMemberCode').addEventListener('click',async()=>{
+    const input=document.getElementById('issuedCode');input.select();
+    try{await navigator.clipboard.writeText(input.value);Ui.notice('accessNotice','Code copié.','ok');}catch(_){Ui.notice('accessNotice','Code sélectionné : utilisez Copier dans le menu de votre appareil.','ok');}
+  });
+  document.getElementById('bureauCodeForm').addEventListener('submit',event=>{
+    event.preventDefault();if(!state.token)return;
+    const code=document.getElementById('newBureauCode').value;
+    if(code!==document.getElementById('confirmBureauCode').value){Ui.notice('adminNotice','Les deux codes sont différents.');return;}
+    const session=state.session;Ui.loading('changeBureauCodeBtn',true,'Modification…');
+    google.script.run.withSuccessHandler(()=>{if(session!==state.session)return;lockSession();Ui.notice('adminNotice','Code du bureau modifié. Connectez-vous avec le nouveau code.','ok');}).withFailureHandler(error=>{if(session!==state.session)return;Ui.loading('changeBureauCodeBtn',false);Ui.notice('adminNotice',error.message || error);}).changeBureauCode(code,pin());
+  });
+  function hideIssuedCode(){document.getElementById('issuedCodePanel').hidden=true;document.getElementById('issuedCode').value='';document.getElementById('issuedCodeLabel').textContent='Code personnel à transmettre';}
+  function clearMemberAccess(){state.accessMembers=[];state.accessBusy=false;document.getElementById('memberAccessPanel').hidden=true;document.getElementById('memberAccessList').textContent='';document.getElementById('accessNotice').hidden=true;hideIssuedCode();document.getElementById('newMemberForm').reset();document.getElementById('bureauCodeForm').reset();['newMemberBtn','changeBureauCodeBtn'].forEach(id=>Ui.loading(id,false));}
+  function loadMemberAccess(){
+    if(!state.token)return;const session=state.session;
+    google.script.run.withSuccessHandler(members=>{if(session!==state.session)return;state.accessMembers=members;document.getElementById('memberAccessPanel').hidden=false;renderMemberAccess();}).withFailureHandler(error=>{if(session!==state.session)return;Ui.notice('adminNotice',error.message || error);}).listMemberAccess(pin());
+  }
+  function renderMemberAccess(){
+    document.getElementById('memberAccessList').innerHTML=state.accessMembers.length?state.accessMembers.map(m=>'<div class="history-row"><div><strong>'+Ui.escape(m.prenom+' '+m.nom)+'</strong><p>'+Ui.escape(m.statut+' · '+m.cayenne)+' · '+(!m.active?'Membre inactif':m.hasCode?'Accès créé':'Sans code')+'</p></div><div class="access-actions">'+(m.active?'<button class="btn secondary" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="'+(m.hasCode?'reset':'issue')+'">'+(m.hasCode?'Remplacer le code':'Créer le code')+'</button>':'')+(m.hasCode?'<button class="text-button" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="revoke">Désactiver</button>':'')+'</div></div>').join(''):Ui.empty('Aucun membre','Ajoutez le premier membre pour créer son accès.','users');
+    document.querySelectorAll('[data-access-action]').forEach(button=>button.disabled=state.accessBusy);
+  }
+  function accessAction(invoke,created){
+    if(!state.token)return;const session=state.session;state.accessBusy=true;hideIssuedCode();renderMemberAccess();Ui.loading('newMemberBtn',true,'Enregistrement…');
+    const finish=()=>{state.accessBusy=false;Ui.loading('newMemberBtn',false);renderMemberAccess();};
+    const runner=google.script.run.withSuccessHandler(result=>{
+      if(session!==state.session)return;finish();
+      if(result.code){document.getElementById('issuedCode').value=result.code;document.getElementById('issuedCodeLabel').textContent='Code personnel de '+result.profile.prenom+' '+result.profile.nom;document.getElementById('issuedCodePanel').hidden=false;document.getElementById('issuedCode').focus();}
+      Ui.notice('accessNotice',result.code?'Accès prêt. Transmettez ce code personnel au membre.':'Accès désactivé.','ok');
+      if(created){document.getElementById('newMemberForm').reset();loadDashboard();}loadMemberAccess();
+    }).withFailureHandler(error=>{if(session!==state.session)return;finish();Ui.notice('accessNotice',error.message || error);});
+    invoke(runner);
+  }
   function loadDashboard(){
     if(!pin()){document.getElementById('accessPanel').hidden=false;document.getElementById('adminPin').focus();return;}
     if(!Number.isInteger(year()) || year()<2020 || year()>2100){Ui.notice('adminNotice','Choisissez une année entre 2020 et 2100.');return;}
     const request=++state.request;Ui.loading('loadDashboard',true,'Ouverture…');Ui.loading('refreshDashboard',true,'Actualisation…');
-    google.script.run.withSuccessHandler(data=>{if(request!==state.request)return;state.dashboard=data;renderDashboard(data);document.getElementById('accessPanel').hidden=true;document.getElementById('sessionBar').hidden=false;document.getElementById('sessionStatus').textContent='Année '+data.year+' · Mise à jour à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});document.querySelectorAll('[data-protected]').forEach(b=>b.disabled=b.getAttribute('aria-busy')==='true');if(document.getElementById('adminNotice').classList.contains('error'))document.getElementById('adminNotice').hidden=true;Ui.loading('loadDashboard',false);Ui.loading('refreshDashboard',false);}).withFailureHandler(error=>{if(request!==state.request)return;state.session++;state.dashboard=null;state.reportUrls.clear();state.pending.clear();['generateAll','createEvent'].forEach(id=>Ui.loading(id,false));renderEmptyState();document.getElementById('accessPanel').hidden=false;document.getElementById('sessionBar').hidden=true;Ui.loading('loadDashboard',false);Ui.loading('refreshDashboard',false);document.getElementById('refreshDashboard').disabled=true;Ui.notice('adminNotice',error.message || error);}).getDashboardData(year(),pin());
+    google.script.run.withSuccessHandler(data=>{if(request!==state.request)return;state.dashboard=data;renderDashboard(data);document.getElementById('accessPanel').hidden=true;document.getElementById('sessionBar').hidden=false;document.getElementById('sessionStatus').textContent='Année '+data.year+' · Mise à jour à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});document.querySelectorAll('[data-protected]').forEach(b=>b.disabled=b.getAttribute('aria-busy')==='true');if(document.getElementById('adminNotice').classList.contains('error'))document.getElementById('adminNotice').hidden=true;Ui.loading('loadDashboard',false);Ui.loading('refreshDashboard',false);}).withFailureHandler(error=>{if(request!==state.request)return;state.token='';clearMemberAccess();state.session++;state.dashboard=null;state.reportUrls.clear();state.pending.clear();['generateAll','createEvent'].forEach(id=>Ui.loading(id,false));renderEmptyState();document.getElementById('accessPanel').hidden=false;document.getElementById('sessionBar').hidden=true;Ui.loading('loadDashboard',false);Ui.loading('refreshDashboard',false);document.getElementById('refreshDashboard').disabled=true;Ui.notice('adminNotice',error.message || error);}).getDashboardData(year(),pin());
   }
-  function lockSession(){state.request++;state.session++;state.dashboard=null;state.reportUrls.clear();state.pending.clear();document.getElementById('adminPin').value='';document.getElementById('adminNotice').hidden=true;document.getElementById('accessPanel').hidden=false;document.getElementById('sessionBar').hidden=true;['loadDashboard','refreshDashboard','generateAll','createEvent'].forEach(id=>Ui.loading(id,false));renderEmptyState();showScreen('dashboard');document.getElementById('adminPin').focus();}
+  function lockSession(){const token=state.token;state.token='';clearMemberAccess();state.request++;state.session++;state.dashboard=null;state.reportUrls.clear();state.pending.clear();document.getElementById('adminPin').value='';document.getElementById('adminNotice').hidden=true;document.getElementById('accessPanel').hidden=false;document.getElementById('sessionBar').hidden=true;['loadDashboard','refreshDashboard','generateAll','createEvent'].forEach(id=>Ui.loading(id,false));renderEmptyState();showScreen('dashboard');document.getElementById('adminPin').focus();if(token)google.script.run.withFailureHandler(()=>{}).logoutAccess(token);}
   function createEvent(){
     if(!state.dashboard || !pin())return;
     const session=state.session;const payload={templateId:document.getElementById('templateSelect').value,date:document.getElementById('eventDate').value,title:document.getElementById('eventTitle').value,type:document.getElementById('eventType').value,cayenne:document.getElementById('eventCayenne').value,start:document.getElementById('eventStart').value,end:document.getElementById('eventEnd').value,place:document.getElementById('eventPlace').value,comment:document.getElementById('eventComment').value,active:'Oui'};

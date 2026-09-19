@@ -19,8 +19,8 @@ const UC_APP = {
   defaults: {
     activeYear: 2026,
     adminPin: '1234',
-    webAppUrl: 'https://script.google.com/macros/s/AKfycbx8DZydMvebuXtc0wr9tOuZW3lKQBsi7gB2La-xPGC4587bF1vzJtiT-EWU1cvsjNynCQ/exec',
-    adminAppUrl: 'https://script.google.com/macros/s/AKfycbx8DZydMvebuXtc0wr9tOuZW3lKQBsi7gB2La-xPGC4587bF1vzJtiT-EWU1cvsjNynCQ/exec?page=admin',
+    webAppUrl: 'https://script.google.com/macros/s/AKfycbyGEBmxVpXHjnTefdc3rP7WQrPjDwPmf79T-qQB8SkK1R-UoV7jPhdae7HDkmxBq2P7WA/exec',
+    adminAppUrl: 'https://script.google.com/macros/s/AKfycbyGEBmxVpXHjnTefdc3rP7WQrPjDwPmf79T-qQB8SkK1R-UoV7jPhdae7HDkmxBq2P7WA/exec?page=admin',
     statuses: ['Sociétaire', 'Aspirant', 'Compagnon'],
     cayennes: ['Paris', 'Autre'],
     reponses: ['Présent', 'Absent excusé', 'Disponible pour aider'],
@@ -64,7 +64,7 @@ function getSpreadsheet_() {
 }
 
 // Run once in the Apps Script editor to grant access and verify the connection.
-function verifierConnexionSheet() {
+function verifierConnexionSheet_() {
   const ss = getSpreadsheet_();
   const result = {
     ok: true,
@@ -80,10 +80,10 @@ function verifierConnexionSheet() {
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Présences UC')
-    .addItem('Installer / réparer le classeur', 'setupSystem')
-    .addItem('Actualiser le dashboard', 'refreshDashboardSheet')
-    .addItem('Générer les feuilles événement', 'generateAllEventSheetsForActiveYear')
-    .addItem('Exporter la feuille active en PDF', 'exportActiveSheetPdf')
+    .addItem('Installer / réparer le classeur', 'setupSystem_')
+    .addItem('Actualiser le dashboard', 'refreshDashboardSheet_')
+    .addItem('Générer les feuilles événement', 'generateAllEventSheetsForActiveYear_')
+    .addItem('Exporter la feuille active en PDF', 'exportActiveSheetPdf_')
     .addToUi();
 }
 
@@ -106,7 +106,7 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-function setupSystem() {
+function setupSystem_() {
   const ss = getSpreadsheet_();
   ensureSheet_(ss, UC_APP.sheets.parametres);
   ensureSheet_(ss, UC_APP.sheets.membres);
@@ -125,7 +125,7 @@ function setupSystem() {
   seedEventBase_(ss.getSheetByName(UC_APP.sheets.eventBase));
   seedCalendar_(ss.getSheetByName(UC_APP.sheets.calendrier));
   setupSuiviSheet_(ss.getSheetByName(UC_APP.sheets.suivi));
-  refreshDashboardSheet();
+  refreshDashboardSheet_();
   setupModeleCr_(ss.getSheetByName(UC_APP.sheets.modeleCr));
   applyValidations_();
   const eventSheets = generateAllEventSheets_(getSettings_().annee_active);
@@ -136,13 +136,17 @@ function setupSystem() {
   };
 }
 
-function getPublicConfig() {
+function getPublicConfig(token, requestedYear) {
+  const member = assertMember_(token);
   setupSystemIfMissing_();
   const settings = getSettings_();
   const urls = getAppUrls_(settings);
-  const year = Number(settings.annee_active || UC_APP.defaults.activeYear);
+  const year = requestedYear == null || requestedYear === '' ? Number(settings.annee_active || UC_APP.defaults.activeYear) : Number(requestedYear);
+  if (!Number.isInteger(year) || year < 2020 || year > 2100) throw new Error('Année invalide.');
   return {
     activeYear: year,
+    profile: memberProfile_(member),
+    responses: memberResponses_(member, year),
     urls: { publicUrl: urls.publicUrl },
     statuses: getOptionList_('D', UC_APP.defaults.statuses),
     cayennes: getOptionList_('E', UC_APP.defaults.cayennes),
@@ -222,7 +226,7 @@ function createEventFromTemplate(payload, adminPin) {
     event.Commentaire
   ]);
   sheet.getRange(sheet.getLastRow(), 3).setNumberFormat('yyyy-mm-dd');
-  refreshDashboardSheet();
+  refreshDashboardSheet_();
 
   return {
     ok: true,
@@ -231,15 +235,23 @@ function createEventFromTemplate(payload, adminPin) {
   };
 }
 
-function submitResponses(payload) {
+function submitResponses(payload, token) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    return submitMemberResponses_(payload, assertMember_(token));
+  } finally { lock.releaseLock(); }
+}
+
+function submitMemberResponses_(payload, member) {
   setupSystemIfMissing_();
-  payload = payload || {};
+  payload = Object.assign({}, payload || {}, memberProfile_(member));
 
   const nom = clean_(payload.nom);
   const prenom = clean_(payload.prenom);
   const statut = clean_(payload.statut);
   const cayenne = clean_(payload.cayenne);
-  const selectedEventIds = Array.isArray(payload.eventIds) ? payload.eventIds : [];
+  const selectedEventIds = Array.isArray(payload.eventIds) ? Array.from(new Set(payload.eventIds.map(String))) : [];
   const responseChoice = clean_(payload.reponse);
 
   if (!nom || !prenom) throw new Error('Nom et prénom obligatoires.');
@@ -247,25 +259,23 @@ function submitResponses(payload) {
   if (!cayenne) throw new Error('Cayenne obligatoire.');
   if (!responseChoice) throw new Error('Type de réponse obligatoire.');
   if (!selectedEventIds.length) throw new Error('Sélectionnez au moins un événement.');
+  if (!UC_APP.defaults.reponses.includes(responseChoice)) throw new Error('Réponse invalide.');
+  if (!getOptionList_('D', UC_APP.defaults.statuses).includes(statut) || !getOptionList_('E', UC_APP.defaults.cayennes).includes(cayenne)) throw new Error('Votre profil doit être corrigé par le bureau : statut ou Cayenne invalide.');
+  if (!/^[a-zA-Z0-9-]{16,80}$/.test(payload.requestId || '')) throw new Error('Actualisez la page avant de réessayer.');
 
   const ss = getSpreadsheet_();
   const responseSheet = ss.getSheetByName(UC_APP.sheets.reponses);
   const eventsById = indexBy_(getRowsAsObjects_(UC_APP.sheets.calendrier), 'ID_Evenement');
   const now = new Date();
   const causes = Array.isArray(payload.causes) ? payload.causes.map(clean_).filter(Boolean) : [];
+  if (causes.some(function(cause) { return !getOptionList_('G', UC_APP.defaults.causes).includes(cause); })) throw new Error('Motif d’absence invalide.');
+  if (['precision', 'commentaire'].some(function(key) { return clean_(payload[key]).length > 2000; })) throw new Error('Limitez vos précisions à 2 000 caractères.');
   const source = payload.source || (selectedEventIds.length > 1 ? 'Réponse anticipée' : 'Réponse événement');
   const isAid = responseChoice === 'Disponible pour aider';
   const savedRows = [];
-
-  upsertMember_({
-    Nom: nom,
-    Prenom: prenom,
-    Statut: statut,
-    Cayenne: cayenne,
-    Email: clean_(payload.email),
-    Telephone: clean_(payload.telephone),
-    Actif: 'Oui',
-    Notes: ''
+  const existingIds = new Set(getRowsAsObjects_(UC_APP.sheets.reponses).map(function(row) { return row.ID_Reponse; }));
+  selectedEventIds.forEach(function(id) {
+    if (!eventsById[id] || !isActive_(eventsById[id].Actif)) throw new Error('Un événement sélectionné n’est plus disponible. Actualisez le calendrier.');
   });
 
   selectedEventIds.forEach(function(eventId) {
@@ -274,8 +284,10 @@ function submitResponses(payload) {
     const eventDate = asDate_(event.Date);
     const finalResponse = isAid ? 'Présent' : responseChoice;
     const clePersonne = personKey_(nom, prenom, payload.email);
+    const responseId = payload.requestId + ':' + accessHash_(clePersonne) + ':' + eventId;
+    if (existingIds.has(responseId)) return;
     savedRows.push([
-      Utilities.getUuid(),
+      responseId,
       now,
       source,
       Number(event.Annee),
@@ -303,24 +315,29 @@ function submitResponses(payload) {
     ]);
   });
 
-  if (!savedRows.length) throw new Error('Aucun événement valide trouvé.');
-  responseSheet
+  if (savedRows.length) responseSheet
     .getRange(responseSheet.getLastRow() + 1, 1, savedRows.length, UC_APP.headers.reponses.length)
-    .setValues(savedRows);
+    .setValues(savedRows.map(function(row) { return row.map(sheetLiteral_); }));
 
-  refreshDashboardSheet();
-  const refreshedEvents = {};
-  savedRows.forEach(function(row) {
-    refreshedEvents[row[4]] = true;
-  });
-  Object.keys(refreshedEvents).forEach(function(eventId) {
-    generateEventSheet_(eventId);
-  });
+  let warning = '';
+  try {
+    refreshDashboardSheet_();
+    const refreshedEvents = {};
+    savedRows.forEach(function(row) {
+      refreshedEvents[row[4]] = true;
+    });
+    Object.keys(refreshedEvents).forEach(function(eventId) {
+      generateEventSheet_(eventId);
+    });
+  } catch (error) {
+    warning = 'Réponses enregistrées. Le bureau devra actualiser les feuilles de suivi.';
+  }
 
   return {
     ok: true,
-    saved: savedRows.length,
-    message: savedRows.length + ' réponse(s) enregistrée(s).'
+    saved: selectedEventIds.length,
+    warning: warning,
+    message: selectedEventIds.length + ' réponse(s) enregistrée(s).'
   };
 }
 
@@ -422,12 +439,12 @@ function generateAllEventSheets_(year) {
   });
 }
 
-function generateAllEventSheetsForActiveYear() {
+function generateAllEventSheetsForActiveYear_() {
   const results = generateAllEventSheets_(getSettings_().annee_active);
   SpreadsheetApp.getUi().alert(results.length + ' feuille(s) événement générée(s).');
 }
 
-function refreshDashboardSheet() {
+function refreshDashboardSheet_() {
   const ss = getSpreadsheet_();
   const sheet = ss.getSheetByName(UC_APP.sheets.dashboard);
   if (!sheet) return;
@@ -496,7 +513,7 @@ function refreshDashboardSheet() {
   sheet.autoResizeColumns(1, 17);
 }
 
-function exportActiveSheetPdf() {
+function exportActiveSheetPdf_() {
   const ss = getSpreadsheet_();
   const sheet = ss.getActiveSheet();
   const file = exportSheetToPdf_(sheet);
@@ -505,7 +522,7 @@ function exportActiveSheetPdf() {
 
 function setupSystemIfMissing_() {
   const ss = getSpreadsheet_();
-  if (!ss.getSheetByName(UC_APP.sheets.reponses) || !ss.getSheetByName(UC_APP.sheets.eventBase)) setupSystem();
+  if (!ss.getSheetByName(UC_APP.sheets.reponses) || !ss.getSheetByName(UC_APP.sheets.eventBase)) setupSystem_();
 }
 
 function ensureSheet_(ss, name) {
@@ -699,8 +716,8 @@ function getSettingsFromSheet_(sheet) {
 
 function getAppUrls_(settings) {
   settings = settings || getSettings_();
-  const publicUrl = clean_(settings.web_app_url || UC_APP.defaults.webAppUrl);
-  const adminUrl = clean_(settings.admin_app_url || UC_APP.defaults.adminAppUrl || makeAdminUrl_(publicUrl));
+  const publicUrl = UC_APP.defaults.webAppUrl;
+  const adminUrl = makeAdminUrl_(publicUrl);
   return {
     publicUrl: publicUrl,
     adminUrl: adminUrl
@@ -729,8 +746,8 @@ function setLinkedText_(range, text, url) {
 }
 
 function assertAdmin_(pin) {
-  const expected = String(getSettings_().admin_pin || UC_APP.defaults.adminPin).trim();
-  if (String(pin || '').trim() !== expected) throw new Error('Code admin incorrect.');
+  const session = accessSession_(pin, 'bureau');
+  if (session.version !== accessHash_(clean_(getSettings_().admin_pin))) throw new Error('SESSION_EXPIRED: Reconnectez-vous avec le code du bureau.');
 }
 
 function getEventsForYear_(year) {
@@ -1051,15 +1068,12 @@ function upsertMember_(member) {
 function markResponseReportSheet_(eventId, sheetName) {
   const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.reponses);
   if (!sheet || sheet.getLastRow() < 2) return;
-  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, UC_APP.headers.reponses.length).getValues();
-  let changed = false;
-  values.forEach(function(row) {
-    if (row[4] === eventId) {
-      row[24] = sheetName;
-      changed = true;
+  const table = getTableData_(UC_APP.sheets.reponses);
+  table.rows.forEach(function(row, index) {
+    if (row.ID_Evenement === eventId && row.Feuille_CR !== sheetName) {
+      sheet.getRange(table.rowNumbers[index], 25).setValue(sheetName);
     }
   });
-  if (changed) sheet.getRange(2, 1, values.length, UC_APP.headers.reponses.length).setValues(values);
 }
 
 function colorResponseColumn_(sheet, startRow, rowCount) {
@@ -1100,6 +1114,10 @@ function indexBy_(rows, key) {
 
 function clean_(value) {
   return String(value === null || typeof value === 'undefined' ? '' : value).trim();
+}
+
+function sheetLiteral_(value) {
+  return typeof value === 'string' && value.charAt(0) === '=' ? "'" + value : value;
 }
 
 function isActive_(value) {

@@ -54,7 +54,7 @@ const eventTemplates = [
   ["TPL-AG", "Assemblée générale", "Autre", "Assemblée générale", "19:30", "22:00", "Cayenne de Paris", "Paris", "Réunion", "Oui", "Assemblée générale"],
   ["TPL-TRAVAIL-UC", "Travail UC", "Autre", "Travail UC", "09:00", "17:00", "Cayenne de Paris", "Paris", "Travail", "Oui", "Travail compagnonnique à préciser"]
 ];
-const webAppUrl = "https://script.google.com/macros/s/AKfycbx8DZydMvebuXtc0wr9tOuZW3lKQBsi7gB2La-xPGC4587bF1vzJtiT-EWU1cvsjNynCQ/exec";
+const webAppUrl = "https://script.google.com/macros/s/AKfycbyGEBmxVpXHjnTefdc3rP7WQrPjDwPmf79T-qQB8SkK1R-UoV7jPhdae7HDkmxBq2P7WA/exec";
 const adminAppUrl = `${webAppUrl}?page=admin`;
 
 const headers = {
@@ -403,7 +403,7 @@ function buildModeleCr() {
 }
 
 async function buildCodeSheets() {
-  const code = await fs.readFile(path.join(rootDir, "src", "Code.gs"), "utf8");
+  const code = await fs.readFile(path.join(rootDir, "src", "Code.gs"), "utf8") + "\n\n" + await fs.readFile(path.join(rootDir, "src", "Access.gs"), "utf8");
   const html = await fs.readFile(path.join(rootDir, "src", "Index.html"), "utf8");
   const publicHtml = await fs.readFile(path.join(rootDir, "src", "Public.html"), "utf8");
   const adminHtml = await fs.readFile(path.join(rootDir, "src", "Admin.html"), "utf8");

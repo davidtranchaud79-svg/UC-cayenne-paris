@@ -99,7 +99,7 @@ Le workflow crée sa configuration, envoie les fichiers de `src/` vers Apps Scri
 
 Une ancienne exécution verte peut contenir `Invalid deployment ID` dans son journal : clasp 3.4.1 peut afficher cette erreur sans renvoyer de code d’échec. Le contrôle actuel refuse cette fausse réussite.
 
-Si l'initialisation n'a jamais été faite, ouvrir Apps Script depuis le Sheet, sélectionner `setupSystem`, cliquer sur `Exécuter` et accepter les autorisations Google.
+Si l'initialisation n'a jamais été faite, ouvrir Apps Script depuis le Sheet, sélectionner `setupSystem_`, cliquer sur `Exécuter` et accepter les autorisations Google.
 
 Le lien public se termine par `/exec`. Le lien admin utilise le même déploiement avec `?page=admin` à la fin.
 

@@ -15,16 +15,25 @@ function render(file) {
   return readFileSync(new URL(file,src),'utf8').replace(/<\?!= include\('([A-Za-z]+)'\); \?>/g,(_,name)=>readFileSync(new URL(name+'.html',src),'utf8')).replaceAll('<?= publicUrl ?>',publicUrl).replaceAll('<?= adminUrl ?>',publicUrl+'?page=admin');
 }
 function app(file, overrides={}) {
+  config.profile={nom:'Exemple',prenom:'Camille',statut:'Sociétaire',cayenne:'Paris',email:'camille@example.test',telephone:''};
+  config.responses=[];
   const calls=[],errors=[],queue=[];
   const console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error));
   const dom=new JSDOM(render(file),{url:'https://preview.invalid/',runScripts:'dangerously',virtualConsole:console,beforeParse(window){
     window.HTMLElement.prototype.scrollIntoView=function(){};
+    window.confirm=()=>true;
     window.google={script:{get run(){let success=()=>{},failure=()=>{};const runner=new Proxy({}, {get(_,method){
       if(method==='withSuccessHandler')return fn=>{success=fn;return runner;};
       if(method==='withFailureHandler')return fn=>{failure=fn;return runner;};
       return (...args)=>{calls.push({method,args});queue.push(()=>{try{
         if(overrides[method])success(overrides[method](...args));
         else if(method==='getPublicConfig'||method==='getBootstrapConfig')success(structuredClone(config));
+        else if(method==='loginMember')success({token:'MEMBER_SESSION'});
+        else if(method==='loginBureau')success({token:'BUREAU_SESSION'});
+        else if(method==='logoutAccess')success({ok:true});
+        else if(method==='listMemberAccess')success([{...config.profile,key:config.profile.email,active:true,hasCode:false}]);
+        else if(method==='manageMemberCode'||method==='createMemberAccess')success({profile:config.profile,code:'1234-5678-90AB-CDEF'});
+        else if(method==='changeBureauCode')success({ok:true});
         else if(method==='getDashboardData')success(structuredClone(dashboard));
         else if(method==='submitResponses')success({ok:true,saved:args[0].eventIds.length});
         else if(method==='createEventFromTemplate')success({ok:true,message:'Événement créé.'});
@@ -39,9 +48,11 @@ function app(file, overrides={}) {
   function fill(id,value,event='input'){const node=doc.getElementById(id);node.value=value;node.dispatchEvent(new dom.window.Event(event,{bubbles:true}));}
   function submit(id){const node=doc.getElementById(id);assert.equal(node.checkValidity(),true,'Form should be valid');node.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));}
   function login(){fill('adminPin','LOCAL_TEST_VALUE');submit('accessForm');flush();}
-  flush();return {dom,doc,calls,flush,fill,submit,login};
+  function memberLogin(){fill('memberCode','1234-5678-90AB-CDEF');submit('memberLoginForm');flush();}
+  flush();if(file==='Public.html'&&!overrides.startLocked)memberLogin();
+  return {dom,doc,calls,flush,fill,submit,login,memberLogin};
 }
-function identity(a){a.fill('prenom','Camille');a.fill('nom','Exemple');a.fill('statut','Sociétaire','change');}
+function identity(a){assert.equal(a.doc.getElementById('prenom').value,'Camille');assert.ok(a.doc.getElementById('prenom').disabled);}
 
 test('member screen starts, has no administration link, and exposes real calendar choices',()=>{
   const a=app('Public.html');assert.equal(a.doc.querySelectorAll('[name="eventIds"]').length,2);assert.ok(a.doc.getElementById('submitBtn').disabled);assert.equal(a.doc.querySelectorAll('a[href*="page=admin"]').length,0);assert.ok(a.doc.querySelector('img[alt="Écusson de la Cayenne de Paris"]'));a.dom.window.close();
@@ -59,13 +70,38 @@ test('bureau shows no fabricated figures before authentication and clears data w
   const a=app('Admin.html');assert.match(a.doc.getElementById('kpiRoot').textContent,/—/);assert.equal(a.calls.some(c=>c.method==='getDashboardData'),false);a.login();assert.equal(a.doc.getElementById('accessPanel').hidden,true);assert.match(a.doc.getElementById('membersRoot').textContent,/Camille Exemple/);a.doc.getElementById('lockSession').click();assert.equal(a.doc.getElementById('adminPin').value,'');assert.doesNotMatch(a.doc.getElementById('membersRoot').textContent,/Camille Exemple/);assert.ok(a.doc.getElementById('generateAll').disabled);a.dom.window.close();
 });
 test('bureau navigation, filters, model creation, and individual report generation keep their server contracts',()=>{
-  const a=app('Admin.html');a.login();a.doc.querySelector('[data-screen="events"]').click();assert.ok(a.doc.getElementById('screen-events').classList.contains('active'));assert.equal(a.doc.getElementById('eventTitle').value,'Journées du patrimoine');a.fill('eventDate','2026-10-10');a.submit('eventForm');a.flush();const sent=a.calls.find(c=>c.method==='createEventFromTemplate');assert.equal(sent.args[0].date,'2026-10-10');assert.equal(sent.args[0].templateId,'tpl-1');assert.equal(sent.args[1],'LOCAL_TEST_VALUE');a.doc.querySelector('[data-screen="members"]').click();a.fill('memberSearch','introuvable');assert.match(a.doc.getElementById('membersRoot').textContent,/Aucun membre/);a.fill('memberSearch','Camille');assert.match(a.doc.getElementById('membersRoot').textContent,/Camille Exemple/);a.doc.querySelector('[data-screen="reports"]').click();a.doc.querySelector('[data-event-id="evt-1"]').click();a.flush();assert.equal(a.calls.find(c=>c.method==='generateEventSheet').args[0],'evt-1');assert.ok(a.doc.querySelector('.report-links a[href^="https://docs.google.com/spreadsheets/"]'));a.dom.window.close();
+  const a=app('Admin.html');a.login();a.doc.querySelector('[data-screen="events"]').click();assert.ok(a.doc.getElementById('screen-events').classList.contains('active'));assert.equal(a.doc.getElementById('eventTitle').value,'Journées du patrimoine');a.fill('eventDate','2026-10-10');a.submit('eventForm');a.flush();const sent=a.calls.find(c=>c.method==='createEventFromTemplate');assert.equal(sent.args[0].date,'2026-10-10');assert.equal(sent.args[0].templateId,'tpl-1');assert.equal(sent.args[1],'BUREAU_SESSION');a.doc.querySelector('[data-screen="members"]').click();a.fill('memberSearch','introuvable');assert.match(a.doc.getElementById('membersRoot').textContent,/Aucun membre/);a.fill('memberSearch','Camille');assert.match(a.doc.getElementById('membersRoot').textContent,/Camille Exemple/);a.doc.querySelector('[data-screen="reports"]').click();a.doc.querySelector('[data-event-id="evt-1"]').click();a.flush();assert.equal(a.calls.find(c=>c.method==='generateEventSheet').args[0],'evt-1');assert.ok(a.doc.querySelector('.report-links a[href^="https://docs.google.com/spreadsheets/"]'));a.dom.window.close();
 });
 test('event titles from the Sheet remain escaped text',()=>{
   const hostile=structuredClone(config);hostile.events[0].title='<img src=x onerror="alert(1)">';const a=app('Public.html',{getPublicConfig:()=>hostile});assert.equal(a.doc.querySelectorAll('.event-choice img').length,0);assert.match(a.doc.getElementById('events').textContent,/<img src=x/);a.dom.window.close();
 });
 
 // A refresh and an event/report write can overlap on a slow connection.
+test('member login protects the initial screen and logout discards late responses and personal information',()=>{
+  const a=app('Public.html',{startLocked:true});
+  assert.equal(a.calls.length,0);assert.equal(a.doc.getElementById('formContent').hidden,true);
+  a.memberLogin();assert.match(a.doc.getElementById('memberWelcome').textContent,/Camille/);
+  a.doc.getElementById('memberRefresh').click();a.doc.getElementById('memberLogout').click();a.flush();
+  assert.equal(a.doc.getElementById('memberLogin').hidden,false);assert.equal(a.doc.getElementById('memberOverview').hidden,true);
+  assert.equal(a.doc.getElementById('nom').value,'');assert.equal(a.doc.getElementById('events').textContent,'');
+  assert.equal(a.calls.at(-1).method,'logoutAccess');a.dom.window.close();
+});
+test('bureau issues a code without exposing it after locking, and uses only its session for member management',()=>{
+  const a=app('Admin.html');a.login();a.doc.querySelector('[data-access-action="issue"]').click();a.flush();
+  assert.equal(a.calls.find(c=>c.method==='manageMemberCode').args[2],'BUREAU_SESSION');
+  assert.equal(a.doc.getElementById('issuedCodePanel').hidden,false);
+  a.doc.getElementById('lockSession').click();a.flush();
+  assert.equal(a.doc.getElementById('issuedCode').value,'');assert.equal(a.doc.getElementById('memberAccessList').textContent,'');
+  a.dom.window.close();
+});
+test('member can reopen a saved response including reasons and availability',()=>{
+  const a=app('Public.html',{getPublicConfig:()=>({...config,responses:[{eventId:'evt-1',date:'19/09/2026',title:'JEP',response:'Absent excusé',causes:['Travail'],precision:'Horaires',comment:'Indisponible'}]})});
+  a.doc.querySelector('[data-edit-event]').click();
+  assert.equal(a.doc.querySelector('[name="reponse"]:checked').value,'Absent excusé');
+  assert.equal(a.doc.getElementById('precision').value,'Horaires');assert.equal(a.doc.querySelectorAll('[name="eventIds"]:checked').length,1);
+  a.submit('presenceForm');a.flush();const sent=a.calls.find(c=>c.method==='submitResponses');
+  assert.equal(sent.args[1],'MEMBER_SESSION');assert.equal('nom' in sent.args[0],false);a.dom.window.close();
+});
 test('refreshing does not strand an in-flight report and locking ignores its late response',()=>{
   const a=app('Admin.html');a.login();
   a.doc.querySelector('[data-event-id="evt-1"]').click();

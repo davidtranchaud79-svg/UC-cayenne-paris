@@ -20,15 +20,25 @@
     <div class="welcome">
       <div>
         <div class="eyebrow">Présences &amp; engagements</div>
-        <h1 class="serif">Chaque rendez-vous compte.</h1>
-        <p>Une présence, une excuse, un coup de main : préparez vos engagements pour toute l’année, en une seule réponse.</p>
+        <h1 class="serif" id="memberWelcome">Mon espace membre</h1>
+        <p id="memberIntro">Connectez-vous avec le code personnel remis par le bureau.</p>
       </div>
       <div class="year-seal"><strong id="activeYear">—</strong><span>Une année ensemble</span></div>
     </div>
     <div id="publicNotice" class="notice public-notice" role="status" aria-live="polite" hidden></div>
-    <div id="formContent">
+    <section id="memberLogin" class="panel access-panel">
+      <div class="access-copy"><span class="access-icon" data-icon="lock"></span><div><h2>Vos rendez-vous, vos réponses.</h2><p>Votre code donne accès à votre espace personnel. Pour un premier accès ou un code perdu, contactez le bureau.</p></div></div>
+      <form id="memberLoginForm" class="access-form"><div class="field"><label for="memberCode">Mon code personnel</label><input id="memberCode" type="password" autocomplete="current-password" maxlength="40" required></div><button class="btn" id="memberLoginBtn" type="submit">Me connecter <span data-icon="arrow"></span></button></form>
+    </section>
+    <section id="memberOverview" hidden>
+      <div class="session-bar"><strong id="memberIdentity"></strong><button class="text-button" type="button" id="memberLogout">Me déconnecter <span data-icon="logout"></span></button></div>
+      <div class="toolbar"><div class="field"><label for="memberYear">Année de mes engagements</label><input id="memberYear" type="number" min="2020" max="2100" value="2026"></div><button id="memberRefresh" type="button" class="btn secondary">Actualiser <span data-icon="refresh"></span></button></div>
+      <div id="memberSummary" class="member-summary" aria-live="polite"></div>
+      <details class="member-history"><summary>Mes réponses enregistrées</summary><div id="memberHistory"></div></details>
+    </section>
+    <div id="formContent" hidden>
       <div class="journey" aria-label="Les trois étapes du formulaire">
-        <span><b>1</b>Vos rendez-vous</span><span><b>2</b>Votre réponse</span><span><b>3</b>Votre identité</span>
+        <span><b>1</b>Vos rendez-vous</span><span><b>2</b>Votre réponse</span><span><b>3</b>Votre profil</span>
       </div>
       <form id="presenceForm">
         <div class="public-layout">
@@ -57,7 +67,7 @@
               </div>
             </section>
             <section class="panel panel-pad" aria-labelledby="identityTitle">
-              <div class="panel-head"><span class="step-number">03</span><div class="head-copy"><h2 id="identityTitle">Faisons connaissance</h2><p>Les champs marqués d’un astérisque sont obligatoires.</p></div></div>
+              <div class="panel-head"><span class="step-number">03</span><div class="head-copy"><h2 id="identityTitle">Votre profil</h2><p>Pour corriger votre identité, contactez le bureau.</p></div></div>
               <div class="fields">
                 <div class="field"><label for="prenom">Prénom *</label><input id="prenom" name="prenom" autocomplete="given-name" placeholder="Votre prénom" required></div>
                 <div class="field"><label for="nom">Nom *</label><input id="nom" name="nom" autocomplete="family-name" placeholder="Votre nom" required></div>
@@ -82,7 +92,7 @@
     <footer class="page-footer"><span>Union Compagnonnique · Cayenne de Paris</span><span>Présences, excuses et engagements</span></footer>
   </main>
   <script>
-  const state = {config:null, selected:new Set(), busy:false};
+  const state = {config:null, selected:new Set(), busy:false, token:'', epoch:0, request:0, requestId:newRequestId()};
   Ui.mountIcons();
   const form = document.getElementById('presenceForm');
   document.getElementById('eventSearch').addEventListener('input', renderEvents);
@@ -93,20 +103,83 @@
   document.getElementById('responseOptions').addEventListener('change',updateConditionalBlocks);
   document.getElementById('newResponse').addEventListener('click',()=>{document.getElementById('formContent').hidden=false;document.getElementById('successState').hidden=true;document.getElementById('publicNotice').hidden=true;document.querySelectorAll('input[name="reponse"],input[name="causes"]').forEach(n=>n.checked=false);['precision','commentaire','heureDebutAide','heureFinAide'].forEach(id=>document.getElementById(id).value='');updateConditionalBlocks();document.getElementById('eventSearch').focus();});
   form.addEventListener('submit',submitForm);
+  document.getElementById('memberLoginForm').addEventListener('submit',loginMember);
+  document.getElementById('memberLogout').addEventListener('click',()=>lockMember(true));
+  document.getElementById('memberRefresh').addEventListener('click',()=>loadSpace(Number(document.getElementById('memberYear').value)));
+  document.getElementById('memberYear').addEventListener('change',()=>loadSpace(Number(document.getElementById('memberYear').value)));
+  document.getElementById('memberHistory').addEventListener('click',event=>{const button=event.target.closest('[data-edit-event]');if(button)editResponse(button.dataset.editEvent);});
   init();
   function init(){
+    try{state.token=sessionStorage.getItem('uc.member.session') || '';}catch(_){}
+    if(state.token)loadSpace();
+  }
+  function newRequestId(){return typeof crypto.randomUUID==='function'?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);}
+  function loginMember(event){
+    event.preventDefault();if(document.getElementById('memberLoginBtn').disabled)return;
+    const epoch=++state.epoch;Ui.loading('memberLoginBtn',true,'Connexion…');
+    google.script.run.withSuccessHandler(result=>{
+      if(epoch!==state.epoch)return;state.token=result.token;
+      try{sessionStorage.setItem('uc.member.session',state.token);}catch(_){}
+      document.getElementById('memberCode').value='';loadSpace();
+    }).withFailureHandler(error=>{if(epoch!==state.epoch)return;Ui.loading('memberLoginBtn',false);memberError(error);}).loginMember(document.getElementById('memberCode').value);
+  }
+  function lockMember(revoke){
+    const token=state.token;state.epoch++;state.request++;state.token='';state.config=null;state.selected.clear();state.busy=false;
+    try{sessionStorage.removeItem('uc.member.session');}catch(_){}
+    form.reset();state.requestId=newRequestId();
+    ['memberOverview','formContent','successState'].forEach(id=>document.getElementById(id).hidden=true);
+    ['events','memberHistory','memberSummary','memberIdentity','causes','responseOptions'].forEach(id=>document.getElementById(id).textContent='');
+    ['prenom','nom','statut','cayenne','email','telephone'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('memberWelcome').textContent='Mon espace membre';document.getElementById('activeYear').textContent='—';
+    document.getElementById('memberLogin').hidden=false;document.getElementById('memberCode').value='';
+    ['memberLoginBtn','memberRefresh','submitBtn'].forEach(id=>Ui.loading(id,false));updateSummary();
+    document.getElementById('memberCode').focus();
+    if(revoke&&token)google.script.run.withFailureHandler(()=>{}).logoutAccess(token);
+  }
+  function memberError(error){const message=error.message || String(error);if(message.includes('SESSION_EXPIRED:'))lockMember(false);Ui.notice('publicNotice',message.replace('SESSION_EXPIRED: ',''));}
+  function loadSpace(year, after){
+    if(!state.token || state.busy)return;
+    if(year!==undefined&&(!Number.isInteger(year)||year<2020||year>2100)){Ui.notice('publicNotice','Choisissez une année entre 2020 et 2100.');return;}
+    const epoch=state.epoch, request=++state.request;
+    Ui.loading('memberRefresh',true,'Chargement…');
+    document.getElementById('formContent').hidden=true;
     google.script.run.withSuccessHandler(config=>{
+      if(epoch!==state.epoch||request!==state.request)return;
       state.config=config;
+      state.selected.clear();state.requestId=newRequestId();
+      document.getElementById('memberLogin').hidden=true;document.getElementById('memberOverview').hidden=false;
+      document.getElementById('formContent').hidden=!!after;document.getElementById('successState').hidden=!after;
+      document.getElementById('publicNotice').hidden=true;
+      ['memberLoginBtn','memberRefresh'].forEach(id=>Ui.loading(id,false));
+      document.getElementById('memberYear').value=config.activeYear;
+      document.getElementById('memberWelcome').textContent='Bonjour '+config.profile.prenom;
+      document.getElementById('memberIntro').textContent='Retrouvez vos engagements et préparez les prochains rendez-vous.';
+      document.getElementById('memberIdentity').textContent=[config.profile.prenom,config.profile.nom,'·',config.profile.statut].join(' ');
       document.getElementById('activeYear').textContent=config.activeYear;
       fillSelect('statut',config.statuses || []);fillSelect('cayenne',config.cayennes || []);
-      if((config.cayennes || []).includes('Paris'))document.getElementById('cayenne').value='Paris';
+      ['prenom','nom','statut','cayenne','email','telephone'].forEach(id=>{const input=document.getElementById(id);input.value=config.profile[id] || '';input.disabled=true;input.required=false;});
       const types=[...new Set((config.events || []).map(e=>e.type).filter(Boolean))];
       document.getElementById('typeFilter').innerHTML='<option value="">Tous les événements</option>'+types.map(t=>'<option value="'+Ui.escape(t)+'">'+Ui.escape(t)+'</option>').join('');
       const choices={'Présent':['Je serai présent','Au plaisir de nous retrouver.','check',''],'Absent excusé':['Je serai absent','Je préviens le bureau de mon absence.','clock','absent'],'Disponible pour aider':['Je propose mon aide','Je serai présent et disponible pour aider.','heart','help']};
       document.getElementById('responseOptions').innerHTML=(config.responseTypes || []).map((value,i)=>{const c=choices[value] || [value,'','check',''];return '<label class="response-option '+c[3]+'"><span class="response-symbol">'+Ui.icon(c[2])+'</span><span><strong>'+Ui.escape(c[0])+'</strong><small>'+Ui.escape(c[1])+'</small></span><input type="radio" name="reponse" value="'+Ui.escape(value)+'" required aria-label="'+Ui.escape(c[0])+'"></label>';}).join('');
       document.getElementById('causes').innerHTML=(config.causes || []).map(c=>'<label class="cause-option"><input type="checkbox" name="causes" value="'+Ui.escape(c)+'"><span>'+Ui.escape(c)+'</span></label>').join('');
-      renderEvents();updateConditionalBlocks();
-    }).withFailureHandler(error=>{Ui.notice('publicNotice',error.message || error);document.getElementById('events').innerHTML=Ui.empty('Calendrier indisponible','Actualisez la page pour réessayer.','info');}).getPublicConfig();
+      renderEvents();renderHistory();updateConditionalBlocks();if(after)after();
+    }).withFailureHandler(error=>{if(epoch!==state.epoch||request!==state.request)return;['memberLoginBtn','memberRefresh'].forEach(id=>Ui.loading(id,false));memberError(error);if(state.config)document.getElementById('formContent').hidden=false;}).getPublicConfig(state.token,year);
+  }
+  function renderHistory(){
+    const responses=state.config.responses || [];
+    const present=responses.filter(r=>r.response!=='Absent excusé').length, absent=responses.filter(r=>r.response==='Absent excusé').length;
+    document.getElementById('memberSummary').textContent=state.config.activeYear+' · '+present+' présence(s) prévue(s) · '+absent+' absence(s) excusée(s) · '+responses.filter(r=>r.response==='Disponible pour aider').length+' proposition(s) d’aide';
+    document.getElementById('memberHistory').innerHTML=responses.length?responses.map(r=>'<article class="history-row"><div><strong>'+Ui.escape(r.title)+'</strong><p>'+Ui.escape(r.date)+' · '+Ui.escape(r.response)+'</p>'+(r.causes.length?'<p>'+Ui.escape(r.causes.join(', '))+'</p>':'')+'</div>'+((state.config.events || []).some(e=>e.id===r.eventId)?'<button class="btn secondary" type="button" data-edit-event="'+Ui.escape(r.eventId)+'">Modifier</button>':'')+'</article>').join(''):Ui.empty('Aucune réponse pour cette année','Vos réponses apparaîtront ici après enregistrement.','file');
+  }
+  function editResponse(id){
+    const r=state.config.responses.find(row=>row.eventId===id);if(!r)return;
+    document.getElementById('newResponse').click();state.selected=new Set([id]);state.requestId=newRequestId();
+    document.getElementById('eventSearch').value='';document.getElementById('typeFilter').value='';
+    form.querySelectorAll('[name="reponse"]').forEach(input=>input.checked=input.value===r.response);
+    form.querySelectorAll('[name="causes"]').forEach(input=>input.checked=r.causes.includes(input.value));
+    Object.entries({precision:r.precision,commentaire:r.comment,heureDebutAide:r.start,heureFinAide:r.end}).forEach(([key,value])=>document.getElementById(key).value=value || '');
+    renderEvents();updateConditionalBlocks();document.getElementById('responseTitle').scrollIntoView({block:'center'});
   }
   function fillSelect(id, values){document.getElementById(id).innerHTML='<option value="">Choisir…</option>'+values.map(v=>'<option value="'+Ui.escape(v)+'">'+Ui.escape(v)+'</option>').join('');}
   function visibleEvents(){const query=Ui.normalize(document.getElementById('eventSearch').value);const type=document.getElementById('typeFilter').value;return (state.config?.events || []).filter(e=>(!type || e.type===type)&&Ui.normalize([e.title,e.type,e.date,e.place].join(' ')).includes(query));}
@@ -122,14 +195,18 @@
     event.preventDefault();if(state.busy)return;
     if(!state.selected.size){Ui.notice('publicNotice','Sélectionnez au moins un rendez-vous.');return;}
     const data=new FormData(form);const reponse=responseValue();const absent=reponse==='Absent excusé';const aide=reponse==='Disponible pour aider';
-    const payload={nom:data.get('nom'),prenom:data.get('prenom'),email:data.get('email'),telephone:data.get('telephone'),statut:data.get('statut'),cayenne:data.get('cayenne'),reponse,causes:absent?data.getAll('causes'):[],precision:absent?data.get('precision'):'',heureDebutAide:aide?data.get('heureDebutAide'):'',heureFinAide:aide?data.get('heureFinAide'):'',commentaire:data.get('commentaire'),eventIds:[...state.selected],source:state.selected.size>1?'Réponse anticipée':'Réponse événement'};
+    const epoch=state.epoch;
+    const payload={reponse,causes:absent?data.getAll('causes'):[],precision:absent?data.get('precision'):'',heureDebutAide:aide?data.get('heureDebutAide'):'',heureFinAide:aide?data.get('heureFinAide'):'',commentaire:data.get('commentaire'),eventIds:[...state.selected],source:state.selected.size>1?'Réponse anticipée':'Réponse événement'};
+    const fingerprint=JSON.stringify(payload);if(state.lastPayload!==fingerprint)state.requestId=newRequestId();state.lastPayload=fingerprint;payload.requestId=state.requestId;
     state.busy=true;Ui.loading('submitBtn',true,'Enregistrement…');document.getElementById('publicNotice').hidden=true;
     google.script.run.withSuccessHandler(result=>{
+      if(epoch!==state.epoch)return;
       state.busy=false;Ui.loading('submitBtn',false);state.selected.clear();renderEvents();
       document.getElementById('formContent').hidden=true;document.getElementById('successState').hidden=false;
-      document.getElementById('successMessage').textContent=(result.saved || payload.eventIds.length)+' réponse(s) enregistrée(s). Le bureau peut maintenant retrouver vos engagements.';
+      document.getElementById('successMessage').textContent=(result.saved || payload.eventIds.length)+' réponse(s) enregistrée(s). '+(result.warning || 'Le bureau peut maintenant retrouver vos engagements.');
       document.getElementById('successState').focus();
-    }).withFailureHandler(error=>{state.busy=false;Ui.loading('submitBtn',false);updateSummary();Ui.notice('publicNotice',error.message || error);document.getElementById('publicNotice').scrollIntoView({block:'center'});}).submitResponses(payload);
+      loadSpace(state.config.activeYear,()=>{});
+    }).withFailureHandler(error=>{if(epoch!==state.epoch)return;state.busy=false;Ui.loading('submitBtn',false);updateSummary();memberError(error);document.getElementById('publicNotice').scrollIntoView({block:'center'});}).submitResponses(payload,state.token);
   }
   </script>
 </body>

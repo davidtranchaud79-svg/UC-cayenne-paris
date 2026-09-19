@@ -2,7 +2,7 @@
 
 Ce pack contient une base Google Sheets + Apps Script pour suivre les présences sur l'année :
 
-- formulaire public séparé pour les sociétaires, aspirants et compagnons ;
+- espace personnel avec code individuel pour les sociétaires, aspirants et compagnons ;
 - excuses possibles en avance sur plusieurs dates ;
 - disponibilités pour aider sur les événements ;
 - base d’événements types pour créer un calendrier sans repartir de zéro ;
@@ -15,8 +15,8 @@ Ce pack contient une base Google Sheets + Apps Script pour suivre les présences
 
 | Élément | Lien |
 |---|---|
-| Formulaire public | [Ouvrir le formulaire](https://script.google.com/macros/s/AKfycbx8DZydMvebuXtc0wr9tOuZW3lKQBsi7gB2La-xPGC4587bF1vzJtiT-EWU1cvsjNynCQ/exec) |
-| Dashboard admin | [Ouvrir le dashboard](https://script.google.com/macros/s/AKfycbx8DZydMvebuXtc0wr9tOuZW3lKQBsi7gB2La-xPGC4587bF1vzJtiT-EWU1cvsjNynCQ/exec?page=admin) |
+| Formulaire public | [Ouvrir le formulaire](https://script.google.com/macros/s/AKfycbyGEBmxVpXHjnTefdc3rP7WQrPjDwPmf79T-qQB8SkK1R-UoV7jPhdae7HDkmxBq2P7WA/exec) |
+| Dashboard admin | [Ouvrir le dashboard](https://script.google.com/macros/s/AKfycbyGEBmxVpXHjnTefdc3rP7WQrPjDwPmf79T-qQB8SkK1R-UoV7jPhdae7HDkmxBq2P7WA/exec?page=admin) |
 | Google Sheet de suivi | [Ouvrir le Sheet](https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit) |
 | Page GitHub | [Ouvrir la page](https://davidtranchaud79-svg.github.io/UC-cayenne-paris/) |
 | Dépôt GitHub | [Voir le code](https://github.com/davidtranchaud79-svg/UC-cayenne-paris) |
@@ -39,6 +39,7 @@ La procédure détaillée est dans [`docs/BRANCHER_SHEET_GITHUB.md`](docs/BRANCH
 | `docs/BRANCHER_SHEET_GITHUB.md` | Notice détaillée de branchement |
 | `Modele_Presences_Engagements_Cayenne.xlsx` | Modèle de classeur à importer dans Google Sheets |
 | `src/Code.gs` | Code serveur Apps Script |
+| `src/Access.gs` | Codes personnels, sessions et contrôle des accès |
 | `src/Index.html` | Petite page routeur avec les deux accès |
 | `src/Public.html` | Formulaire public membres |
 | `src/Admin.html` | Dashboard bureau |
@@ -66,19 +67,19 @@ Structure conseillée :
 
 1. Ouvrir le Google Sheet modèle.
 2. Aller dans `Extensions > Apps Script`.
-3. Créer ou remplacer le fichier `Code.gs` avec le contenu de `src/Code.gs`.
+3. Créer ou remplacer les fichiers `Code.gs` et `Access.gs` avec les contenus de `src/Code.gs` et `src/Access.gs`.
 4. Créer six fichiers HTML nommés `Index`, `Public`, `Admin`, `Styles`, `Ui` et `Brand`.
 5. Coller chaque contenu `src/*.html` dans le fichier correspondant. Les onglets `INDEX_HTML`, `PUBLIC_HTML`, `ADMIN_HTML`, `STYLES_HTML`, `UI_HTML` et `BRAND_HTML` du Sheet contiennent aussi les copies du code.
 6. Vérifier le fichier `appsscript.json` ou recopier les autorisations depuis `src/appsscript.json`.
-7. Dans Apps Script, lancer la fonction `setupSystem`.
+7. Pour un nouveau classeur uniquement, lancer la fonction `setupSystem_` depuis l’éditeur Apps Script.
 8. Retourner dans le Sheet et compléter `MEMBRES`. Pour les événements, utiliser l’admin ou l’onglet `BASE_EVENEMENTS`.
 9. Dans Apps Script, cliquer sur `Déployer > Nouveau déploiement > Application Web`.
 10. Choisir :
    - Exécuter en tant que : `Moi`
    - Accès : selon votre choix, par exemple les personnes disposant du lien
 11. Liens Web App actuels :
-    - Public : https://script.google.com/macros/s/AKfycbx8DZydMvebuXtc0wr9tOuZW3lKQBsi7gB2La-xPGC4587bF1vzJtiT-EWU1cvsjNynCQ/exec
-    - Admin : https://script.google.com/macros/s/AKfycbx8DZydMvebuXtc0wr9tOuZW3lKQBsi7gB2La-xPGC4587bF1vzJtiT-EWU1cvsjNynCQ/exec?page=admin
+    - Public : https://script.google.com/macros/s/AKfycbyGEBmxVpXHjnTefdc3rP7WQrPjDwPmf79T-qQB8SkK1R-UoV7jPhdae7HDkmxBq2P7WA/exec
+    - Admin : https://script.google.com/macros/s/AKfycbyGEBmxVpXHjnTefdc3rP7WQrPjDwPmf79T-qQB8SkK1R-UoV7jPhdae7HDkmxBq2P7WA/exec?page=admin
 
 ## Utilisation bureau
 
@@ -89,7 +90,23 @@ Depuis le Google Sheet, le menu `Présences UC` permet de :
 - générer les feuilles événement ;
 - exporter la feuille active en PDF.
 
-Le code admin par défaut est `1234`. Il se modifie dans l'onglet `PARAMETRES`, ligne `admin_pin`.
+Le code commun du bureau est celui de `PARAMETRES`, ligne `admin_pin`. Le code existant est conservé. Il peut être changé dans **Réglages > Code commun du bureau** (8 caractères minimum).
+
+### Espaces personnels
+
+1. Ouvrir l’espace bureau avec le code commun, puis **Membres > Accès personnels**.
+2. Pour un membre déjà présent dans le Sheet, choisir **Créer le code**. Sinon, utiliser **Ajouter un membre**.
+3. Transmettre au membre son code et le lien de l’espace membres. Aucun message n’est envoyé automatiquement.
+4. Le membre entre son code et retrouve son identité, ses réponses et les événements. Il peut modifier une réponse depuis **Mes réponses enregistrées** ou préparer plusieurs dates.
+5. **Remplacer le code** invalide l’ancien code et les sessions en cours. **Désactiver** retire l’accès sans effacer les réponses.
+
+Les codes personnels sont affichés une seule fois et conservés sous forme d’empreintes dans les propriétés du script, pas dans le Sheet ni dans GitHub. Les sessions membres durent au maximum quatre heures ; la déconnexion les invalide. Les espaces membres et bureau utilisent des sessions distinctes, contrôlées côté serveur à chaque appel. Le code commun du bureau reste dans le Sheet, dont l’accès doit rester réservé au bureau.
+
+L’identité d’un compte est rattachée à la ligne MEMBRES par son email, ou à défaut par nom et prénom. Ne changez pas ces champs directement sans recréer l’accès ; les doublons de même identité sont refusés à la connexion. Les fonctions de maintenance terminées par `_` sont exécutables depuis le menu du classeur ou l’éditeur, pas depuis une page membre.
+
+### Enregistrement et comptes rendus
+
+La liaison vers une feuille CR met à jour uniquement la colonne `Feuille_CR`. Elle conserve les en-têtes historiques en ligne 3 et les validations des réponses : correction de l’erreur « M3 : Sociétaire, Aspirant, Compagnon ». Une relance de la même soumission ne crée pas de doublon. Si les réponses sont enregistrées mais qu’une feuille de synthèse échoue, l’application confirme l’enregistrement avec un avertissement.
 
 ## Base d’événements
 
