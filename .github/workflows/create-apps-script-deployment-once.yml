@@ -1,0 +1,42 @@
+name: Create Apps Script Deployment Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/create-apps-script-deployment-once.yml'
+
+jobs:
+  create-deployment:
+    runs-on: ubuntu-latest
+    env:
+      CLASP_SCRIPT_ID: ${{ secrets.CLASP_SCRIPT_ID }}
+      CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install clasp
+        run: npm install -g @google/clasp@3.4.1
+      - name: Write clasp configuration
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const os = require('node:os');
+          const path = require('node:path');
+          const credentials = JSON.parse(process.env.CLASPRC_JSON);
+          const token = credentials?.tokens?.default;
+          if (!token?.refresh_token) throw new Error('CLASPRC_JSON incomplet.');
+          fs.writeFileSync('.clasp.json', JSON.stringify({scriptId: process.env.CLASP_SCRIPT_ID, rootDir: 'src'}), {mode: 0o600});
+          fs.writeFileSync(path.join(os.homedir(), '.clasprc.json'), JSON.stringify({tokens: {default: token}}), {mode: 0o600});
+          NODE
+      - name: Push current sources
+        run: clasp push --force
+      - name: Create new Web App deployment
+        run: |
+          clasp deploy --description "Nouveau lien public anonyme $GITHUB_SHA"
+          echo "Copiez le deploymentId ci-dessus : c'est le nouveau lien /macros/s/DEPLOYMENT_ID/exec"
+      - name: Remove runner credentials
+        if: always()
+        run: rm -f "$HOME/.clasprc.json" .clasp.json
