@@ -23,6 +23,8 @@ Ce pack contient une base Google Sheets + Apps Script pour suivre les présences
 
 Important : GitHub sert à stocker le code et la notice. Le formulaire public et le dashboard admin sont déployés dans Google Apps Script, car le code utilise `google.script.run`.
 
+La publication automatique est suspendue : le 19 septembre 2026, une mise à jour via l’API Google a rendu les deux espaces inaccessibles (HTTP 403), malgré des réglages publics identiques. Le retour à la version 17 n’a pas levé ce refus. GitHub synchronise désormais les sources et lance les tests ; le propriétaire valide la publication dans **Déployer > Gérer les déploiements > Modifier > Nouvelle version > Déployer**, en conservant le déploiement existant.
+
 ## Branchement Sheet et GitHub
 
 Le fichier `.clasp.json.example` prépare le lien entre le dépôt GitHub et le projet Apps Script attaché au Sheet. Il faut récupérer l'ID du script dans `Extensions > Apps Script > Paramètres du projet`, puis créer un fichier local `.clasp.json`.
@@ -35,7 +37,7 @@ La procédure détaillée est dans [`docs/BRANCHER_SHEET_GITHUB.md`](docs/BRANCH
 |---|---|
 | `index.html` | Page d’accueil aux couleurs de la Cayenne avec accès membres et bureau |
 | `.clasp.json.example` | Modèle de liaison GitHub / Apps Script |
-| `.github/workflows/deploy-apps-script.yml` | Tests puis déploiement automatique vers Apps Script |
+| `.github/workflows/deploy-apps-script.yml` | Tests puis synchronisation des sources vers Apps Script |
 | `docs/BRANCHER_SHEET_GITHUB.md` | Notice détaillée de branchement |
 | `Modele_Presences_Engagements_Cayenne.xlsx` | Modèle de classeur à importer dans Google Sheets |
 | `src/Code.gs` | Code serveur Apps Script |

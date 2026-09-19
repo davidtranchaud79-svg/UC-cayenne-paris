@@ -1,9 +1,6 @@
 name: Restaurer une version Apps Script
 
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/restore-apps-script.yml']
   workflow_dispatch:
     inputs:
       version:
@@ -13,7 +10,7 @@ on:
       expected_version:
         description: Version actuellement publiée (protection contre les modifications concurrentes)
         required: true
-        default: '18'
+        default: '17'
 
 permissions:
   contents: read

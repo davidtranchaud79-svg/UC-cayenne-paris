@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { readConnectionSecrets, deploymentFromWorkflow } from './check-apps-script-connection.mjs';
+import { checkWebApp } from './check-web-app.mjs';
 
 // Read-only diagnosis. Never log credentials, user identities or source contents.
 async function main() {
@@ -28,7 +29,7 @@ async function main() {
     manifest: deployment.deploymentConfig?.manifestFileName,
     entryPoints: (deployment.entryPoints || []).map(item => ({type: item.entryPointType, webApp: item.webApp?.entryPointConfig}))
   }));
-  for (const version of [...new Set([17, deployment.deploymentConfig?.versionNumber])]) {
+  for (const version of [deployment.deploymentConfig?.versionNumber]) {
     const content = await get('/content?versionNumber=' + version);
     const manifestFile = content.files?.find(file => file.name === 'appsscript');
     const manifest = JSON.parse(manifestFile?.source || '{}');
@@ -37,7 +38,10 @@ async function main() {
       files: (content.files || []).map(file => file.name).sort()
     }));
   }
-  console.log('Diagnostic en lecture seule terminé.');
+  const publicAccess = await checkWebApp(deploymentId);
+  for (const page of publicAccess.pages) console.log(`${page.name} : HTTP ${page.status}, formulaire ${page.ok ? 'accessible' : 'non confirmé'}.`);
+  if (!publicAccess.ok) throw new Error('Les secrets fonctionnent, mais Google ne sert pas les deux formulaires. Validez le déploiement depuis le compte propriétaire.');
+  console.log('Connexion et accès aux deux espaces confirmés. Diagnostic en lecture seule terminé.');
 }
 
 main().catch(error => {

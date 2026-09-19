@@ -1,4 +1,4 @@
-name: Deploy Apps Script
+name: Synchroniser Apps Script
 
 on:
   push:
@@ -103,8 +103,22 @@ jobs:
       - name: Push sources to Apps Script
         run: clasp push --force
 
-      - name: Update existing Web App
-        run: node scripts/deploy-apps-script.mjs
+      # Updating this deployment through the API reproduced a Google 403 even
+      # with unchanged scopes and ANYONE_ANONYMOUS. Keep the owner's published
+      # version intact; publish from the Google editor after source sync.
+      - name: Indiquer la validation Google restante
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'TEXT'
+          ## Sources synchronisées
+
+          Les tests ont réussi et les fichiers ont été envoyés vers Apps Script.
+          La version publique n'a pas été modifiée automatiquement.
+
+          Depuis le compte propriétaire : **Déployer > Gérer les déploiements > Modifier > Nouvelle version > Déployer**.
+          Conserver **Exécuter en tant que : Moi** et **Accès : Tout le monde**, ainsi que le déploiement existant.
+
+          La publication automatique est suspendue après un refus d'accès Google reproduit après une mise à jour API.
+          TEXT
 
       - name: Remove runner credentials
         if: always()

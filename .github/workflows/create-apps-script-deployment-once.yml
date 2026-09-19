@@ -1,10 +1,7 @@
 name: Create Apps Script Deployment Once
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/create-apps-script-deployment-once.yml'
+  workflow_dispatch:
 
 jobs:
   create-deployment:

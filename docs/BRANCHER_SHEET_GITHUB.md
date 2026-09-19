@@ -84,18 +84,22 @@ Les deux secrets requis sont :
 | `CLASPRC_JSON` | Fichier de connexion complet copié par `pbcopy` |
 
 Pour contrôler les valeurs enregistrées, ouvrir `Actions > Vérifier les secrets Apps Script > Run workflow`.
-Ce contrôle vérifie la connexion Google et la présence du déploiement attendu dans le projet.
+Ce contrôle vérifie la connexion Google, la présence du déploiement attendu et l’ouverture des deux formulaires sans connexion Google.
 Il ne publie pas de nouvelle version et n’affiche aucune valeur de secret. Le résumé précise aussi
 si l’ancien secret `CLASP_DEPLOYMENT_ID`, ignoré par la publication, contient un identifiant différent.
 
-## Étape 6 - Lancer la première mise à jour
+## Étape 6 - Synchroniser puis publier avec le compte propriétaire
 
-1. Ouvrir [Deploy Apps Script](https://github.com/davidtranchaud79-svg/UC-cayenne-paris/actions/workflows/deploy-apps-script.yml).
+1. Ouvrir [Synchroniser Apps Script](https://github.com/davidtranchaud79-svg/UC-cayenne-paris/actions/workflows/deploy-apps-script.yml).
 2. Cliquer sur `Run workflow`, choisir `main`, puis confirmer avec `Run workflow`.
-3. Attendre que `Push sources to Apps Script` et `Update existing Web App` réussissent. Cette dernière étape doit indiquer `Publication vérifiée auprès de Google : version …`.
-4. Ouvrir le formulaire public et le dashboard admin pour vérifier la nouvelle version.
+3. Attendre la réussite des tests et de `Push sources to Apps Script`. Le résumé indique **Sources synchronisées** : la version publique n’est pas encore modifiée.
+4. Avec le compte Google propriétaire, ouvrir Apps Script depuis le Sheet, puis **Déployer > Gérer les déploiements**.
+5. Sélectionner le déploiement correspondant au lien ci-dessus, cliquer sur le crayon et choisir **Nouvelle version**. Conserver **Exécuter en tant que : Moi** et **Accès : Tout le monde**, puis cliquer sur **Déployer**.
+6. Conserver ce même lien `/exec` et ouvrir les espaces membre et bureau. Le workflow **Vérifier les secrets Apps Script** peut ensuite contrôler leur accès.
 
-Le workflow crée sa configuration, envoie les fichiers de `src/` vers Apps Script, vérifie que le déploiement appartient bien au projet, puis publie une nouvelle version au même lien. Il relit ensuite la version auprès de Google avant d’annoncer une réussite. Les prochaines modifications de `src/` sur `main` déclenchent cette mise à jour automatiquement.
+Le workflow vérifie le projet puis envoie les fichiers de `src/` vers Apps Script. Les prochaines modifications de `src/` sur `main` déclenchent cette synchronisation automatiquement. La validation finale du déploiement reste dans l’éditeur Google.
+
+La publication automatique a été suspendue le 19 septembre 2026 : après une publication API, Google a refusé les deux espaces (HTTP 403) alors que les droits annoncés restaient `ANYONE_ANONYMOUS` et `USER_DEPLOYING`. Restaurer la version 17 n’a pas levé le refus. La connexion des secrets est valide ; recréer des secrets ou multiplier les nouveaux liens n’est donc pas une correction établie. Les workflows de création et de restauration d’un déploiement sont disponibles uniquement sur lancement manuel.
 
 Une ancienne exécution verte peut contenir `Invalid deployment ID` dans son journal : clasp 3.4.1 peut afficher cette erreur sans renvoyer de code d’échec. Le contrôle actuel refuse cette fausse réussite.
 
