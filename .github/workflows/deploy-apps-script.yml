@@ -27,7 +27,7 @@ jobs:
     env:
       CLASP_SCRIPT_ID: ${{ secrets.CLASP_SCRIPT_ID }}
       # Public identifier from the application's shared URL; it is not a credential.
-      CLASP_DEPLOYMENT_ID: AKfycbxQA8luuKcMnUiPUi4ZqVzV01wNbMekp533YPBCPIcA00rTEdfpbFucTH_uluTEBg7HsQ
+      CLASP_DEPLOYMENT_ID: AKfycbx8DZydMvebuXtc0wr9tOuZW3lKQBsi7gB2La-xPGC4587bF1vzJtiT-EWU1cvsjNynCQ
 
     steps:
       - name: Checkout repository
@@ -96,6 +96,9 @@ jobs:
           fs.writeFileSync(path.join(os.homedir(), '.clasprc.json'),
             JSON.stringify({tokens: {default: token}}), {mode: 0o600});
           NODE
+
+      - name: Check target project before pushing sources
+        run: node scripts/deploy-apps-script.mjs --check-only
 
       - name: Push sources to Apps Script
         run: clasp push --force

@@ -23,12 +23,7 @@ function runClasp(args) {
   }));
 }
 
-export async function deployExisting({
-  deploymentId,
-  description,
-  run = runClasp,
-  wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
-}) {
+export function findExistingDeployment(deploymentId, run = runClasp) {
   if (!/^AKfy[A-Za-z0-9_-]+$/.test(deploymentId || '')) {
     throw new Error('Identifiant du déploiement invalide dans le workflow.');
   }
@@ -38,6 +33,16 @@ export async function deployExisting({
   if (!target) {
     throw new Error('Le lien public ne correspond pas au projet configuré. Vérifiez CLASP_SCRIPT_ID dans les secrets GitHub.');
   }
+  return target;
+}
+
+export async function deployExisting({
+  deploymentId,
+  description,
+  run = runClasp,
+  wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+}) {
+  const target = findExistingDeployment(deploymentId, run);
 
   const published = run(['update-deployment', deploymentId, '--description', description]);
   if (published?.deploymentId !== deploymentId ||
@@ -64,16 +69,21 @@ export async function deployExisting({
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    const deployment = await deployExisting({
-      deploymentId: process.env.CLASP_DEPLOYMENT_ID,
-      description: `GitHub ${process.env.GITHUB_SHA}`
-    });
-    const url = `https://script.google.com/macros/s/${deployment.deploymentId}/exec`;
-    console.log(`Publication vérifiée auprès de Google : version ${deployment.versionNumber}.`);
-    if (process.env.GITHUB_STEP_SUMMARY) {
-      appendFileSync(process.env.GITHUB_STEP_SUMMARY,
-        `## Application publiée\n\nVersion Google : **${deployment.versionNumber}**\n\n` +
-        `[Formulaire public](${url}) · [Administration](${url}?page=admin)\n`);
+    if (process.argv.includes('--check-only')) {
+      findExistingDeployment(process.env.CLASP_DEPLOYMENT_ID);
+      console.log('Déploiement retrouvé dans le projet Google avant le transfert des sources.');
+    } else {
+      const deployment = await deployExisting({
+        deploymentId: process.env.CLASP_DEPLOYMENT_ID,
+        description: `GitHub ${process.env.GITHUB_SHA}`
+      });
+      const url = `https://script.google.com/macros/s/${deployment.deploymentId}/exec`;
+      console.log(`Publication vérifiée auprès de Google : version ${deployment.versionNumber}.`);
+      if (process.env.GITHUB_STEP_SUMMARY) {
+        appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+          `## Application publiée\n\nVersion Google : **${deployment.versionNumber}**\n\n` +
+          `[Formulaire public](${url}) · [Administration](${url}?page=admin)\n`);
+      }
     }
   } catch (error) {
     console.error(`::error::${error.message}`);

@@ -1,11 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { deployExisting, parseClaspResult } from '../scripts/deploy-apps-script.mjs';
+import { deployExisting, findExistingDeployment, parseClaspResult } from '../scripts/deploy-apps-script.mjs';
 
 const deploymentId = 'AKfy-test-deployment';
 const description = 'GitHub test-commit';
 const old = { deploymentId, versionNumber: 4, description: 'Previous release' };
 const fresh = { deploymentId, versionNumber: 5, description };
+
+test('preflight only reads deployment metadata and rejects a different project', () => {
+  const calls = [];
+  assert.deepEqual(findExistingDeployment(deploymentId, args => { calls.push(args); return [old]; }), old);
+  assert.deepEqual(calls, [['list-deployments']]);
+  assert.throws(() => findExistingDeployment(deploymentId, () => []), /ne correspond pas/);
+});
 
 test('rejects the observed clasp failure even when its exit code is zero', () => {
   assert.throws(() => parseClaspResult({ status: 0, stdout: 'Invalid deployment ID: example' }), /pas confirmé/);
