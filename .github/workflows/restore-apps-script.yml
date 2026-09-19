@@ -1,0 +1,54 @@
+name: Restaurer une version Apps Script
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/restore-apps-script.yml']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version à restaurer
+        required: true
+        default: '17'
+      expected_version:
+        description: Version actuellement publiée (protection contre les modifications concurrentes)
+        required: true
+        default: '18'
+
+permissions:
+  contents: read
+concurrency:
+  group: apps-script-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install -g @google/clasp@3.4.1
+      - name: Préparer la connexion Google
+        env:
+          CLASP_SCRIPT_ID: ${{ secrets.CLASP_SCRIPT_ID }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readConnectionSecrets } from './scripts/check-apps-script-connection.mjs';
+          import { writeFileSync } from 'node:fs';
+          import { homedir } from 'node:os';
+          import { join } from 'node:path';
+          const connection = readConnectionSecrets(process.env);
+          writeFileSync('.clasp.json', JSON.stringify({scriptId: connection.scriptId, rootDir: 'src'}), {mode: 0o600, flag: 'wx'});
+          writeFileSync(join(homedir(), '.clasprc.json'), JSON.stringify(connection.credentials), {mode: 0o600, flag: 'wx'});
+          NODE
+      - name: Restaurer et vérifier les deux espaces
+        env:
+          RESTORE_VERSION: ${{ inputs.version || '17' }}
+          EXPECTED_VERSION: ${{ inputs.expected_version || '18' }}
+        run: node scripts/restore-apps-script.mjs
+      - name: Effacer les identifiants temporaires
+        if: always()
+        run: rm -f "$HOME/.clasprc.json" .clasp.json
