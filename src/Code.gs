@@ -314,7 +314,7 @@ function submitResponses(payload) {
     refreshedEvents[row[4]] = true;
   });
   Object.keys(refreshedEvents).forEach(function(eventId) {
-    generateEventSheet(eventId);
+    generateEventSheet_(eventId);
   });
 
   return {
@@ -331,7 +331,11 @@ function getDashboardData(year, adminPin) {
 }
 
 function generateEventSheet(eventId, adminPin) {
-  if (typeof adminPin !== 'undefined') assertAdmin_(adminPin);
+  assertAdmin_(adminPin);
+  return generateEventSheet_(eventId);
+}
+
+function generateEventSheet_(eventId) {
   setupSystemIfMissing_();
 
   const events = getRowsAsObjects_(UC_APP.sheets.calendrier);
@@ -406,16 +410,20 @@ function generateEventSheet(eventId, adminPin) {
 }
 
 function generateAllEventSheets(year, adminPin) {
-  if (typeof adminPin !== 'undefined') assertAdmin_(adminPin);
+  assertAdmin_(adminPin);
+  return generateAllEventSheets_(year);
+}
+
+function generateAllEventSheets_(year) {
   const targetYear = Number(year || getSettings_().annee_active || UC_APP.defaults.activeYear);
   const events = getEventsForYear_(targetYear);
   return events.map(function(event) {
-    return generateEventSheet(event.ID_Evenement);
+    return generateEventSheet_(event.ID_Evenement);
   });
 }
 
 function generateAllEventSheetsForActiveYear() {
-  const results = generateAllEventSheets(getSettings_().annee_active);
+  const results = generateAllEventSheets_(getSettings_().annee_active);
   SpreadsheetApp.getUi().alert(results.length + ' feuille(s) événement générée(s).');
 }
 
@@ -478,7 +486,14 @@ function refreshDashboardSheet() {
     sheet.getRange(24, 9, memberRows.length, 1).setNumberFormat('0%');
   }
 
-  sheet.autoResizeColumns(1, 9);
+  sheet.getRange('K3:Q3').setValues([['Mois', 'Événements', 'Réponses', 'Présences', 'Excusés', 'Aides', 'Sans réponse']]);
+  sheet.getRange('K3:Q3').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
+  const monthlyRows = data.monthly.map(function(month) {
+    return [month.label, month.events, month.responses, month.presents, month.excused, month.aids, month.noResponse];
+  });
+  if (monthlyRows.length) sheet.getRange(4, 11, monthlyRows.length, 7).setValues(monthlyRows);
+
+  sheet.autoResizeColumns(1, 17);
 }
 
 function exportActiveSheetPdf() {
@@ -868,6 +883,7 @@ function computeDashboard_(year) {
   });
 
   const totalNoResponse = eventStats.reduce(function(sum, event) { return sum + event.noResponse; }, 0);
+  const monthlyStats = buildMonthlyStats_(year, events, latestResponses, eventStats);
   return {
     year: year,
     kpis: {
@@ -881,10 +897,50 @@ function computeDashboard_(year) {
     },
     events: eventStats,
     members: memberStats,
+    monthly: monthlyStats,
     causes: Object.keys(causeMap).sort().map(function(cause) {
       return { cause: cause, count: causeMap[cause] };
     })
   };
+}
+
+function buildMonthlyStats_(year, events, latestResponses, eventStats) {
+  const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+  const stats = monthNames.map(function(label, index) {
+    return {
+      month: index + 1,
+      label: label,
+      events: 0,
+      responses: 0,
+      presents: 0,
+      excused: 0,
+      aids: 0,
+      noResponse: 0
+    };
+  });
+  const eventMonthById = {};
+  events.forEach(function(event) {
+    const date = asDate_(event.Date);
+    if (!date || date.getFullYear() !== Number(year)) return;
+    const month = date.getMonth();
+    eventMonthById[event.ID_Evenement] = month;
+    stats[month].events++;
+  });
+  latestResponses.forEach(function(row) {
+    const month = eventMonthById[row.ID_Evenement];
+    if (typeof month !== 'number') return;
+    stats[month].responses++;
+    if (row.Reponse === 'Présent') stats[month].presents++;
+    if (row.Reponse === 'Absent excusé') stats[month].excused++;
+    if (row.Aide_Disponible === 'Oui') stats[month].aids++;
+  });
+  eventStats.forEach(function(event) {
+    const month = eventMonthById[event.id];
+    if (typeof month === 'number') stats[month].noResponse += Number(event.noResponse) || 0;
+  });
+  return stats.filter(function(month) {
+    return month.events || month.responses || month.noResponse;
+  });
 }
 
 function buildEventRows_(eventId) {
