@@ -128,7 +128,7 @@ function setupSystem() {
   refreshDashboardSheet();
   setupModeleCr_(ss.getSheetByName(UC_APP.sheets.modeleCr));
   applyValidations_();
-  const eventSheets = generateAllEventSheets(getSettings_().annee_active);
+  const eventSheets = generateAllEventSheets_(getSettings_().annee_active);
 
   return {
     ok: true,
