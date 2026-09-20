@@ -23,4 +23,13 @@
 .access-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.issued-code{border:1px solid var(--wine);border-radius:8px;padding:20px;background:white;margin:18px 0;max-width:620px}.issued-code input{font-family:monospace;font-size:20px;margin:10px 0}.issued-code p{margin:0 0 14px;font-size:13px}.issued-code .text-button{margin-left:16px}
 #memberOverview .session-bar{font-size:14px;margin-top:24px}#memberLogout{margin-left:auto}#memberYear{width:120px}#memberOverview .toolbar{align-items:end}
 @media(max-width:700px){.history-row{align-items:flex-start;flex-direction:column;gap:10px}.history-row>.btn{min-height:44px}.access-management .fields{grid-template-columns:1fr}.issued-code{padding:16px}.issued-code input{font-size:17px}#memberLogin .access-form{grid-template-columns:1fr}}
+
+/* Logos des espaces : proportions conservées, lisibles sur mobile. */
+.public-header .role-logo{width:112px;height:auto}
+.public-header .union-logo{width:142px;height:auto}
+.sidebar .bureau-brand{flex-direction:column;align-items:center;text-align:center;gap:10px}
+.sidebar .bureau-brand .role-logo{width:140px;height:auto}
+.portal-card>.role-logo{width:152px;height:auto;display:block;margin-bottom:14px}
+@media(max-width:940px){.sidebar .bureau-brand{flex-direction:row;text-align:left;align-items:center}.sidebar .bureau-brand .role-logo{width:88px}}
+@media(max-width:700px){.public-header-inner{flex-wrap:wrap;gap:10px}.public-header .role-logo{width:88px}.public-header .union-logo{width:108px}.public-header .brand{min-width:0;gap:10px}.public-header .brand-name{font-size:20px}.sidebar .bureau-brand .role-logo{width:80px}.portal-card>.role-logo{width:132px}}
 </style>

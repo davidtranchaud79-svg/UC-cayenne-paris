@@ -1,11 +1,17 @@
 # Identité de l’application
 
-L’écusson de la Cayenne de Paris est repris sans modification de la [page officielle de Paris](https://www.lecompagnonnage.com/cayennes/paris/).
+Le logo rouge et bleu de l’Union Compagnonnique Paris provient du PDF `PARIS_Logo UC.pdf` fourni par la Cayenne. Il remplace le petit écusson historique dans l’en-tête commun.
 
-Source de l’image : https://www.lecompagnonnage.com/wp-content/uploads/2021/07/ecusson-paris.gif
+Deux déclinaisons réalisées à partir de cette identité distinguent les accès :
 
-Le fichier d’origine (53 × 58 px) est intégré à `src/Brand.html` pour rester disponible sans requête vers un site tiers. Les styles communs sont dans `src/Styles.html`, les icônes et fonctions de présentation dans `src/Ui.html`.
+- **Bureau** : cadre bleu marine et clé, dans `src/BrandBureau.html` ; visible dans l’administration et sur la carte Bureau de l’accueil.
+- **Membres** : cadre rouge et groupe, dans `src/BrandMembres.html` ; visible dans l’espace membre et sur la carte Membres de l’accueil.
+- **Logo commun** : `src/Brand.html`, dans l’en-tête de l’accueil.
 
-Palette : bordeaux #762337, bordeaux sombre #481728, ivoire #F7F5F0, doré #B6955D. Les interfaces utilisent les polices système ; les titres de marque utilisent Georgia.
+Les images sont embarquées en WebP (512 px maximum), sans URL Drive ni dépendance à une autorisation d’image. Leurs proportions sont conservées. Les styles adaptent leur taille sur téléphone et ordinateur.
 
-Les espaces membres et bureau gardent leurs liens distincts. Aucun chiffre de démonstration n’est intégré à l’application publiée.
+Les pages Apps Script utilisent ces fragments HTML. `index.html`, l’accueil GitHub Pages, contient les mêmes fragments et les liens du déploiement public actuel. Les styles communs restent dans `src/Styles.html` et les icônes dans `src/Ui.html`.
+
+Les déclinaisons Bureau et Membres sont des visuels pour cette application, pas de nouveaux emblèmes officiels. La palette bordeaux et ivoire de l’interface reste inchangée.
+
+Après synchronisation GitHub vers Apps Script, publier une nouvelle version du déploiement existant depuis le compte propriétaire pour afficher les logos sur l’application publique. La synchronisation ne remplace pas cette publication Google.
