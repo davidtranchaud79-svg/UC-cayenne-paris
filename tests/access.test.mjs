@@ -35,6 +35,36 @@ function fixture(){
   return {c:context,db,settings,props,cache,bureau,issue,member,headers};
 }
 
+test('attendance is bureau-only, validates a whole batch, preserves announcements and detects conflicting corrections',()=>{
+  const {c,db,bureau,member}=fixture();
+  db.CALENDRIER[0].Date=new Date('2020-09-19');db.CALENDRIER[0].Annee=2020;
+  db.POINTAGES=[];
+  const headers=['ID_Pointage','Horodatage','ID_Evenement','Cle_Personne','Presence_Reelle'];
+  const sheet={getLastRow:()=>db.POINTAGES.length+1,getRange:()=>({setValues:rows=>rows.forEach(r=>db.POINTAGES.push(Object.fromEntries(headers.map((h,i)=>[h,r[i]]))))})};
+  c.getSpreadsheet_=()=>({getSheetByName:()=>sheet});c.getTableData_=()=>({rows:db.POINTAGES});
+  const token=member();
+  assert.throws(()=>c.getAttendance('evt1',token),/SESSION_EXPIRED/);
+  assert.throws(()=>c.saveAttendance({},token),/SESSION_EXPIRED/);
+  const change={key:'camille@example.test',actual:'Présent',version:''};
+  assert.throws(()=>c.saveAttendance({eventId:'evt1',changes:[change,{key:'unknown',actual:'Absent',version:''}]},bureau),/introuvable/);
+  assert.equal(db.POINTAGES.length,0);
+  c.saveAttendance({eventId:'evt1',changes:[change]},bureau);
+  assert.equal(db.REPONSES.length,0);
+  assert.equal(c.getAttendance('evt1',bureau).members[0].actual,'Présent');
+  c.saveAttendance({eventId:'evt1',changes:[change]},bureau);
+  assert.equal(db.POINTAGES.length,1,'retry does not append duplicate');
+  assert.throws(()=>c.saveAttendance({eventId:'evt1',changes:[{...change,actual:'Absent'}]},bureau),/modifié/);
+  const version=db.POINTAGES[0].ID_Pointage;
+  c.saveAttendance({eventId:'evt1',changes:[{...change,actual:'Excusé',version}]},bureau);
+  assert.equal(db.POINTAGES.length,2);
+  const summary=c.computeDashboard_(2020).attendance;
+  assert.equal(summary.total.excused,1);assert.equal(summary.total.unmarked,1);assert.equal(summary.total.absent,0);
+  assert.equal(summary.monthly[0].month,9);assert.equal(summary.members[0].excused,1);
+  db.CALENDRIER[0].Date=new Date('2099-09-19');
+  assert.throws(()=>c.saveAttendance({eventId:'evt1',changes:[change]},bureau),/jour de/);
+  assert.equal(c.attendanceSummary_(db.CALENDRIER,db.MEMBRES).total.unmarked,0);
+});
+
 test('a member code opens only that identity; bureau and member sessions are not interchangeable',()=>{
   const {c,member,bureau}=fixture();const token=member();
   assert.equal(c.assertMember_(token).Prenom,'Camille');

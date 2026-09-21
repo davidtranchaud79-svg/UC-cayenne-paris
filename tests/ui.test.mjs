@@ -54,6 +54,17 @@ function app(file, overrides={}) {
 }
 function identity(a){assert.equal(a.doc.getElementById('prenom').value,'Camille');assert.ok(a.doc.getElementById('prenom').disabled);}
 
+test('bureau attendance preserves drafts after failure and clears personal data when locked',()=>{
+ const a=app('Admin.html',{getAttendance:()=>({eventId:'evt-1',members:[{key:'camille@example.test',name:'Camille Exemple',announced:'Je ne sais pas encore',actual:'Non pointé',version:''}]}),saveAttendance:()=>{throw Error('Connexion interrompue');}});
+ a.login();a.fill('attendanceEvent','evt-1','change');a.doc.getElementById('loadAttendance').click();a.flush();
+ const select=a.doc.querySelector('[data-attendance-index]');assert.equal(select.value,'Non pointé');select.value='Présent';
+ a.doc.getElementById('saveAttendance').click();a.flush();
+ const call=a.calls.find(c=>c.method==='saveAttendance');assert.equal(call.args[1],'BUREAU_SESSION');assert.equal(call.args[0].changes[0].actual,'Présent');
+ assert.equal(select.value,'Présent');assert.equal(a.doc.getElementById('saveAttendance').disabled,false);
+ a.doc.getElementById('lockSession').click();a.flush();assert.equal(a.doc.getElementById('attendanceRoster').textContent,'');assert.equal(a.doc.getElementById('attendanceSummary').textContent,'');
+ a.dom.window.close();
+});
+
 function answer(a,id,value){a.doc.querySelector('[data-event="'+id+'"] [data-field="reponse"][value="'+value+'"]').click();}
 function detail(a,id,key,value){const n=a.doc.querySelector('[data-event="'+id+'"] [data-field="'+key+'"]');n.value=value;n.dispatchEvent(new a.dom.window.Event('change',{bubbles:true}));}
 test('one independent response per event, no admin link, and no fabricated initial answer',()=>{

@@ -5,12 +5,14 @@ const UC_APP = {
     membres: 'MEMBRES',
     calendrier: 'CALENDRIER',
     reponses: 'REPONSES',
+    pointages: 'POINTAGES',
     suivi: 'SUIVI_ANNUEL',
     dashboard: 'DASHBOARD',
     modeleCr: 'MODELE_CR_EVENEMENT',
     eventBase: 'BASE_EVENEMENTS'
   },
   headers: {
+    pointages: ['ID_Pointage', 'Horodatage', 'ID_Evenement', 'Cle_Personne', 'Presence_Reelle'],
     membres: ['Nom', 'Prenom', 'Statut', 'Cayenne', 'Email', 'Telephone', 'Actif', 'Notes'],
     calendrier: ['ID_Evenement', 'Annee', 'Date', 'Titre', 'Type_Evenement', 'Heure_Debut', 'Heure_Fin', 'Lieu', 'Cayenne', 'Categorie_CR', 'Actif', 'Commentaire', 'Modalites'],
     reponses: ['ID_Reponse', 'Horodatage', 'Source', 'Annee', 'ID_Evenement', 'Date_Evenement', 'Titre_Evenement', 'Type_Evenement', 'Nom', 'Prenom', 'Email', 'Telephone', 'Statut', 'Cayenne', 'Reponse', 'Causes', 'Precision', 'Aide_Disponible', 'Heure_Debut_Aide', 'Heure_Fin_Aide', 'Commentaire', 'Cle_Personne', 'Mois', 'Semaine', 'Feuille_CR', 'Participation', 'Creneaux'],
@@ -348,6 +350,7 @@ function generateEventSheet_(eventId) {
   sheet.setHiddenGridlines(true);
 
   const rows = buildEventRows_(event.ID_Evenement);
+  const pointages = attendanceLatest_();
   const presentCount = rows.filter(function(row) { return row.reponse === 'Présent'; }).length;
   const excusedCount = rows.filter(function(row) { return row.reponse === 'Absent excusé'; }).length;
   const noResponseCount = rows.filter(function(row) { return row.reponse === 'Sans réponse'; }).length;
@@ -369,7 +372,7 @@ function generateEventSheet_(eventId) {
   sheet.getRange('A4:A8').setFontWeight('bold').setBackground('#F2E7E9');
   sheet.getRange('B4:B8').setNumberFormat('0');
 
-  const headers = ['Nom', 'Prénom', 'Statut', 'Cayenne', 'Réponse', 'Cause', 'Précision', 'Aide', 'Horaire', 'Participation repas / aide', 'Créneaux', 'Commentaire'];
+  const headers = ['Nom', 'Prénom', 'Statut', 'Cayenne', 'Réponse annoncée', 'Cause', 'Précision', 'Aide', 'Horaire', 'Participation repas / aide', 'Créneaux', 'Commentaire', 'Présence réelle'];
   sheet.getRange(10, 1, 1, headers.length).setValues([headers]);
   sheet.getRange(10, 1, 1, headers.length).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
 
@@ -385,7 +388,8 @@ function generateEventSheet_(eventId) {
         row.precision,
         row.aide,
         [row.heureDebut, row.heureFin].filter(Boolean).join(' - '),
-        row.participation, row.creneaux, row.commentaire
+        row.participation, row.creneaux, row.commentaire,
+        (pointages[eventId + '|' + row.key] || {}).Presence_Reelle || 'Non pointé'
       ];
     });
     sheet.getRange(11, 1, values.length, headers.length).setValues(values.map(function(row) { return row.map(sheetLiteral_); }));
@@ -495,6 +499,18 @@ function refreshDashboardSheet_() {
     return [month.label, month.events, month.responses, month.presents, month.excused, month.aids, month.noResponse, month.absent, month.undecided];
   });
   if (monthlyRows.length) sheet.getRange(4, 11, monthlyRows.length, 9).setValues(monthlyRows);
+
+  const actualSheet = ensureSheet_(ss, 'SYNTHESE_POINTAGES');
+  actualSheet.clearContents();
+  const actual = data.attendance;
+  const actualRows = [['Pointage réel - ' + year, 'Présents', 'Absents', 'Excusés', 'Non pointés'],
+    ['Année', actual.total.present, actual.total.absent, actual.total.excused, actual.total.unmarked]];
+  actual.monthly.forEach(function(m) { actualRows.push(['Mois ' + m.month, m.present, m.absent, m.excused, m.unmarked]); });
+  actualRows.push(['Membre', 'Présents', 'Absents', 'Excusés', 'Non pointés']);
+  actual.members.forEach(function(m) { actualRows.push([m.name, m.present, m.absent, m.excused, m.unmarked]); });
+  actualSheet.getRange(1, 1, actualRows.length, 5).setValues(actualRows.map(function(row) { return row.map(sheetLiteral_); }));
+  actualSheet.setFrozenRows(1);
+  actualSheet.autoResizeColumns(1, 5);
 
   sheet.autoResizeColumns(1, 22);
 }
@@ -931,7 +947,9 @@ function computeDashboard_(year) {
       };
     });
   const monthlyStats = buildMonthlyStats_(year, events, latestResponses, eventStats);
+  const attendance = attendanceSummary_(events, members);
   return {
+    attendance: attendance,
     year: year,
     kpis: {
       events: events.length,
@@ -995,6 +1013,81 @@ function buildMonthlyStats_(year, events, latestResponses, eventStats) {
   return stats.filter(function(month) {
     return month.events || month.responses || month.noResponse;
   });
+}
+
+function attendanceLatest_() {
+  const latest = {};
+  getRowsAsObjects_(UC_APP.sheets.pointages).forEach(function(row) {
+    latest[row.ID_Evenement + '|' + row.Cle_Personne] = row;
+  });
+  return latest;
+}
+
+function getAttendance(eventId, token) {
+  assertAdmin_(token);
+  const event = getRowsAsObjects_(UC_APP.sheets.calendrier).find(function(e) { return e.ID_Evenement === eventId && isActive_(e.Actif); });
+  if (!event) throw new Error('Événement introuvable ou inactif.');
+  if (formatDate_(event.Date) > formatDate_(new Date())) throw new Error('Le pointage ouvre le jour de l’événement.');
+  const latest = attendanceLatest_();
+  const answers = {};
+  getRowsAsObjects_(UC_APP.sheets.reponses).filter(function(r) { return r.ID_Evenement === eventId; }).forEach(function(r) {
+    if (!answers[r.Cle_Personne] || asDate_(r.Horodatage) >= asDate_(answers[r.Cle_Personne].Horodatage)) answers[r.Cle_Personne] = r;
+  });
+  return {eventId: eventId, members: getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) { return m.Nom && m.Prenom && isActive_(m.Actif); }).map(function(m) {
+    const key = personKey_(m.Nom, m.Prenom, m.Email);
+    const row = latest[eventId + '|' + key];
+    return {key: key, name: m.Prenom + ' ' + m.Nom, announced: answers[key] ? answers[key].Reponse : 'Sans réponse', actual: row ? row.Presence_Reelle : 'Non pointé', version: row ? row.ID_Pointage : ''};
+  })};
+}
+
+function saveAttendance(payload, token) {
+  assertAdmin_(token);
+  if (!payload || !Array.isArray(payload.changes) || !payload.changes.length) throw new Error('Aucun pointage à enregistrer.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const roster = getAttendance(payload.eventId, token);
+    const seen = new Set();
+    const rows = payload.changes.map(function(change) {
+      const member = roster.members.find(function(m) { return m.key === change.key; });
+      if (!member || seen.has(change.key)) throw new Error('Membre introuvable ou en double.');
+      seen.add(change.key);
+      if (!['Présent', 'Absent', 'Excusé', 'Non pointé'].includes(change.actual)) throw new Error('Pointage invalide.');
+      // A retry of an already saved value is harmless; competing corrections are not.
+      if (member.actual === change.actual) return null;
+      if (member.version !== change.version) throw new Error('Pointage modifié par le bureau. Rechargez la liste avant de corriger.');
+      return [Utilities.getUuid(), new Date(), payload.eventId, change.key, change.actual];
+    }).filter(Boolean);
+    if (rows.length) {
+      const sheet = ensureSheet_(getSpreadsheet_(), UC_APP.sheets.pointages);
+      if (!sheet.getLastRow()) sheet.getRange(1, 1, 1, UC_APP.headers.pointages.length).setValues([UC_APP.headers.pointages]);
+      getTableData_(UC_APP.sheets.pointages);
+      sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 5).setValues(rows.map(function(row) { return row.map(sheetLiteral_); }));
+    }
+  } finally { lock.releaseLock(); }
+  let warning = '';
+  try { refreshDashboardSheet_(); generateEventSheet_(payload.eventId); }
+  catch (error) { warning = 'Pointage enregistré. Les synthèses Sheets ou le compte rendu restent à actualiser : ' + error.message; }
+  return {ok: true, warning: warning};
+}
+
+function attendanceSummary_(events, members) {
+  const latest = attendanceLatest_();
+  function empty() { return {present: 0, absent: 0, excused: 0, unmarked: 0}; }
+  const total = empty(), monthly = {}, byMember = {};
+  const today = formatDate_(new Date());
+  events.filter(function(e) { return formatDate_(e.Date) <= today; }).forEach(function(event) {
+    const month = Number(formatDate_(event.Date).slice(5, 7));
+    if (!monthly[month]) monthly[month] = empty();
+    members.forEach(function(m) {
+      const key = personKey_(m.Nom, m.Prenom, m.Email);
+      if (!byMember[key]) byMember[key] = Object.assign({name: m.Prenom + ' ' + m.Nom}, empty());
+      const row = latest[event.ID_Evenement + '|' + key];
+      const field = ({'Présent': 'present', 'Absent': 'absent', 'Excusé': 'excused'})[row && row.Presence_Reelle] || 'unmarked';
+      total[field]++; monthly[month][field]++; byMember[key][field]++;
+    });
+  });
+  return {total: total, monthly: Object.keys(monthly).map(function(month) { return Object.assign({month: Number(month)}, monthly[month]); }), members: Object.keys(byMember).map(function(key) { return Object.assign({key: key}, byMember[key]); })};
 }
 
 function buildEventRows_(eventId) {
