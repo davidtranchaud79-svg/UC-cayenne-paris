@@ -12,9 +12,9 @@ const UC_APP = {
   },
   headers: {
     membres: ['Nom', 'Prenom', 'Statut', 'Cayenne', 'Email', 'Telephone', 'Actif', 'Notes'],
-    calendrier: ['ID_Evenement', 'Annee', 'Date', 'Titre', 'Type_Evenement', 'Heure_Debut', 'Heure_Fin', 'Lieu', 'Cayenne', 'Categorie_CR', 'Actif', 'Commentaire'],
-    reponses: ['ID_Reponse', 'Horodatage', 'Source', 'Annee', 'ID_Evenement', 'Date_Evenement', 'Titre_Evenement', 'Type_Evenement', 'Nom', 'Prenom', 'Email', 'Telephone', 'Statut', 'Cayenne', 'Reponse', 'Causes', 'Precision', 'Aide_Disponible', 'Heure_Debut_Aide', 'Heure_Fin_Aide', 'Commentaire', 'Cle_Personne', 'Mois', 'Semaine', 'Feuille_CR'],
-    eventBase: ['Template_ID', 'Nom_Modele', 'Type_Evenement', 'Titre_Par_Defaut', 'Heure_Debut', 'Heure_Fin', 'Lieu', 'Cayenne', 'Categorie_CR', 'Actif', 'Commentaire']
+    calendrier: ['ID_Evenement', 'Annee', 'Date', 'Titre', 'Type_Evenement', 'Heure_Debut', 'Heure_Fin', 'Lieu', 'Cayenne', 'Categorie_CR', 'Actif', 'Commentaire', 'Modalites'],
+    reponses: ['ID_Reponse', 'Horodatage', 'Source', 'Annee', 'ID_Evenement', 'Date_Evenement', 'Titre_Evenement', 'Type_Evenement', 'Nom', 'Prenom', 'Email', 'Telephone', 'Statut', 'Cayenne', 'Reponse', 'Causes', 'Precision', 'Aide_Disponible', 'Heure_Debut_Aide', 'Heure_Fin_Aide', 'Commentaire', 'Cle_Personne', 'Mois', 'Semaine', 'Feuille_CR', 'Participation', 'Creneaux'],
+    eventBase: ['Template_ID', 'Nom_Modele', 'Type_Evenement', 'Titre_Par_Defaut', 'Heure_Debut', 'Heure_Fin', 'Lieu', 'Cayenne', 'Categorie_CR', 'Actif', 'Commentaire', 'Modalites']
   },
   defaults: {
     activeYear: 2026,
@@ -23,7 +23,7 @@ const UC_APP = {
     adminAppUrl: 'https://script.google.com/macros/s/AKfycbyxk7lHX1J7EC_FRRRSCacU4jvBWemPik9fanpQdWzlpIV4ZS1WKq-ZZ70w_mKh7aXCCg/exec?page=admin',
     statuses: ['Sociétaire', 'Aspirant', 'Compagnon'],
     cayennes: ['Paris', 'Autre'],
-    reponses: ['Présent', 'Absent excusé', 'Disponible pour aider'],
+    reponses: ['Présent', 'Absent', 'Je ne sais pas encore', 'Absent excusé', 'Disponible pour aider'],
     causes: [
       'Familiale',
       'Travail',
@@ -32,7 +32,8 @@ const UC_APP = {
       'Arrêt de travail',
       'Vacances',
       'Repos',
-      'Trop d’engagements / je fais un break'
+      'Trop d’engagements / je fais un break',
+      'Autres'
     ],
     eventTypes: [
       'Réunion des jeunes',
@@ -44,8 +45,12 @@ const UC_APP = {
       'Autre'
     ],
     eventTemplates: [
-      ['TPL-JEUNES', 'Réunion des jeunes', 'Réunion des jeunes', 'Réunion des jeunes', '20:00', '22:00', 'Cayenne de Paris', 'Paris', 'Réunion', 'Oui', 'Réunion mensuelle des jeunes'],
-      ['TPL-COMPAGNONS', 'Réunion compagnon', 'Réunion compagnon', 'Réunion compagnon', '20:00', '22:00', 'Cayenne de Paris', 'Paris', 'Réunion', 'Oui', 'Réunion des compagnons'],
+      ['TPL-JEUNES-19', 'Réunion des jeunes — 19 h à confirmer', 'Réunion des jeunes', 'Réunion des jeunes', '19:00', '', 'Cayenne de Paris', 'Paris', 'Réunion', 'Oui', 'Horaire probable : 19 h. La date est celle indiquée sur ce rendez-vous.', 'Standard'],
+      ['TPL-COMPAGNONS-19', 'Réunion compagnon — 19 h à confirmer', 'Réunion compagnon', 'Réunion compagnon', '19:00', '', 'Cayenne de Paris', 'Paris', 'Réunion', 'Oui', 'Horaire probable : 19 h. La date est celle indiquée sur ce rendez-vous.', 'Standard'],
+      ['TPL-FETE-DIMANCHE', 'Fête Paris — dimanche', 'Autre', 'Fête Paris — dimanche', '', '', 'Cayenne de Paris', 'Paris', 'Événement', 'Oui', 'Choisissez repas seulement, repas et aide aux organisateurs, ou aide sans repas. Horaires à confirmer.', 'Repas et aide'],
+      ['TPL-RECEPTION-SAMEDI', 'Réception — samedi', 'Autre', 'Réception — samedi', '', '', 'Cayenne de Paris', 'Paris', 'Événement', 'Oui', 'Indiquez votre présence le matin et/ou le soir. Horaires à confirmer.', 'Réception'],
+      ['TPL-JEUNES', 'Réunion des jeunes', 'Réunion des jeunes', 'Réunion des jeunes', '19:00', '22:00', 'Cayenne de Paris', 'Paris', 'Réunion', 'Oui', 'Horaire probable : 19 h. Date à préciser par le bureau.'],
+      ['TPL-COMPAGNONS', 'Réunion compagnon', 'Réunion compagnon', 'Réunion compagnon', '19:00', '22:00', 'Cayenne de Paris', 'Paris', 'Réunion', 'Oui', 'Horaire probable : 19 h. Date à préciser par le bureau.'],
       ['TPL-COURS', 'Cours en Cayenne', 'Cours en Cayenne', 'Cours en Cayenne', '09:00', '12:00', 'Cayenne de Paris', 'Paris', 'Cours', 'Oui', 'Cours ou atelier à préciser'],
       ['TPL-FETE-JUIN', 'Fête de juin', 'Fête de juin', 'Fête de juin', '08:00', '23:00', 'Cayenne de Paris', 'Paris', 'Événement', 'Oui', 'Fête annuelle de juin'],
       ['TPL-FETE-NOVEMBRE', 'Fête de novembre', 'Fête de novembre', 'Fête de novembre', '08:00', '23:00', 'Cayenne de Paris', 'Paris', 'Événement', 'Oui', 'Fête annuelle de novembre'],
@@ -150,8 +155,8 @@ function getPublicConfig(token, requestedYear) {
     urls: { publicUrl: urls.publicUrl },
     statuses: getOptionList_('D', UC_APP.defaults.statuses),
     cayennes: getOptionList_('E', UC_APP.defaults.cayennes),
-    responseTypes: getOptionList_('F', UC_APP.defaults.reponses),
-    causes: getOptionList_('G', UC_APP.defaults.causes),
+    responseTypes: UC_APP.defaults.reponses.filter(function(v) { return v !== 'Disponible pour aider'; }),
+    causes: Array.from(new Set(getOptionList_('G', UC_APP.defaults.causes).concat(['Autres']))),
     eventTypes: getOptionList_('H', UC_APP.defaults.eventTypes),
     events: getEventsForYear_(year).map(formatEventForClient_)
   };
@@ -207,9 +212,11 @@ function createEventFromTemplate(payload, adminPin) {
     Cayenne: clean_(payload.cayenne || template.cayenne || 'Paris'),
     Categorie_CR: clean_(payload.category || template.category || 'Événement'),
     Actif: clean_(payload.active || template.active || 'Oui'),
-    Commentaire: clean_(payload.comment || template.comment)
+    Commentaire: clean_(payload.comment || template.comment),
+    Modalites: clean_(payload.modalites || template.modalites || 'Standard')
   };
 
+  if (!['Standard', 'Repas et aide', 'Réception'].includes(event.Modalites)) throw new Error('Modalités invalides.');
   const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier);
   sheet.appendRow([
     event.ID_Evenement,
@@ -223,7 +230,8 @@ function createEventFromTemplate(payload, adminPin) {
     event.Cayenne,
     event.Categorie_CR,
     event.Actif,
-    event.Commentaire
+    event.Commentaire,
+    event.Modalites
   ]);
   sheet.getRange(sheet.getLastRow(), 3).setNumberFormat('yyyy-mm-dd');
   refreshDashboardSheet_();
@@ -246,99 +254,72 @@ function submitResponses(payload, token) {
 function submitMemberResponses_(payload, member) {
   setupSystemIfMissing_();
   payload = Object.assign({}, payload || {}, memberProfile_(member));
-
-  const nom = clean_(payload.nom);
-  const prenom = clean_(payload.prenom);
-  const statut = clean_(payload.statut);
-  const cayenne = clean_(payload.cayenne);
-  const selectedEventIds = Array.isArray(payload.eventIds) ? Array.from(new Set(payload.eventIds.map(String))) : [];
-  const responseChoice = clean_(payload.reponse);
-
-  if (!nom || !prenom) throw new Error('Nom et prénom obligatoires.');
-  if (!statut) throw new Error('Statut obligatoire.');
-  if (!cayenne) throw new Error('Cayenne obligatoire.');
-  if (!responseChoice) throw new Error('Type de réponse obligatoire.');
-  if (!selectedEventIds.length) throw new Error('Sélectionnez au moins un événement.');
-  if (!UC_APP.defaults.reponses.includes(responseChoice)) throw new Error('Réponse invalide.');
-  if (!getOptionList_('D', UC_APP.defaults.statuses).includes(statut) || !getOptionList_('E', UC_APP.defaults.cayennes).includes(cayenne)) throw new Error('Votre profil doit être corrigé par le bureau : statut ou Cayenne invalide.');
+  if (!payload.nom || !payload.prenom || !getOptionList_('D', UC_APP.defaults.statuses).includes(payload.statut) || !getOptionList_('E', UC_APP.defaults.cayennes).includes(payload.cayenne)) throw new Error('Votre profil doit être corrigé par le bureau : statut ou Cayenne invalide.');
   if (!/^[a-zA-Z0-9-]{16,80}$/.test(payload.requestId || '')) throw new Error('Actualisez la page avant de réessayer.');
-
-  const ss = getSpreadsheet_();
-  const responseSheet = ss.getSheetByName(UC_APP.sheets.reponses);
+  const batch = Array.isArray(payload.answers);
+  const answers = batch ? payload.answers : Array.from(new Set(payload.eventIds || [])).map(function(id) { return Object.assign({}, payload, {eventId:id}); });
+  if (!answers.length || answers.length > 200) throw new Error('Répondez à au moins un événement (200 maximum par envoi).');
   const eventsById = indexBy_(getRowsAsObjects_(UC_APP.sheets.calendrier), 'ID_Evenement');
-  const now = new Date();
-  const causes = Array.isArray(payload.causes) ? payload.causes.map(clean_).filter(Boolean) : [];
-  if (causes.some(function(cause) { return !getOptionList_('G', UC_APP.defaults.causes).includes(cause); })) throw new Error('Motif d’absence invalide.');
-  if (['precision', 'commentaire'].some(function(key) { return clean_(payload[key]).length > 2000; })) throw new Error('Limitez vos précisions à 2 000 caractères.');
-  const source = payload.source || (selectedEventIds.length > 1 ? 'Réponse anticipée' : 'Réponse événement');
-  const isAid = responseChoice === 'Disponible pour aider';
+  const seen = new Set();
+  const causesAllowed = getOptionList_('G', UC_APP.defaults.causes).concat(['Autres']);
+  // Validate the entire batch before writing a single response.
+  const normalized = answers.map(function(answer) {
+    const a = Object.assign({}, answer);
+    a.eventId = clean_(a.eventId);
+    const event = eventsById[a.eventId];
+    if (!event || !isActive_(event.Actif)) throw new Error('Un événement sélectionné n’est plus disponible. Actualisez le calendrier.');
+    if (seen.has(a.eventId)) throw new Error('Un événement apparaît deux fois dans votre envoi.');
+    seen.add(a.eventId);
+    a.reponse = clean_(a.reponse);
+    if (!UC_APP.defaults.reponses.includes(a.reponse)) throw new Error('Réponse invalide.');
+    const legacyAid = a.reponse === 'Disponible pour aider';
+    if (legacyAid) a.reponse = 'Présent';
+    a.causes = Array.isArray(a.causes) ? a.causes.map(clean_).filter(Boolean) : [];
+    if (a.causes.some(function(c) { return !causesAllowed.includes(c); })) throw new Error('Motif d’absence invalide.');
+    ['precision','commentaire'].forEach(function(key) { a[key] = clean_(a[key]); if (a[key].length > 2000) throw new Error('Limitez vos précisions à 2 000 caractères.'); });
+    if (a.reponse !== 'Absent excusé') { a.causes = []; a.precision = ''; }
+    else {
+      if (batch && !a.causes.length) throw new Error('Choisissez un motif pour votre excuse.');
+      if ((a.causes.includes('Autres') || a.causes.includes('Engagement compagnonnique ailleurs')) && !a.precision) throw new Error('Précisez le motif de votre excuse.');
+    }
+    a.participation = clean_(a.participation);
+    a.creneaux = Array.isArray(a.creneaux) ? Array.from(new Set(a.creneaux.map(clean_))) : [];
+    const mode = clean_(event.Modalites || 'Standard');
+    if (a.reponse !== 'Présent') { a.participation = ''; a.creneaux = []; }
+    else if (mode === 'Repas et aide') {
+      if (!['Repas seulement', 'Repas et aide', 'Aide seulement (sans repas)'].includes(a.participation)) throw new Error('Choisissez votre participation au repas et à l’aide.');
+      a.creneaux = [];
+    } else if (mode === 'Réception') {
+      if (!a.creneaux.length || a.creneaux.some(function(v) { return !['Matin', 'Soir'].includes(v); })) throw new Error('Choisissez le matin et/ou le soir pour la réception.');
+      a.participation = '';
+    } else { a.participation = ''; a.creneaux = []; }
+    a.aide = a.reponse === 'Présent' && (mode === 'Repas et aide' ? a.participation !== 'Repas seulement' : legacyAid || a.aideDisponible === true);
+    ['heureDebutAide', 'heureFinAide'].forEach(function(key) {
+      a[key] = a.aide ? clean_(a[key]) : '';
+      if (a[key] && !/^([01]\d|2[0-3]):[0-5]\d$/.test(a[key])) throw new Error('Horaire d’aide invalide.');
+    });
+    return a;
+  });
+  const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.reponses);
+  const existingIds = new Set(getRowsAsObjects_(UC_APP.sheets.reponses).map(function(r) { return r.ID_Reponse; }));
+  const now = new Date(), key = personKey_(payload.nom, payload.prenom, payload.email);
   const savedRows = [];
-  const existingIds = new Set(getRowsAsObjects_(UC_APP.sheets.reponses).map(function(row) { return row.ID_Reponse; }));
-  selectedEventIds.forEach(function(id) {
-    if (!eventsById[id] || !isActive_(eventsById[id].Actif)) throw new Error('Un événement sélectionné n’est plus disponible. Actualisez le calendrier.');
-  });
-
-  selectedEventIds.forEach(function(eventId) {
-    const event = eventsById[eventId];
-    if (!event) return;
-    const eventDate = asDate_(event.Date);
-    const finalResponse = isAid ? 'Présent' : responseChoice;
-    const clePersonne = personKey_(nom, prenom, payload.email);
-    const responseId = payload.requestId + ':' + accessHash_(clePersonne) + ':' + eventId;
+  normalized.forEach(function(a) {
+    const event = eventsById[a.eventId], date = asDate_(event.Date);
+    const responseId = payload.requestId + ':' + accessHash_(key) + ':' + a.eventId;
     if (existingIds.has(responseId)) return;
-    savedRows.push([
-      responseId,
-      now,
-      source,
-      Number(event.Annee),
-      event.ID_Evenement,
-      eventDate,
-      event.Titre,
-      event.Type_Evenement,
-      nom,
-      prenom,
-      clean_(payload.email),
-      clean_(payload.telephone),
-      statut,
-      cayenne,
-      finalResponse,
-      causes.join(' ; '),
-      clean_(payload.precision),
-      isAid || payload.aideDisponible === true ? 'Oui' : 'Non',
-      clean_(payload.heureDebutAide),
-      clean_(payload.heureFinAide),
-      clean_(payload.commentaire),
-      clePersonne,
-      eventDate ? Utilities.formatDate(eventDate, Session.getScriptTimeZone(), 'yyyy-MM') : '',
-      eventDate ? getWeekNumber_(eventDate) : '',
-      ''
-    ]);
+    savedRows.push([responseId, now, 'Réponse événement', Number(event.Annee), event.ID_Evenement, date, event.Titre, event.Type_Evenement,
+      payload.nom, payload.prenom, clean_(payload.email), clean_(payload.telephone), payload.statut, payload.cayenne,
+      a.reponse, a.causes.join(' ; '), a.precision, a.aide ? 'Oui' : 'Non', a.heureDebutAide, a.heureFinAide, a.commentaire, key,
+      date ? Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM') : '', date ? getWeekNumber_(date) : '', '', a.participation, a.creneaux.join(' ; ')]);
   });
-
-  if (savedRows.length) responseSheet
-    .getRange(responseSheet.getLastRow() + 1, 1, savedRows.length, UC_APP.headers.reponses.length)
-    .setValues(savedRows.map(function(row) { return row.map(sheetLiteral_); }));
-
+  if (savedRows.length) sheet.getRange(sheet.getLastRow() + 1, 1, savedRows.length, UC_APP.headers.reponses.length).setValues(savedRows.map(function(row) { return row.map(sheetLiteral_); }));
   let warning = '';
   try {
     refreshDashboardSheet_();
-    const refreshedEvents = {};
-    savedRows.forEach(function(row) {
-      refreshedEvents[row[4]] = true;
-    });
-    Object.keys(refreshedEvents).forEach(function(eventId) {
-      generateEventSheet_(eventId);
-    });
-  } catch (error) {
-    warning = 'Réponses enregistrées. Le bureau devra actualiser les feuilles de suivi.';
-  }
-
-  return {
-    ok: true,
-    saved: selectedEventIds.length,
-    warning: warning,
-    message: selectedEventIds.length + ' réponse(s) enregistrée(s).'
-  };
+    savedRows.forEach(function(row) { generateEventSheet_(row[4]); });
+  } catch (error) { warning = 'Réponses enregistrées. Le bureau devra actualiser les feuilles de suivi.'; }
+  return {ok:true, saved:answers.length, warning:warning, message:answers.length + ' réponse(s) enregistrée(s). Vous pouvez les modifier à tout moment.'};
 }
 
 function getDashboardData(year, adminPin) {
@@ -384,10 +365,11 @@ function generateEventSheet_(eventId) {
     ['Disponibles pour aider', aidCount],
     ['Total suivi', rows.length]
   ]);
+  sheet.getRange('D4:E6').setValues([['Absents', rows.filter(function(r) { return r.reponse === 'Absent'; }).length], ['Indécis', rows.filter(function(r) { return r.reponse === 'Je ne sais pas encore'; }).length], ['Repas confirmés', rows.filter(function(r) { return r.reponse === 'Présent' && ['Repas seulement', 'Repas et aide'].includes(r.participation); }).length]]);
   sheet.getRange('A4:A8').setFontWeight('bold').setBackground('#F2E7E9');
   sheet.getRange('B4:B8').setNumberFormat('0');
 
-  const headers = ['Nom', 'Prénom', 'Statut', 'Cayenne', 'Réponse', 'Cause', 'Précision', 'Aide', 'Horaire'];
+  const headers = ['Nom', 'Prénom', 'Statut', 'Cayenne', 'Réponse', 'Cause', 'Précision', 'Aide', 'Horaire', 'Participation repas / aide', 'Créneaux', 'Commentaire'];
   sheet.getRange(10, 1, 1, headers.length).setValues([headers]);
   sheet.getRange(10, 1, 1, headers.length).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
 
@@ -402,10 +384,11 @@ function generateEventSheet_(eventId) {
         row.causes,
         row.precision,
         row.aide,
-        [row.heureDebut, row.heureFin].filter(Boolean).join(' - ')
+        [row.heureDebut, row.heureFin].filter(Boolean).join(' - '),
+        row.participation, row.creneaux, row.commentaire
       ];
     });
-    sheet.getRange(11, 1, values.length, headers.length).setValues(values);
+    sheet.getRange(11, 1, values.length, headers.length).setValues(values.map(function(row) { return row.map(sheetLiteral_); }));
   }
 
   sheet.autoResizeColumns(1, headers.length);
@@ -448,9 +431,11 @@ function refreshDashboardSheet_() {
   const ss = getSpreadsheet_();
   const sheet = ss.getSheetByName(UC_APP.sheets.dashboard);
   if (!sheet) return;
+  if (sheet.getMaxColumns() < 22) sheet.insertColumnsAfter(sheet.getMaxColumns(), 22 - sheet.getMaxColumns());
   const settings = getSettings_();
   const year = Number(settings.annee_active || UC_APP.defaults.activeYear);
   const data = computeDashboard_(year);
+  setupSuiviSheet_(ss.getSheetByName(UC_APP.sheets.suivi), data);
 
   sheet.clear();
   sheet.setHiddenGridlines(true);
@@ -479,13 +464,14 @@ function refreshDashboardSheet_() {
     setLinkedText_(sheet.getRange('B11'), 'Ouvrir le dashboard admin', urls.adminUrl);
   }
 
-  sheet.getRange('D3:H3').setValues([['Événement', 'Date', 'Présents', 'Excusés', 'Sans réponse']]);
-  sheet.getRange('D3:H3').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
+  sheet.getRange('D3:J3').setValues([['Événement', 'Date', 'Présents', 'Excusés', 'Sans réponse', 'Absents', 'Indécis']]);
+  sheet.getRange('D3:J3').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
   const eventRows = data.events.map(function(event) {
-    return [event.title, event.date, event.presents, event.excused, event.noResponse];
+    return [event.title, event.date, event.presents, event.excused, event.noResponse, event.absent, event.undecided];
   });
-  if (eventRows.length) sheet.getRange(4, 4, eventRows.length, 5).setValues(eventRows);
+  if (eventRows.length) sheet.getRange(4, 4, eventRows.length, 7).setValues(eventRows);
 
+  sheet.getRange('U3:V4').setValues([['Absents sans excuse', data.kpis.absent], ['Indécis', data.kpis.undecided]]);
   const causeRows = data.causes.map(function(cause) {
     return [cause.cause, cause.count];
   });
@@ -494,23 +480,23 @@ function refreshDashboardSheet_() {
   if (causeRows.length) sheet.getRange(14, 1, causeRows.length, 2).setValues(causeRows);
 
   const memberRows = data.members.map(function(member) {
-    return [member.nom, member.prenom, member.statut, member.cayenne, member.presents, member.excused, member.noResponse, member.aids, member.presenceRate];
+    return [member.nom, member.prenom, member.statut, member.cayenne, member.presents, member.excused, member.noResponse, member.aids, member.presenceRate, member.absent, member.undecided];
   });
-  sheet.getRange('A23:I23').setValues([['Nom', 'Prénom', 'Statut', 'Cayenne', 'Présences', 'Excusés', 'Sans réponse', 'Aides', 'Taux']]);
-  sheet.getRange('A23:I23').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
+  sheet.getRange('A23:K23').setValues([['Nom', 'Prénom', 'Statut', 'Cayenne', 'Présences', 'Excusés', 'Sans réponse', 'Aides', 'Taux', 'Absents', 'Indécis']]);
+  sheet.getRange('A23:K23').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
   if (memberRows.length) {
-    sheet.getRange(24, 1, memberRows.length, 9).setValues(memberRows);
+    sheet.getRange(24, 1, memberRows.length, 11).setValues(memberRows);
     sheet.getRange(24, 9, memberRows.length, 1).setNumberFormat('0%');
   }
 
-  sheet.getRange('K3:Q3').setValues([['Mois', 'Événements', 'Réponses', 'Présences', 'Excusés', 'Aides', 'Sans réponse']]);
-  sheet.getRange('K3:Q3').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
+  sheet.getRange('K3:S3').setValues([['Mois', 'Événements', 'Réponses', 'Présences', 'Excusés', 'Aides', 'Sans réponse', 'Absents', 'Indécis']]);
+  sheet.getRange('K3:S3').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
   const monthlyRows = data.monthly.map(function(month) {
-    return [month.label, month.events, month.responses, month.presents, month.excused, month.aids, month.noResponse];
+    return [month.label, month.events, month.responses, month.presents, month.excused, month.aids, month.noResponse, month.absent, month.undecided];
   });
-  if (monthlyRows.length) sheet.getRange(4, 11, monthlyRows.length, 7).setValues(monthlyRows);
+  if (monthlyRows.length) sheet.getRange(4, 11, monthlyRows.length, 9).setValues(monthlyRows);
 
-  sheet.autoResizeColumns(1, 17);
+  sheet.autoResizeColumns(1, 22);
 }
 
 function exportActiveSheetPdf_() {
@@ -523,6 +509,7 @@ function exportActiveSheetPdf_() {
 function setupSystemIfMissing_() {
   const ss = getSpreadsheet_();
   if (!ss.getSheetByName(UC_APP.sheets.reponses) || !ss.getSheetByName(UC_APP.sheets.eventBase)) setupSystem_();
+  ensureParticipationSchema_();
 }
 
 function ensureSheet_(ss, name) {
@@ -569,36 +556,21 @@ function setupParametres_(sheet) {
   sheet.autoResizeColumns(1, 8);
 }
 
-function setupSuiviSheet_(sheet) {
+function setupSuiviSheet_(sheet, data) {
+  if (!sheet) return;
+  data = data || computeDashboard_(Number(getSettings_().annee_active || UC_APP.defaults.activeYear));
   sheet.clear();
   sheet.setHiddenGridlines(true);
-  sheet.getRange('A1:K1').merge().setValue('Suivi annuel par personne');
-  sheet.getRange('A1').setFontSize(16).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#7A1F2B');
-  sheet.getRange('A3:K3').setValues([['Nom', 'Prénom', 'Statut', 'Cayenne', 'Clé personne', 'Présences', 'Absences excusées', 'Sans réponse', 'Aides proposées', 'Taux présence', 'Dernière réponse']]);
-  sheet.getRange('A3:K3').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
-
-  const formulas = [];
-  for (let row = 4; row <= 203; row++) {
-    const memberRow = row - 2;
-    formulas.push([
-      `=IF('MEMBRES'!A${memberRow}="";"";'MEMBRES'!A${memberRow})`,
-      `=IF('MEMBRES'!B${memberRow}="";"";'MEMBRES'!B${memberRow})`,
-      `=IF('MEMBRES'!C${memberRow}="";"";'MEMBRES'!C${memberRow})`,
-      `=IF('MEMBRES'!D${memberRow}="";"";'MEMBRES'!D${memberRow})`,
-      `=IF(A${row}="";"";UPPER(TRIM(A${row}&" "&B${row})))`,
-      `=IF(E${row}="";"";COUNTIFS('REPONSES'!$V$2:$V$2000;E${row};'REPONSES'!$D$2:$D$2000;'PARAMETRES'!$B$2;'REPONSES'!$O$2:$O$2000;"Présent"))`,
-      `=IF(E${row}="";"";COUNTIFS('REPONSES'!$V$2:$V$2000;E${row};'REPONSES'!$D$2:$D$2000;'PARAMETRES'!$B$2;'REPONSES'!$O$2:$O$2000;"Absent excusé"))`,
-      `=IF(E${row}="";"";MAX(0;COUNTIFS('CALENDRIER'!$B$2:$B$500;'PARAMETRES'!$B$2;'CALENDRIER'!$K$2:$K$500;"Oui")-F${row}-G${row}))`,
-      `=IF(E${row}="";"";COUNTIFS('REPONSES'!$V$2:$V$2000;E${row};'REPONSES'!$D$2:$D$2000;'PARAMETRES'!$B$2;'REPONSES'!$R$2:$R$2000;"Oui"))`,
-      `=IF(E${row}="";"";IFERROR(F${row}/(F${row}+G${row}+H${row});0))`,
-      `=IF(E${row}="";"";IFERROR(MAXIFS('REPONSES'!$B$2:$B$2000;'REPONSES'!$V$2:$V$2000;E${row};'REPONSES'!$D$2:$D$2000;'PARAMETRES'!$B$2);""))`
-    ]);
+  sheet.getRange('A1:M1').merge().setValue('Suivi annuel par personne — ' + data.year);
+  const headers = ['Nom', 'Prénom', 'Statut', 'Cayenne', 'Clé personne', 'Présences', 'Excusés', 'Absents', 'Indécis', 'Sans réponse', 'Aides', 'Taux présence', 'Dernière réponse'];
+  sheet.getRange(3, 1, 1, headers.length).setValues([headers]).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#7A1F2B');
+  const rows = data.members.map(function(m) { return [m.nom, m.prenom, m.statut, m.cayenne, m.key, m.presents, m.excused, m.absent, m.undecided, m.noResponse, m.aids, m.presenceRate, m.lastResponse]; });
+  if (rows.length) {
+    sheet.getRange(4, 1, rows.length, headers.length).setValues(rows.map(function(row) { return row.map(sheetLiteral_); }));
+    sheet.getRange(4, 12, rows.length, 1).setNumberFormat('0%');
   }
-  sheet.getRange(4, 1, formulas.length, formulas[0].length).setFormulas(formulas);
-  sheet.getRange('F4:I203').setNumberFormat('0');
-  sheet.getRange('J4:J203').setNumberFormat('0%');
-  sheet.getRange('K4:K203').setNumberFormat('yyyy-mm-dd hh:mm');
-  sheet.autoResizeColumns(1, 11);
+  sheet.setFrozenRows(3);
+  sheet.autoResizeColumns(1, headers.length);
 }
 
 function setupModeleCr_(sheet) {
@@ -623,8 +595,8 @@ function seedCalendar_(sheet) {
   if (sheet.getLastRow() > 1) return;
   const year = UC_APP.defaults.activeYear;
   const rows = [
-    ['EVT-2026-JEUNES-01', year, new Date(year, 0, 15), 'Réunion des jeunes janvier', 'Réunion des jeunes', '20:00', '22:00', 'Cayenne de Paris', 'Paris', 'Réunion', 'Oui', 'Exemple à ajuster'],
-    ['EVT-2026-COMPAGNONS-01', year, new Date(year, 1, 12), 'Réunion compagnon février', 'Réunion compagnon', '20:00', '22:00', 'Cayenne de Paris', 'Paris', 'Réunion', 'Oui', 'Exemple à ajuster'],
+    ['EVT-2026-JEUNES-01', year, new Date(year, 0, 15), 'Réunion des jeunes janvier', 'Réunion des jeunes', '19:00', '22:00', 'Cayenne de Paris', 'Paris', 'Réunion', 'Oui', 'Exemple à ajuster'],
+    ['EVT-2026-COMPAGNONS-01', year, new Date(year, 1, 12), 'Réunion compagnon février', 'Réunion compagnon', '19:00', '22:00', 'Cayenne de Paris', 'Paris', 'Réunion', 'Oui', 'Exemple à ajuster'],
     ['EVT-2026-COURS-01', year, new Date(year, 2, 14), 'Cours en Cayenne', 'Cours en Cayenne', '09:00', '12:00', 'Cayenne de Paris', 'Paris', 'Cours', 'Oui', 'Date exemple'],
     ['EVT-2026-FETE-JUIN', year, new Date(year, 5, 20), 'Fête de juin', 'Fête de juin', '08:00', '23:00', 'Cayenne de Paris', 'Paris', 'Événement', 'Oui', 'Date à confirmer'],
     ['EVT-2026-JEP', year, new Date(year, 8, 19), 'Journées européennes du patrimoine', 'JEP', '09:00', '18:00', 'Cayenne de Paris', 'Paris', 'Événement', 'Oui', 'Date à confirmer'],
@@ -644,7 +616,7 @@ function seedEventBase_(sheet) {
     return !existingMap[row[0]];
   });
   if (!missing.length) return;
-  sheet.getRange(sheet.getLastRow() + 1, 1, missing.length, UC_APP.headers.eventBase.length).setValues(missing);
+  sheet.getRange(sheet.getLastRow() + 1, 1, missing.length, UC_APP.headers.eventBase.length).setValues(missing.map(function(row) { return row.length === 12 ? row : row.concat(['Standard']); }));
   sheet.autoResizeColumns(1, UC_APP.headers.eventBase.length);
 }
 
@@ -655,7 +627,7 @@ function applyValidations_() {
   const reponses = ss.getSheetByName(UC_APP.sheets.reponses);
   const statuses = getOptionList_('D', UC_APP.defaults.statuses);
   const cayennes = getOptionList_('E', UC_APP.defaults.cayennes);
-  const responseTypes = ['Présent', 'Absent excusé'];
+  const responseTypes = ['Présent', 'Absent', 'Je ne sais pas encore', 'Absent excusé'];
   const eventTypes = getOptionList_('H', UC_APP.defaults.eventTypes);
 
   setListValidation_(membres.getRange('C2:C500'), statuses);
@@ -775,16 +747,18 @@ function formatEventForClient_(event) {
     date: formatDate_(event.Date),
     title: event.Titre,
     type: event.Type_Evenement,
-    start: event.Heure_Debut,
-    end: event.Heure_Fin,
+    start: formatEventTime_(event.Heure_Debut),
+    end: formatEventTime_(event.Heure_Fin),
     place: event.Lieu,
-    cayenne: event.Cayenne
+    cayenne: event.Cayenne,
+    comment: clean_(event.Commentaire),
+    modalites: clean_(event.Modalites || 'Standard')
   };
 }
 
 function getEventTemplates_() {
   const rows = getRowsAsObjects_(UC_APP.sheets.eventBase);
-  const source = rows.length ? rows : UC_APP.defaults.eventTemplates.map(function(row) {
+  const source = rows.concat(UC_APP.defaults.eventTemplates.filter(function(row) { return !rows.some(function(r) { return r.Template_ID === row[0]; }); }).map(function(row) {
     return {
       Template_ID: row[0],
       Nom_Modele: row[1],
@@ -796,9 +770,10 @@ function getEventTemplates_() {
       Cayenne: row[7],
       Categorie_CR: row[8],
       Actif: row[9],
-      Commentaire: row[10]
+      Commentaire: row[10],
+      Modalites: row[11] || 'Standard'
     };
-  });
+  }));
 
   return source
     .filter(function(row) { return clean_(row.Template_ID) && isActive_(row.Actif); })
@@ -808,13 +783,14 @@ function getEventTemplates_() {
         name: clean_(row.Nom_Modele),
         type: clean_(row.Type_Evenement),
         defaultTitle: clean_(row.Titre_Par_Defaut),
-        start: clean_(row.Heure_Debut),
-        end: clean_(row.Heure_Fin),
+        start: formatEventTime_(row.Heure_Debut),
+        end: formatEventTime_(row.Heure_Fin),
         place: clean_(row.Lieu),
         cayenne: clean_(row.Cayenne),
         category: clean_(row.Categorie_CR),
         active: clean_(row.Actif || 'Oui'),
-        comment: clean_(row.Commentaire)
+        comment: clean_(row.Commentaire),
+        modalites: clean_(row.Modalites || 'Standard')
       };
     });
 }
@@ -840,14 +816,14 @@ function computeDashboard_(year) {
     return member.Nom && member.Prenom && isActive_(member.Actif);
   });
   const responses = getRowsAsObjects_(UC_APP.sheets.reponses).filter(function(row) {
-    return Number(row.Annee) === Number(year);
+    return Number(row.Annee) === Number(year) && events.some(function(e) { return e.ID_Evenement === row.ID_Evenement; });
   });
 
   const latestByEventPerson = {};
   responses.forEach(function(row) {
     const key = row.ID_Evenement + '|' + row.Cle_Personne;
     const current = latestByEventPerson[key];
-    if (!current || asDate_(row.Horodatage) > asDate_(current.Horodatage)) latestByEventPerson[key] = row;
+    if (!current || asDate_(row.Horodatage) >= asDate_(current.Horodatage)) latestByEventPerson[key] = row;
   });
   const latestResponses = Object.keys(latestByEventPerson).map(function(key) { return latestByEventPerson[key]; });
 
@@ -862,6 +838,8 @@ function computeDashboard_(year) {
     const responders = {};
     eventResponses.forEach(function(row) { responders[row.Cle_Personne] = true; });
     const presents = eventResponses.filter(function(row) { return row.Reponse === 'Présent'; }).length;
+    const absent = eventResponses.filter(function(row) { return row.Reponse === 'Absent'; }).length;
+    const undecided = eventResponses.filter(function(row) { return row.Reponse === 'Je ne sais pas encore'; }).length;
     const excused = eventResponses.filter(function(row) { return row.Reponse === 'Absent excusé'; }).length;
     const aids = eventResponses.filter(function(row) { return row.Aide_Disponible === 'Oui'; }).length;
     return {
@@ -871,7 +849,16 @@ function computeDashboard_(year) {
       date: formatDate_(event.Date),
       presents: presents,
       excused: excused,
+      absent: absent,
+      undecided: undecided,
       aids: aids,
+      modalites: clean_(event.Modalites || 'Standard'),
+      meals: eventResponses.filter(function(r) { return r.Reponse === 'Présent' && ['Repas seulement', 'Repas et aide'].includes(r.Participation); }).length,
+      morning: eventResponses.filter(function(r) { return r.Reponse === 'Présent' && clean_(r.Creneaux).split(' ; ').includes('Matin'); }).length,
+      evening: eventResponses.filter(function(r) { return r.Reponse === 'Présent' && clean_(r.Creneaux).split(' ; ').includes('Soir'); }).length,
+      comment: clean_(event.Commentaire),
+      start: formatEventTime_(event.Heure_Debut),
+      end: formatEventTime_(event.Heure_Fin),
       noResponse: Math.max(0, members.length - Object.keys(responders).length),
       sheetName: makeCrSheetName_(event)
     };
@@ -883,10 +870,12 @@ function computeDashboard_(year) {
     const answered = {};
     memberResponses.forEach(function(row) { answered[row.ID_Evenement] = true; });
     const presents = memberResponses.filter(function(row) { return row.Reponse === 'Présent'; }).length;
+    const absent = memberResponses.filter(function(row) { return row.Reponse === 'Absent'; }).length;
+    const undecided = memberResponses.filter(function(row) { return row.Reponse === 'Je ne sais pas encore'; }).length;
     const excused = memberResponses.filter(function(row) { return row.Reponse === 'Absent excusé'; }).length;
     const aids = memberResponses.filter(function(row) { return row.Aide_Disponible === 'Oui'; }).length;
     const noResponse = Math.max(0, events.length - Object.keys(answered).length);
-    const denominator = presents + excused + noResponse;
+    const denominator = presents + excused + absent + undecided + noResponse;
     return {
       key: key,
       nom: member.Nom,
@@ -895,8 +884,11 @@ function computeDashboard_(year) {
       cayenne: member.Cayenne,
       presents: presents,
       excused: excused,
+      absent: absent,
+      undecided: undecided,
       noResponse: noResponse,
       aids: aids,
+      lastResponse: memberResponses.length ? formatDate_(new Date(Math.max.apply(null, memberResponses.map(function(r) { return asDate_(r.Horodatage).getTime(); })))) : '',
       presenceRate: denominator ? presents / denominator : 0
     };
   });
@@ -918,6 +910,8 @@ function computeDashboard_(year) {
       members: members.length,
       responses: latestResponses.length,
       presents: latestResponses.filter(function(row) { return row.Reponse === 'Présent'; }).length,
+      absent: latestResponses.filter(function(row) { return row.Reponse === 'Absent'; }).length,
+      undecided: latestResponses.filter(function(row) { return row.Reponse === 'Je ne sais pas encore'; }).length,
       excused: latestResponses.filter(function(row) { return row.Reponse === 'Absent excusé'; }).length,
       aids: latestResponses.filter(function(row) { return row.Aide_Disponible === 'Oui'; }).length,
       noResponse: totalNoResponse
@@ -941,6 +935,8 @@ function buildMonthlyStats_(year, events, latestResponses, eventStats) {
       responses: 0,
       presents: 0,
       excused: 0,
+      absent: 0,
+      undecided: 0,
       aids: 0,
       noResponse: 0
     };
@@ -958,6 +954,8 @@ function buildMonthlyStats_(year, events, latestResponses, eventStats) {
     if (typeof month !== 'number') return;
     stats[month].responses++;
     if (row.Reponse === 'Présent') stats[month].presents++;
+    if (row.Reponse === 'Absent') stats[month].absent++;
+    if (row.Reponse === 'Je ne sais pas encore') stats[month].undecided++;
     if (row.Reponse === 'Absent excusé') stats[month].excused++;
     if (row.Aide_Disponible === 'Oui') stats[month].aids++;
   });
@@ -980,7 +978,7 @@ function buildEventRows_(eventId) {
   responses.forEach(function(row) {
     const key = row.Cle_Personne || personKey_(row.Nom, row.Prenom, row.Email);
     const current = latestByPerson[key];
-    if (!current || asDate_(row.Horodatage) > asDate_(current.Horodatage)) latestByPerson[key] = row;
+    if (!current || asDate_(row.Horodatage) >= asDate_(current.Horodatage)) latestByPerson[key] = row;
   });
 
   const rows = members.map(function(member) {
@@ -997,7 +995,10 @@ function buildEventRows_(eventId) {
       precision: response ? response.Precision : '',
       aide: response ? response.Aide_Disponible : 'Non',
       heureDebut: response ? response.Heure_Debut_Aide : '',
-      heureFin: response ? response.Heure_Fin_Aide : ''
+      heureFin: response ? response.Heure_Fin_Aide : '',
+      participation: response ? response.Participation || '' : '',
+      creneaux: response ? response.Creneaux || '' : '',
+      commentaire: response ? response.Commentaire || '' : ''
     };
   });
 
@@ -1017,11 +1018,14 @@ function buildEventRows_(eventId) {
       precision: response.Precision,
       aide: response.Aide_Disponible,
       heureDebut: response.Heure_Debut_Aide,
-      heureFin: response.Heure_Fin_Aide
+      heureFin: response.Heure_Fin_Aide,
+      participation: response.Participation || '',
+      creneaux: response.Creneaux || '',
+      commentaire: response.Commentaire || ''
     });
   });
 
-  const order = { 'Présent': 1, 'Absent excusé': 2, 'Sans réponse': 3 };
+  const order = { 'Présent': 1, 'Je ne sais pas encore': 2, 'Absent excusé': 3, 'Absent': 4, 'Sans réponse': 5 };
   return rows.sort(function(a, b) {
     return (order[a.reponse] || 9) - (order[b.reponse] || 9) || String(a.nom).localeCompare(String(b.nom));
   });
@@ -1036,12 +1040,12 @@ function getTableData_(sheetName) {
   });
   const expected = tableKey ? UC_APP.headers[tableKey] : null;
   const headerIndex = values.slice(0, 10).findIndex(function(row) {
-    if (expected) return expected.every(function(header, index) { return clean_(row[index]) === header; });
+    if (expected) return expected.slice(0, ({reponses:25, calendrier:12, eventBase:11})[tableKey] || expected.length).every(function(header, index) { return clean_(row[index]) === header; });
     return row.filter(function(cell) { return clean_(cell); }).length > 1;
   });
   if (headerIndex < 0) throw new Error('Colonnes introuvables dans l’onglet ' + sheetName + '.');
   const headers = values[headerIndex].map(clean_);
-  const result = { rows: [], rowNumbers: [] };
+  const result = { rows: [], rowNumbers: [], headerRow: headerIndex + 1 };
   values.slice(headerIndex + 1).forEach(function(row, index) {
     if (!row.some(function(cell) { return cell !== '' && cell !== null; })) return;
     // A prior installation may have also written a header above the original table.
@@ -1181,3 +1185,25 @@ function getWeekNumber_(date) {
   const yearStart = new Date(Date.UTC(copy.getUTCFullYear(), 0, 1));
   return Math.ceil((((copy - yearStart) / 86400000) + 1) / 7);
 }
+
+// Extend only optional columns and the response validation, never rewrite historical rows.
+function ensureParticipationSchema_() {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('uc.participation.schema') === '2') return;
+  const ss = getSpreadsheet_();
+  ['reponses', 'calendrier', 'eventBase'].forEach(function(key) {
+    const sheet = ss.getSheetByName(UC_APP.sheets[key]);
+    const table = getTableData_(UC_APP.sheets[key]);
+    const start = ({reponses:25, calendrier:12, eventBase:11})[key];
+    const extra = UC_APP.headers[key].slice(start);
+    if (sheet.getMaxColumns() < start + extra.length) sheet.insertColumnsAfter(sheet.getMaxColumns(), start + extra.length - sheet.getMaxColumns());
+    const range = sheet.getRange(table.headerRow, start + 1, 1, extra.length);
+    const current = range.getValues()[0];
+    if (current.some(function(v, i) { return clean_(v) && clean_(v) !== extra[i]; })) throw new Error('Colonnes supplémentaires occupées dans ' + UC_APP.sheets[key] + '. Contactez le bureau.');
+    range.setValues([extra]);
+    if (key === 'reponses') setListValidation_(sheet.getRange(table.headerRow + 1, 15, sheet.getMaxRows() - table.headerRow, 1), ['Présent', 'Absent', 'Je ne sais pas encore', 'Absent excusé']);
+  });
+  props.setProperty('uc.participation.schema', '2');
+}
+
+function formatEventTime_(value) { return value instanceof Date ? Utilities.formatDate(value, Session.getScriptTimeZone(), 'HH:mm') : clean_(value); }

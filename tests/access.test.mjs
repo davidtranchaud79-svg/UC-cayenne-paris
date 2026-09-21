@@ -133,3 +133,41 @@ test('a new deployment keeps bureau and member links on the same live app',()=>{
     assert.equal(c.getAppUrls_().publicUrl,fallback);
   }
 });
+
+test('mixed event answers are atomic, retry-safe, and classified separately',()=>{
+ const {c,db,member}=fixture(),token=member();db.CALENDRIER.push({...db.CALENDRIER[0],ID_Evenement:'evt2'});
+ const payload={requestId:randomUUID(),answers:[{eventId:'evt1',reponse:'Je ne sais pas encore'},{eventId:'evt2',reponse:'Absent excusé',causes:['Autres'],precision:'Déplacement personnel'}]};
+ c.submitResponses(payload,token);c.submitResponses(payload,token);assert.equal(db.REPONSES.length,2);
+ let d=c.computeDashboard_(2026);assert.equal(d.kpis.presents,0);assert.equal(d.kpis.undecided,1);assert.equal(d.kpis.excused,1);assert.equal(d.kpis.noResponse,2);assert.equal(d.monthly[0].undecided,1);
+ c.submitResponses({requestId:randomUUID(),answers:[{eventId:'evt1',reponse:'Présent'}]},token);
+ db.REPONSES[2].Horodatage=db.REPONSES[0].Horodatage;d=c.computeDashboard_(2026);assert.equal(d.kpis.undecided,0);assert.equal(d.kpis.presents,1);assert.equal(d.kpis.responses,2);assert.equal(d.members[0].presenceRate,.5);
+ const rows=[];const sheet={clear(){},setHiddenGridlines(){},setFrozenRows(){},autoResizeColumns(){},getRange(){const r={merge:()=>r,setValue:()=>r,setFontWeight:()=>r,setFontColor:()=>r,setBackground:()=>r,setNumberFormat:()=>r,setValues:v=>{rows.push(v);return r;}};return r;}};
+ c.setupSuiviSheet_(sheet,d);assert.equal(rows[1][0][5],1);assert.equal(rows[1][0][8],0);
+});
+test('one invalid event or missing other reason rejects the whole batch',()=>{
+ const {c,db,member}=fixture(),token=member();
+ for(const answer of [{eventId:'missing',reponse:'Présent'},{eventId:'evt1',reponse:'Absent excusé',causes:['Autres']},{eventId:'evt1',reponse:'peut-être'}]){
+  assert.throws(()=>c.submitResponses({requestId:randomUUID(),answers:[answer]},token));assert.equal(db.REPONSES.length,0);
+ }
+ db.CALENDRIER.push({...db.CALENDRIER[0],ID_Evenement:'evt2',Actif:'Non'});
+ assert.throws(()=>c.submitResponses({requestId:randomUUID(),answers:[{eventId:'evt1',reponse:'Présent'},{eventId:'evt2',reponse:'Présent'}]},token));assert.equal(db.REPONSES.length,0);
+});
+test('meal-only, help-only, reception slots and absent sanitize conflicting details',()=>{
+ const {c,db,member}=fixture(),token=member();db.CALENDRIER[0].Modalites='Repas et aide';
+ const submit=a=>c.submitResponses({requestId:randomUUID(),answers:[{eventId:'evt1',reponse:'Présent',...a}]},token);
+ submit({participation:'Repas seulement',aideDisponible:true});assert.equal(db.REPONSES.at(-1).Aide_Disponible,'Non');
+ submit({participation:'Aide seulement (sans repas)'});assert.equal(db.REPONSES.at(-1).Aide_Disponible,'Oui');assert.equal(c.buildEventRows_('evt1')[0].participation,'Aide seulement (sans repas)');
+ db.CALENDRIER[0].Modalites='Réception';assert.throws(()=>submit({creneaux:['Après-midi']}),/matin/);submit({creneaux:['Matin','Soir']});assert.equal(db.REPONSES.at(-1).Creneaux,'Matin ; Soir');
+ submit({reponse:'Absent',participation:'Repas et aide',creneaux:['Matin'],aideDisponible:true,heureDebutAide:'19:00'});const r=db.REPONSES.at(-1);assert.equal(r.Aide_Disponible,'Non');assert.equal(r.Creneaux,'');assert.equal(r.Participation,'');assert.equal(r.Heure_Debut_Aide,'');assert.equal(c.computeDashboard_(2026).kpis.absent,1);
+});
+test('schema extension finds row-three headers and never rewrites M3 or response data',()=>{
+ const {c,props}=fixture();const writes=[],validations=[];
+ const headers=vm.runInContext('UC_APP.headers',c),names={reponses:'REPONSES',calendrier:'CALENDRIER',eventBase:'BASE_EVENEMENTS'};
+ const sheets={};for(const [key,n] of Object.entries({reponses:25,calendrier:12,eventBase:11})){
+  const grid=[['Title'],[],Array.from(headers[key]).slice(0,n),Array(n).fill('')];grid[3][0]='existing-id';
+  let cols=n;
+  sheets[names[key]]={grid,getLastRow:()=>4,getLastColumn:()=>cols,getMaxRows:()=>100,getMaxColumns:()=>cols,insertColumnsAfter:(_,count)=>{cols+=count;},getRange:(row,col,h,w)=>({getValues:()=>Array.from({length:h},(_,i)=>Array.from({length:w},(_,j)=>grid[row-1+i]?.[col-1+j]||'')),setValues:v=>{writes.push({key,row,col});v.forEach((line,i)=>line.forEach((val,j)=>grid[row-1+i][col-1+j]=val));}})};
+ }
+ c.getSpreadsheet_=()=>({getSheetByName:n=>sheets[n]});c.setListValidation_=(range,values)=>validations.push(values);
+ c.ensureParticipationSchema_();c.ensureParticipationSchema_();assert.equal(writes.length,3);assert.equal(writes[0].row,3);assert.equal(writes[0].col,26);assert.equal(sheets.REPONSES.grid[2][12],'Statut');assert.equal(sheets.REPONSES.grid[3][0],'existing-id');assert.ok(validations[0].includes('Je ne sais pas encore'));assert.equal(props.get('uc.participation.schema'),'2');
+});

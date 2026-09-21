@@ -35,7 +35,7 @@ function app(file, overrides={}) {
         else if(method==='manageMemberCode'||method==='createMemberAccess')success({profile:config.profile,code:'1234-5678-90AB-CDEF'});
         else if(method==='changeBureauCode')success({ok:true});
         else if(method==='getDashboardData')success(structuredClone(dashboard));
-        else if(method==='submitResponses')success({ok:true,saved:args[0].eventIds.length});
+        else if(method==='submitResponses')success({ok:true,saved:args[0].answers.length});
         else if(method==='createEventFromTemplate')success({ok:true,message:'Événement créé.'});
         else if(method==='generateEventSheet')success({sheetName:'CR_JEP',sheetUrl:'https://docs.google.com/spreadsheets/d/demo/edit#gid=1'});
         else if(method==='generateAllEventSheets')success([{sheetName:'CR_JEP',sheetUrl:'https://docs.google.com/spreadsheets/d/demo/edit#gid=1'}]);
@@ -54,17 +54,22 @@ function app(file, overrides={}) {
 }
 function identity(a){assert.equal(a.doc.getElementById('prenom').value,'Camille');assert.ok(a.doc.getElementById('prenom').disabled);}
 
-test('member screen starts, has no administration link, and exposes real calendar choices',()=>{
-  const a=app('Public.html');assert.equal(a.doc.querySelectorAll('[name="eventIds"]').length,2);assert.ok(a.doc.getElementById('submitBtn').disabled);assert.equal(a.doc.querySelectorAll('a[href*="page=admin"]').length,0);assert.ok(a.doc.querySelector('img[alt="Union Compagnonnique Paris — Espace membres"]'));a.dom.window.close();
+function answer(a,id,value){a.doc.querySelector('[data-event="'+id+'"] [data-field="reponse"][value="'+value+'"]').click();}
+function detail(a,id,key,value){const n=a.doc.querySelector('[data-event="'+id+'"] [data-field="'+key+'"]');n.value=value;n.dispatchEvent(new a.dom.window.Event('change',{bubbles:true}));}
+test('one independent response per event, no admin link, and no fabricated initial answer',()=>{
+ const a=app('Public.html');assert.equal(a.doc.querySelectorAll('[data-event]').length,2);assert.equal(a.doc.querySelectorAll('[data-field="reponse"]:checked').length,0);assert.ok(a.doc.getElementById('submitBtn').disabled);assert.equal(a.doc.querySelectorAll('a[href*="page=admin"]').length,0);a.dom.window.close();
 });
-test('filtering preserves hidden selections and sends absence reasons for all selected dates',()=>{
-  const a=app('Public.html');identity(a);a.doc.querySelector('[value="evt-1"]').click();a.fill('eventSearch','novembre');assert.equal(a.doc.querySelectorAll('[name="eventIds"]').length,1);a.doc.getElementById('selectAll').click();a.doc.querySelector('[name="reponse"][value="Absent excusé"]').click();assert.equal(a.doc.getElementById('absenceBlock').hidden,false);a.doc.querySelector('[name="causes"][value="Travail"]').click();a.doc.querySelector('[name="causes"][value="Familiale"]').click();a.fill('precision','Un engagement familial');a.submit('presenceForm');a.flush();const sent=a.calls.find(c=>c.method==='submitResponses').args[0];assert.deepEqual([...sent.eventIds],['evt-1','evt-2']);assert.deepEqual([...sent.causes],['Travail','Familiale']);assert.equal(sent.source,'Réponse anticipée');assert.equal(a.doc.getElementById('successState').hidden,false);a.dom.window.close();
+test('different answers survive filtering and are sent together without member identity',()=>{
+ const a=app('Public.html');answer(a,'evt-1','Absent excusé');detail(a,'evt-1','cause','Travail');a.fill('eventSearch','novembre');answer(a,'evt-2','Je ne sais pas encore');a.submit('presenceForm');a.flush();const sent=a.calls.find(c=>c.method==='submitResponses');assert.equal(sent.args[0].answers.length,2);assert.equal(sent.args[0].answers[0].reponse,'Absent excusé');assert.equal(sent.args[0].answers[1].reponse,'Je ne sais pas encore');assert.equal(sent.args[1],'MEMBER_SESSION');assert.equal('nom' in sent.args[0],false);assert.equal(a.doc.getElementById('submitBtn').disabled,true);a.dom.window.close();
 });
-test('changing from absence to help removes hidden absence details and preserves overnight availability',()=>{
-  const a=app('Public.html');identity(a);a.doc.getElementById('selectAll').click();a.doc.querySelector('[value="Absent excusé"]').click();a.doc.querySelector('[name="causes"][value="Travail"]').click();a.fill('precision','Should not be sent');a.doc.querySelector('[value="Disponible pour aider"]').click();assert.equal(a.doc.getElementById('absenceBlock').hidden,true);assert.equal(a.doc.getElementById('aidBlock').hidden,false);a.fill('heureDebutAide','22:00');a.fill('heureFinAide','01:00');a.submit('presenceForm');a.flush();const sent=a.calls.find(c=>c.method==='submitResponses').args[0];assert.deepEqual([...sent.causes],[]);assert.equal(sent.precision,'');assert.equal(sent.heureFinAide,'01:00');a.dom.window.close();
+test('changing an excuse to help removes stale reasons and retains overnight hours',()=>{
+ const a=app('Public.html');answer(a,'evt-1','Absent excusé');detail(a,'evt-1','cause','Travail');answer(a,'evt-1','Présent');a.doc.querySelector('[data-event="evt-1"] [data-field="aideDisponible"]').click();detail(a,'evt-1','heureDebutAide','22:00');detail(a,'evt-1','heureFinAide','01:00');a.submit('presenceForm');a.flush();const row=a.calls.find(c=>c.method==='submitResponses').args[0].answers[0];assert.equal(row.causes.length,0);assert.equal(row.aideDisponible,true);assert.equal(row.heureFinAide,'01:00');a.dom.window.close();
 });
-test('failed submission keeps inputs and selections for a retry',()=>{
-  const a=app('Public.html',{submitResponses(){throw Error('Connexion interrompue');}});identity(a);a.doc.getElementById('selectAll').click();a.doc.querySelector('[value="Présent"]').click();a.submit('presenceForm');a.flush();assert.equal(a.doc.getElementById('prenom').value,'Camille');assert.equal(a.doc.querySelectorAll('[name="eventIds"]:checked').length,2);assert.equal(a.doc.getElementById('submitBtn').disabled,false);assert.match(a.doc.getElementById('publicNotice').textContent,/Connexion interrompue/);a.dom.window.close();
+test('failed batch preserves drafts and reuses the request ID on retry',()=>{
+ const a=app('Public.html',{submitResponses:()=>{throw Error('Réseau indisponible');}});answer(a,'evt-1','Présent');a.submit('presenceForm');a.flush();assert.equal(a.doc.querySelector('[data-event="evt-1"] [data-field="reponse"]:checked').value,'Présent');a.submit('presenceForm');a.flush();const calls=a.calls.filter(c=>c.method==='submitResponses');assert.equal(calls[0].args[0].requestId,calls[1].args[0].requestId);assert.match(a.doc.getElementById('publicNotice').textContent,/Réseau/);a.dom.window.close();
+});
+test('other reason requires text even when its event is filtered out',()=>{
+ const a=app('Public.html');answer(a,'evt-1','Absent excusé');detail(a,'evt-1','cause','Autres');a.fill('eventSearch','novembre');a.submit('presenceForm');a.flush();assert.equal(a.calls.some(c=>c.method==='submitResponses'),false);assert.match(a.doc.getElementById('publicNotice').textContent,/précision/);a.dom.window.close();
 });
 test('bureau shows no fabricated figures before authentication and clears data when locked',()=>{
   const a=app('Admin.html');assert.match(a.doc.getElementById('kpiRoot').textContent,/—/);assert.equal(a.calls.some(c=>c.method==='getDashboardData'),false);a.login();assert.equal(a.doc.getElementById('accessPanel').hidden,true);assert.match(a.doc.getElementById('membersRoot').textContent,/Camille Exemple/);a.doc.getElementById('lockSession').click();assert.equal(a.doc.getElementById('adminPin').value,'');assert.doesNotMatch(a.doc.getElementById('membersRoot').textContent,/Camille Exemple/);assert.ok(a.doc.getElementById('generateAll').disabled);a.dom.window.close();
@@ -73,7 +78,7 @@ test('bureau navigation, filters, model creation, and individual report generati
   const a=app('Admin.html');a.login();a.doc.querySelector('[data-screen="events"]').click();assert.ok(a.doc.getElementById('screen-events').classList.contains('active'));assert.equal(a.doc.getElementById('eventTitle').value,'Journées du patrimoine');a.fill('eventDate','2026-10-10');a.submit('eventForm');a.flush();const sent=a.calls.find(c=>c.method==='createEventFromTemplate');assert.equal(sent.args[0].date,'2026-10-10');assert.equal(sent.args[0].templateId,'tpl-1');assert.equal(sent.args[1],'BUREAU_SESSION');a.doc.querySelector('[data-screen="members"]').click();a.fill('memberSearch','introuvable');assert.match(a.doc.getElementById('membersRoot').textContent,/Aucun membre/);a.fill('memberSearch','Camille');assert.match(a.doc.getElementById('membersRoot').textContent,/Camille Exemple/);a.doc.querySelector('[data-screen="reports"]').click();a.doc.querySelector('[data-event-id="evt-1"]').click();a.flush();assert.equal(a.calls.find(c=>c.method==='generateEventSheet').args[0],'evt-1');assert.ok(a.doc.querySelector('.report-links a[href^="https://docs.google.com/spreadsheets/"]'));a.dom.window.close();
 });
 test('event titles from the Sheet remain escaped text',()=>{
-  const hostile=structuredClone(config);hostile.events[0].title='<img src=x onerror="alert(1)">';const a=app('Public.html',{getPublicConfig:()=>hostile});assert.equal(a.doc.querySelectorAll('.event-choice img').length,0);assert.match(a.doc.getElementById('events').textContent,/<img src=x/);a.dom.window.close();
+  const hostile=structuredClone(config);hostile.events[0].title='<img src=x onerror="alert(1)">';const a=app('Public.html',{getPublicConfig:()=>hostile});assert.equal(a.doc.querySelectorAll('.event-answer img').length,0);assert.match(a.doc.getElementById('events').textContent,/<img src=x/);a.dom.window.close();
 });
 
 // A refresh and an event/report write can overlap on a slow connection.
@@ -83,7 +88,7 @@ test('member login protects the initial screen and logout discards late response
   a.memberLogin();assert.match(a.doc.getElementById('memberWelcome').textContent,/Camille/);
   a.doc.getElementById('memberRefresh').click();a.doc.getElementById('memberLogout').click();a.flush();
   assert.equal(a.doc.getElementById('memberLogin').hidden,false);assert.equal(a.doc.getElementById('memberOverview').hidden,true);
-  assert.equal(a.doc.getElementById('nom').value,'');assert.equal(a.doc.getElementById('events').textContent,'');
+  assert.equal(a.doc.getElementById('memberIdentity').textContent,'');assert.equal(a.doc.getElementById('events').textContent,'');
   assert.equal(a.calls.at(-1).method,'logoutAccess');a.dom.window.close();
 });
 test('bureau issues a code without exposing it after locking, and uses only its session for member management',()=>{
@@ -94,13 +99,13 @@ test('bureau issues a code without exposing it after locking, and uses only its 
   assert.equal(a.doc.getElementById('issuedCode').value,'');assert.equal(a.doc.getElementById('memberAccessList').textContent,'');
   a.dom.window.close();
 });
-test('member can reopen a saved response including reasons and availability',()=>{
-  const a=app('Public.html',{getPublicConfig:()=>({...config,responses:[{eventId:'evt-1',date:'19/09/2026',title:'JEP',response:'Absent excusé',causes:['Travail'],precision:'Horaires',comment:'Indisponible'}]})});
-  a.doc.querySelector('[data-edit-event]').click();
-  assert.equal(a.doc.querySelector('[name="reponse"]:checked').value,'Absent excusé');
-  assert.equal(a.doc.getElementById('precision').value,'Horaires');assert.equal(a.doc.querySelectorAll('[name="eventIds"]:checked').length,1);
-  a.submit('presenceForm');a.flush();const sent=a.calls.find(c=>c.method==='submitResponses');
-  assert.equal(sent.args[1],'MEMBER_SESSION');assert.equal('nom' in sent.args[0],false);a.dom.window.close();
+test('saved answers load under each event and can change from undecided to present',()=>{
+ const a=app('Public.html',{getPublicConfig:()=>({...config,responses:[{eventId:'evt-1',date:'19/09/2026',title:'JEP',response:'Je ne sais pas encore',causes:[]}]})});
+ assert.equal(a.doc.querySelector('[data-event="evt-1"] [data-field="reponse"]:checked').value,'Je ne sais pas encore');a.doc.querySelector('[data-edit-event]').click();answer(a,'evt-1','Présent');a.submit('presenceForm');a.flush();assert.equal(a.calls.find(c=>c.method==='submitResponses').args[0].answers[0].reponse,'Présent');assert.match(a.doc.getElementById('memberSummary').textContent,/1 présence/);a.dom.window.close();
+});
+test('meal and reception choices are independent and retained after save',()=>{
+ const a=app('Public.html',{getPublicConfig:()=>({...config,events:config.events.map((e,i)=>({...e,modalites:i?'Réception':'Repas et aide'}))})});
+ answer(a,'evt-1','Présent');detail(a,'evt-1','participation','Aide seulement (sans repas)');answer(a,'evt-2','Présent');a.doc.querySelectorAll('[data-event="evt-2"] [data-field="creneaux"]').forEach(n=>n.click());a.submit('presenceForm');a.flush();const rows=a.calls.find(c=>c.method==='submitResponses').args[0].answers;assert.equal(rows[0].aideDisponible,true);assert.equal(rows[0].participation,'Aide seulement (sans repas)');assert.equal(rows[1].creneaux.length,2);assert.match(a.doc.getElementById('memberHistory').textContent,/Matin · Soir/);a.dom.window.close();
 });
 test('refreshing does not strand an in-flight report and locking ignores its late response',()=>{
   const a=app('Admin.html');a.login();

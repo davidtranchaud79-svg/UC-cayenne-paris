@@ -36,178 +36,75 @@
       <div id="memberSummary" class="member-summary" aria-live="polite"></div>
       <details class="member-history"><summary>Mes réponses enregistrées</summary><div id="memberHistory"></div></details>
     </section>
+    <section class="panel member-guide" aria-label="Comment utiliser cet espace">
+      <h2>Préparons les rendez-vous de la Cayenne</h2>
+      <p>Ce logiciel permet au bureau d’organiser les réunions, les repas et les équipes d’aide. Il constitue l’unique outil pour enregistrer vos excuses.</p>
+      <p><strong>Comment faire ?</strong> Connectez-vous avec votre code personnel, répondez sous chaque événement puis cliquez sur <strong>Enregistrer mes réponses</strong>. Vous pouvez répondre à plusieurs rendez-vous en une seule fois.</p>
+      <p>Un doute ? Choisissez « Je ne sais pas encore ». Rouvrez ce même lien avec votre code pour modifier votre réponse à tout moment et ajuster votre présence.</p>
+    </section>
     <div id="formContent" hidden>
-      <div class="journey" aria-label="Les trois étapes du formulaire">
-        <span><b>1</b>Vos rendez-vous</span><span><b>2</b>Votre réponse</span><span><b>3</b>Votre profil</span>
-      </div>
-      <form id="presenceForm">
-        <div class="public-layout">
-          <section class="panel panel-pad public-events" aria-labelledby="eventsTitle">
-            <div class="panel-head"><span class="step-number">01</span><div class="head-copy"><h2 id="eventsTitle">Vos rendez-vous</h2><p>Sélectionnez une ou plusieurs dates.</p></div><span class="tag wine" id="eventCount">…</span></div>
-            <div class="toolbar">
-              <div class="search-box"><span data-icon="search"></span><label class="sr-only" for="eventSearch">Rechercher un événement</label><input id="eventSearch" type="search" placeholder="Rechercher un rendez-vous…"></div>
-              <label class="sr-only" for="typeFilter">Type d’événement</label><select id="typeFilter"><option value="">Tous les événements</option></select>
-            </div>
-            <div class="select-actions"><button type="button" class="text-button" id="selectAll">Sélectionner la liste</button><button type="button" class="text-button" id="clearAll">Tout désélectionner</button></div>
-            <div id="events" class="event-choices" aria-live="polite"><div class="empty"><strong>Chargement du calendrier…</strong><p>Les rendez-vous de la Cayenne arrivent.</p></div></div>
-            <div class="calendar-note"><span data-icon="info"></span><span>Vous pouvez répondre longtemps à l’avance. Pour des réponses différentes selon les dates, envoyez un formulaire par groupe d’événements.</span></div>
-          </section>
-          <div class="public-stack">
-            <section class="panel panel-pad" aria-labelledby="responseTitle">
-              <div class="panel-head"><span class="step-number">02</span><div class="head-copy"><h2 id="responseTitle">Votre réponse</h2><p>Elle s’applique à toutes les dates sélectionnées.</p></div></div>
-              <fieldset><legend class="sr-only">Votre disponibilité</legend><div id="responseOptions" class="response-options"></div></fieldset>
-              <div id="absenceBlock" class="conditional-block" hidden>
-                <h3>Le motif de votre absence</h3><p class="small">Plusieurs choix possibles.</p>
-                <div id="causes" class="cause-options"></div>
-                <label class="field-label" for="precision">Une précision <span class="optional">(facultatif)</span></label><textarea id="precision" name="precision" placeholder="Par exemple, un engagement dans une autre Cayenne…"></textarea>
-              </div>
-              <div id="aidBlock" class="conditional-block" hidden>
-                <h3>Merci pour votre coup de main !</h3><p class="small" style="margin-bottom:15px">À quels horaires serez-vous disponible ?</p>
-                <div class="fields"><div class="field"><label for="heureDebutAide">À partir de</label><input id="heureDebutAide" name="heureDebutAide" type="time"></div><div class="field"><label for="heureFinAide">Jusqu’à</label><input id="heureFinAide" name="heureFinAide" type="time"></div></div>
-              </div>
-            </section>
-            <section class="panel panel-pad" aria-labelledby="identityTitle">
-              <div class="panel-head"><span class="step-number">03</span><div class="head-copy"><h2 id="identityTitle">Votre profil</h2><p>Pour corriger votre identité, contactez le bureau.</p></div></div>
-              <div class="fields">
-                <div class="field"><label for="prenom">Prénom *</label><input id="prenom" name="prenom" autocomplete="given-name" placeholder="Votre prénom" required></div>
-                <div class="field"><label for="nom">Nom *</label><input id="nom" name="nom" autocomplete="family-name" placeholder="Votre nom" required></div>
-                <div class="field"><label for="statut">Statut *</label><select id="statut" name="statut" required><option value="">Choisir…</option></select></div>
-                <div class="field"><label for="cayenne">Cayenne *</label><select id="cayenne" name="cayenne" required><option value="">Choisir…</option></select></div>
-                <div class="field full"><label for="email">Adresse email <span class="optional">(facultatif)</span></label><input id="email" name="email" type="email" autocomplete="email" placeholder="vous@exemple.fr"></div>
-                <div class="field full"><label for="telephone">Téléphone <span class="optional">(facultatif)</span></label><input id="telephone" name="telephone" type="tel" autocomplete="tel" placeholder="Votre numéro de téléphone"></div>
-              </div>
-              <div class="public-comment"><label class="field-label" for="commentaire">Un mot pour le bureau <span class="optional">(facultatif)</span></label><textarea id="commentaire" name="commentaire" placeholder="Une information à nous transmettre…"></textarea></div>
-            </section>
-          </div>
-        </div>
-        <div class="submit-bar">
-          <div aria-live="polite"><div class="summary-title" id="selectionSummary">Choisissez vos rendez-vous</div><div class="summary-help">Votre réponse sera transmise au bureau.</div></div>
-          <button id="submitBtn" class="btn" type="submit" disabled>Enregistrer ma réponse <span data-icon="arrow"></span></button>
-        </div>
+      <form id="presenceForm" novalidate>
+        <div class="section-head"><div><h2>Vos rendez-vous</h2><p>Une réponse pour chaque événement. Vos choix enregistrés sont déjà renseignés.</p></div><span class="tag wine" id="eventCount"></span></div>
+        <div class="toolbar event-toolbar"><div class="search-box"><span data-icon="search"></span><label class="sr-only" for="eventSearch">Rechercher un événement</label><input id="eventSearch" type="search" placeholder="Rechercher un rendez-vous…"></div><label class="sr-only" for="typeFilter">Type d’événement</label><select id="typeFilter"><option value="">Tous les événements</option></select></div>
+        <div id="events" class="event-response-grid"></div>
+        <div class="submit-bar"><div aria-live="polite"><div class="summary-title" id="selectionSummary">Aucune modification</div><div class="summary-help">Vos réponses restent modifiables après enregistrement.</div></div><button id="submitBtn" class="btn" type="submit" disabled>Enregistrer mes réponses <span data-icon="arrow"></span></button></div>
       </form>
     </div>
-    <section id="successState" class="panel success-state" tabindex="-1" hidden>
-      <div class="success-symbol"><span data-icon="check"></span></div><h2>Merci pour votre réponse.</h2><p id="successMessage"></p><button id="newResponse" class="btn secondary" type="button">Répondre pour d’autres dates <span data-icon="arrow"></span></button>
-    </section>
     <footer class="page-footer"><span>Union Compagnonnique · Cayenne de Paris</span><span>Présences, excuses et engagements</span></footer>
   </main>
   <script>
-  const state = {config:null, selected:new Set(), busy:false, token:'', epoch:0, request:0, requestId:newRequestId()};
+  const state={config:null,drafts:new Map(),dirty:new Set(),busy:false,token:'',epoch:0,request:0,requestId:newRequestId()};
+  const form=document.getElementById('presenceForm');
+  const choices=['Présent','Absent','Je ne sais pas encore','Absent excusé'];
+  const label=v=>v==='Absent excusé'?'Excusé':v;
+  const esc=Ui.escape;
   Ui.mountIcons();
-  const form = document.getElementById('presenceForm');
-  document.getElementById('eventSearch').addEventListener('input', renderEvents);
-  document.getElementById('typeFilter').addEventListener('change', renderEvents);
-  document.getElementById('selectAll').addEventListener('click',()=>{visibleEvents().forEach(e=>state.selected.add(String(e.id)));renderEvents();});
-  document.getElementById('clearAll').addEventListener('click',()=>{state.selected.clear();renderEvents();});
-  document.getElementById('events').addEventListener('change',event=>{const input=event.target;if(input.name!=='eventIds')return;input.checked?state.selected.add(input.value):state.selected.delete(input.value);updateSummary();});
-  document.getElementById('responseOptions').addEventListener('change',updateConditionalBlocks);
-  document.getElementById('newResponse').addEventListener('click',()=>{document.getElementById('formContent').hidden=false;document.getElementById('successState').hidden=true;document.getElementById('publicNotice').hidden=true;document.querySelectorAll('input[name="reponse"],input[name="causes"]').forEach(n=>n.checked=false);['precision','commentaire','heureDebutAide','heureFinAide'].forEach(id=>document.getElementById(id).value='');updateConditionalBlocks();document.getElementById('eventSearch').focus();});
-  form.addEventListener('submit',submitForm);
   document.getElementById('memberLoginForm').addEventListener('submit',loginMember);
-  document.getElementById('memberLogout').addEventListener('click',()=>lockMember(true));
-  document.getElementById('memberRefresh').addEventListener('click',()=>loadSpace(Number(document.getElementById('memberYear').value)));
-  document.getElementById('memberYear').addEventListener('change',()=>loadSpace(Number(document.getElementById('memberYear').value)));
-  document.getElementById('memberHistory').addEventListener('click',event=>{const button=event.target.closest('[data-edit-event]');if(button)editResponse(button.dataset.editEvent);});
-  init();
-  function init(){
-    try{state.token=sessionStorage.getItem('uc.member.session') || '';}catch(_){}
-    if(state.token)loadSpace();
-  }
+  document.getElementById('memberLogout').addEventListener('click',()=>{if(discardChanges())lockMember(true);});
+  document.getElementById('memberRefresh').addEventListener('click',()=>{if(discardChanges())loadSpace(Number(document.getElementById('memberYear').value));});
+  document.getElementById('memberYear').addEventListener('change',()=>{if(discardChanges())loadSpace(Number(document.getElementById('memberYear').value));else document.getElementById('memberYear').value=state.config.activeYear;});
+  document.getElementById('eventSearch').addEventListener('input',renderEvents);
+  document.getElementById('typeFilter').addEventListener('change',renderEvents);
+  document.getElementById('events').addEventListener('input',changeAnswer);
+  document.getElementById('events').addEventListener('change',changeAnswer);
+  document.getElementById('memberHistory').addEventListener('click',event=>{const b=event.target.closest('[data-edit-event]');if(b){document.getElementById('eventSearch').value='';document.getElementById('typeFilter').value='';renderEvents();const card=Array.from(document.querySelectorAll('[data-event]')).find(n=>n.dataset.event===b.dataset.editEvent);if(card){card.scrollIntoView({block:'center'});card.querySelector('input').focus();}}});
+  form.addEventListener('submit',submitForm);
+  window.addEventListener('beforeunload',e=>{if(state.dirty.size){e.preventDefault();e.returnValue='';}});
+  try{state.token=sessionStorage.getItem('uc.member.session')||'';}catch(_){}
+  if(state.token)loadSpace();
   function newRequestId(){return typeof crypto.randomUUID==='function'?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);}
-  function loginMember(event){
-    event.preventDefault();if(document.getElementById('memberLoginBtn').disabled)return;
-    const epoch=++state.epoch;Ui.loading('memberLoginBtn',true,'Connexion…');
-    google.script.run.withSuccessHandler(result=>{
-      if(epoch!==state.epoch)return;state.token=result.token;
-      try{sessionStorage.setItem('uc.member.session',state.token);}catch(_){}
-      document.getElementById('memberCode').value='';loadSpace();
-    }).withFailureHandler(error=>{if(epoch!==state.epoch)return;Ui.loading('memberLoginBtn',false);memberError(error);}).loginMember(document.getElementById('memberCode').value);
+  function discardChanges(){return !state.dirty.size||window.confirm('Des réponses ne sont pas enregistrées. Les abandonner ?');}
+  function loginMember(e){e.preventDefault();if(document.getElementById('memberLoginBtn').disabled)return;const epoch=++state.epoch;Ui.loading('memberLoginBtn',true,'Connexion…');google.script.run.withSuccessHandler(r=>{if(epoch!==state.epoch)return;state.token=r.token;try{sessionStorage.setItem('uc.member.session',r.token);}catch(_){}document.getElementById('memberCode').value='';loadSpace();}).withFailureHandler(error=>{if(epoch!==state.epoch)return;Ui.loading('memberLoginBtn',false);memberError(error);}).loginMember(document.getElementById('memberCode').value);}
+  function lockMember(revoke){const token=state.token;state.epoch++;state.request++;state.token='';state.config=null;state.drafts.clear();state.dirty.clear();state.busy=false;try{sessionStorage.removeItem('uc.member.session');}catch(_){}form.reset();['memberOverview','formContent'].forEach(id=>document.getElementById(id).hidden=true);['events','memberHistory','memberSummary','memberIdentity'].forEach(id=>document.getElementById(id).textContent='');document.getElementById('memberWelcome').textContent='Mon espace membre';document.getElementById('memberIntro').textContent='Connectez-vous avec le code personnel remis par le bureau.';document.getElementById('activeYear').textContent='—';document.getElementById('memberLogin').hidden=false;document.getElementById('memberCode').value='';document.getElementById('memberYear').disabled=false;['memberLoginBtn','memberRefresh','submitBtn'].forEach(id=>Ui.loading(id,false));document.getElementById('publicNotice').hidden=true;updateSummary();if(revoke&&token)google.script.run.withFailureHandler(()=>{}).logoutAccess(token);}
+  function memberError(error){const text=error.message||String(error);if(text.includes('SESSION_EXPIRED:'))lockMember(false);Ui.notice('publicNotice',text.replace('SESSION_EXPIRED: ',''));}
+  function fromSaved(e){const r=(state.config.responses||[]).find(r=>r.eventId===e.id)||{};return {eventId:e.id,reponse:r.response==='Disponible pour aider'?'Présent':r.response||'',causes:r.causes||[],precision:r.precision||'',aideDisponible:r.response==='Disponible pour aider',heureDebutAide:r.start||'',heureFinAide:r.end||'',commentaire:r.comment||'',participation:r.participation||'',creneaux:r.creneaux||[]};}
+  function loadSpace(year){if(!state.token||state.busy)return;if(year!==undefined&&(!Number.isInteger(year)||year<2020||year>2100)){Ui.notice('publicNotice','Choisissez une année entre 2020 et 2100.');return;}const epoch=state.epoch,request=++state.request;Ui.loading('memberRefresh',true,'Chargement…');document.getElementById('formContent').hidden=true;
+    google.script.run.withSuccessHandler(config=>{if(epoch!==state.epoch||request!==state.request)return;state.config=config;state.dirty.clear();state.drafts=new Map(config.events.map(e=>[e.id,fromSaved(e)]));state.requestId=newRequestId();document.getElementById('memberLogin').hidden=true;document.getElementById('memberOverview').hidden=false;document.getElementById('formContent').hidden=false;document.getElementById('publicNotice').hidden=true;['memberLoginBtn','memberRefresh'].forEach(id=>Ui.loading(id,false));document.getElementById('memberYear').value=config.activeYear;document.getElementById('memberWelcome').textContent='Bonjour '+config.profile.prenom;document.getElementById('memberIntro').textContent='Retrouvez vos réponses et ajustez votre présence sous chaque événement.';document.getElementById('memberIdentity').textContent=[config.profile.prenom,config.profile.nom,'·',config.profile.statut].join(' ');document.getElementById('activeYear').textContent=config.activeYear;document.getElementById('typeFilter').innerHTML='<option value="">Tous les événements</option>'+[...new Set(config.events.map(e=>e.type))].map(t=>'<option>'+esc(t)+'</option>').join('');renderEvents();renderHistory();}).withFailureHandler(error=>{if(epoch!==state.epoch||request!==state.request)return;['memberLoginBtn','memberRefresh'].forEach(id=>Ui.loading(id,false));memberError(error);if(state.config)document.getElementById('formContent').hidden=false;}).getPublicConfig(state.token,year);
   }
-  function lockMember(revoke){
-    const token=state.token;state.epoch++;state.request++;state.token='';state.config=null;state.selected.clear();state.busy=false;
-    try{sessionStorage.removeItem('uc.member.session');}catch(_){}
-    form.reset();state.requestId=newRequestId();
-    ['memberOverview','formContent','successState'].forEach(id=>document.getElementById(id).hidden=true);
-    ['events','memberHistory','memberSummary','memberIdentity','causes','responseOptions'].forEach(id=>document.getElementById(id).textContent='');
-    ['prenom','nom','statut','cayenne','email','telephone'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('memberWelcome').textContent='Mon espace membre';document.getElementById('activeYear').textContent='—';
-    document.getElementById('memberLogin').hidden=false;document.getElementById('memberCode').value='';
-    ['memberLoginBtn','memberRefresh','submitBtn'].forEach(id=>Ui.loading(id,false));updateSummary();
-    document.getElementById('memberCode').focus();
-    if(revoke&&token)google.script.run.withFailureHandler(()=>{}).logoutAccess(token);
+  function visibleEvents(){const q=Ui.normalize(document.getElementById('eventSearch').value),type=document.getElementById('typeFilter').value;return(state.config?.events||[]).filter(e=>(!type||e.type===type)&&Ui.normalize([e.title,e.type,e.date,e.place].join(' ')).includes(q));}
+  function selectOptions(values,current){return '<option value="">Choisir…</option>'+values.map(v=>'<option value="'+esc(v)+'" '+(v===current?'selected':'')+'>'+esc(v)+'</option>').join('');}
+  function details(e,a){let html='';if(a.reponse==='Absent excusé'){const causes=[...new Set([...(state.config.causes||[]),'Autres'])];html+='<div class="field"><label>Motif de l’excuse<select data-field="cause" required>'+selectOptions(causes,a.causes[0])+'</select></label></div>'+(a.causes.length>1?'<p class="small">Motifs enregistrés : '+esc(a.causes.join(', '))+'. Choisir un motif remplace cette liste.</p>':'')+'<div class="field"><label>Précision'+(['Autres','Engagement compagnonnique ailleurs'].some(v=>a.causes.includes(v))?' (obligatoire)':' (facultatif)')+'<textarea data-field="precision" maxlength="2000" '+(['Autres','Engagement compagnonnique ailleurs'].some(v=>a.causes.includes(v))?'required':'')+' placeholder="Indiquez le motif ou l’engagement concerné…">'+esc(a.precision)+'</textarea></label></div>';}
+    if(a.reponse==='Présent'){
+      if(e.modalites==='Repas et aide')html+='<div class="field"><label>Ma participation<select data-field="participation" required>'+selectOptions(['Repas seulement','Repas et aide','Aide seulement (sans repas)'],a.participation)+'</select></label><p class="small">L’aide concerne les organisateurs le jour J.</p></div>';
+      if(e.modalites==='Réception')html+='<fieldset><legend>Mes créneaux (un ou plusieurs)</legend><div class="slot-choices">'+['Matin','Soir'].map(v=>'<label><input type="checkbox" data-field="creneaux" value="'+v+'" '+(a.creneaux.includes(v)?'checked':'')+'>'+v+'</label>').join('')+'</div></fieldset>';
+      if(e.modalites!=='Repas et aide')html+='<label class="aid-choice"><input type="checkbox" data-field="aideDisponible" '+(a.aideDisponible?'checked':'')+'>Je propose aussi mon aide aux organisateurs</label>';
+      if(a.aideDisponible)html+='<div class="fields"><div class="field"><label>Aide à partir de (facultatif)<input type="time" data-field="heureDebutAide" value="'+esc(a.heureDebutAide)+'"></label></div><div class="field"><label>Jusqu’à (facultatif)<input type="time" data-field="heureFinAide" value="'+esc(a.heureFinAide)+'"></label></div></div>';
+    }
+    if(a.reponse)html+='<div class="field"><label>Un mot pour le bureau (facultatif)<textarea data-field="commentaire" maxlength="2000">'+esc(a.commentaire)+'</textarea></label></div>';return html;
   }
-  function memberError(error){const message=error.message || String(error);if(message.includes('SESSION_EXPIRED:'))lockMember(false);Ui.notice('publicNotice',message.replace('SESSION_EXPIRED: ',''));}
-  function loadSpace(year, after){
-    if(!state.token || state.busy)return;
-    if(year!==undefined&&(!Number.isInteger(year)||year<2020||year>2100)){Ui.notice('publicNotice','Choisissez une année entre 2020 et 2100.');return;}
-    const epoch=state.epoch, request=++state.request;
-    Ui.loading('memberRefresh',true,'Chargement…');
-    document.getElementById('formContent').hidden=true;
-    google.script.run.withSuccessHandler(config=>{
-      if(epoch!==state.epoch||request!==state.request)return;
-      state.config=config;
-      state.selected.clear();state.requestId=newRequestId();
-      document.getElementById('memberLogin').hidden=true;document.getElementById('memberOverview').hidden=false;
-      document.getElementById('formContent').hidden=!!after;document.getElementById('successState').hidden=!after;
-      document.getElementById('publicNotice').hidden=true;
-      ['memberLoginBtn','memberRefresh'].forEach(id=>Ui.loading(id,false));
-      document.getElementById('memberYear').value=config.activeYear;
-      document.getElementById('memberWelcome').textContent='Bonjour '+config.profile.prenom;
-      document.getElementById('memberIntro').textContent='Retrouvez vos engagements et préparez les prochains rendez-vous.';
-      document.getElementById('memberIdentity').textContent=[config.profile.prenom,config.profile.nom,'·',config.profile.statut].join(' ');
-      document.getElementById('activeYear').textContent=config.activeYear;
-      fillSelect('statut',config.statuses || []);fillSelect('cayenne',config.cayennes || []);
-      ['prenom','nom','statut','cayenne','email','telephone'].forEach(id=>{const input=document.getElementById(id);input.value=config.profile[id] || '';input.disabled=true;input.required=false;});
-      const types=[...new Set((config.events || []).map(e=>e.type).filter(Boolean))];
-      document.getElementById('typeFilter').innerHTML='<option value="">Tous les événements</option>'+types.map(t=>'<option value="'+Ui.escape(t)+'">'+Ui.escape(t)+'</option>').join('');
-      const choices={'Présent':['Je serai présent','Au plaisir de nous retrouver.','check',''],'Absent excusé':['Je serai absent','Je préviens le bureau de mon absence.','clock','absent'],'Disponible pour aider':['Je propose mon aide','Je serai présent et disponible pour aider.','heart','help']};
-      document.getElementById('responseOptions').innerHTML=(config.responseTypes || []).map((value,i)=>{const c=choices[value] || [value,'','check',''];return '<label class="response-option '+c[3]+'"><span class="response-symbol">'+Ui.icon(c[2])+'</span><span><strong>'+Ui.escape(c[0])+'</strong><small>'+Ui.escape(c[1])+'</small></span><input type="radio" name="reponse" value="'+Ui.escape(value)+'" required aria-label="'+Ui.escape(c[0])+'"></label>';}).join('');
-      document.getElementById('causes').innerHTML=(config.causes || []).map(c=>'<label class="cause-option"><input type="checkbox" name="causes" value="'+Ui.escape(c)+'"><span>'+Ui.escape(c)+'</span></label>').join('');
-      renderEvents();renderHistory();updateConditionalBlocks();if(after)after();
-    }).withFailureHandler(error=>{if(epoch!==state.epoch||request!==state.request)return;['memberLoginBtn','memberRefresh'].forEach(id=>Ui.loading(id,false));memberError(error);if(state.config)document.getElementById('formContent').hidden=false;}).getPublicConfig(state.token,year);
+  function renderEvents(){if(state.busy)return;const events=visibleEvents();document.getElementById('eventCount').textContent=events.length;document.getElementById('events').innerHTML=events.length?events.map(e=>{const a=state.drafts.get(e.id),i=state.config.events.indexOf(e);return '<article class="panel event-answer" data-event="'+esc(e.id)+'"><div class="event-answer-head">'+Ui.dateTile(e.date)+'<div><span class="event-type">'+esc(e.type)+'</span><h3>'+esc(e.title)+'</h3><p class="event-date">'+esc(Ui.date(e.date).label)+'</p><p>'+esc(e.start?(e.start+(e.end?' – '+e.end:'')):'Horaire à confirmer')+' · '+esc(e.place||'Lieu à préciser')+'</p></div></div>'+(e.comment?'<p class="event-instructions">'+esc(e.comment)+'</p>':'')+'<fieldset class="answer-fields"><legend class="sr-only">Ma réponse pour '+esc(e.title)+'</legend><div class="event-status-options">'+choices.map(v=>'<label><input type="radio" name="response-'+i+'" data-field="reponse" value="'+esc(v)+'" '+(a.reponse===v?'checked':'')+'><span>'+esc(label(v))+'</span></label>').join('')+'</div><div class="event-details">'+details(e,a)+'</div></fieldset><p class="save-indicator">'+(state.dirty.has(e.id)?'Modification à enregistrer':a.reponse?'Réponse enregistrée · modifiable':'Pas encore de réponse')+'</p></article>';}).join(''):Ui.empty('Aucun événement à afficher','Modifiez vos filtres ou attendez les prochains rendez-vous du bureau.');updateSummary();}
+  function changeAnswer(event){if(state.busy)return;const input=event.target,key=input.dataset.field,card=input.closest('[data-event]');if(!key||!card)return;const id=card.dataset.event,a=state.drafts.get(id),e=state.config.events.find(e=>e.id===id);if(key==='cause')a.causes=input.value?[input.value]:[];else if(key==='creneaux')a.creneaux=Array.from(card.querySelectorAll('[data-field="creneaux"]:checked')).map(n=>n.value);else a[key]=input.type==='checkbox'?input.checked:input.value;
+    if(a.reponse!=='Absent excusé'){a.causes=[];a.precision='';}if(a.reponse!=='Présent'){a.aideDisponible=false;a.participation='';a.creneaux=[];}if(e.modalites==='Repas et aide')a.aideDisponible=a.reponse==='Présent'&&['Repas et aide','Aide seulement (sans repas)'].includes(a.participation);if(!a.aideDisponible){a.heureDebutAide='';a.heureFinAide='';}
+    state.dirty.add(id);state.requestId=newRequestId();card.querySelector('.save-indicator').textContent='Modification à enregistrer';document.getElementById('publicNotice').hidden=true;
+    if(['reponse','cause','participation','aideDisponible'].includes(key))card.querySelector('.event-details').innerHTML=details(e,a);updateSummary();
   }
-  function renderHistory(){
-    const responses=state.config.responses || [];
-    const present=responses.filter(r=>r.response!=='Absent excusé').length, absent=responses.filter(r=>r.response==='Absent excusé').length;
-    document.getElementById('memberSummary').textContent=state.config.activeYear+' · '+present+' présence(s) prévue(s) · '+absent+' absence(s) excusée(s) · '+responses.filter(r=>r.response==='Disponible pour aider').length+' proposition(s) d’aide';
-    document.getElementById('memberHistory').innerHTML=responses.length?responses.map(r=>'<article class="history-row"><div><strong>'+Ui.escape(r.title)+'</strong><p>'+Ui.escape(r.date)+' · '+Ui.escape(r.response)+'</p>'+(r.causes.length?'<p>'+Ui.escape(r.causes.join(', '))+'</p>':'')+'</div>'+((state.config.events || []).some(e=>e.id===r.eventId)?'<button class="btn secondary" type="button" data-edit-event="'+Ui.escape(r.eventId)+'">Modifier</button>':'')+'</article>').join(''):Ui.empty('Aucune réponse pour cette année','Vos réponses apparaîtront ici après enregistrement.','file');
-  }
-  function editResponse(id){
-    const r=state.config.responses.find(row=>row.eventId===id);if(!r)return;
-    document.getElementById('newResponse').click();state.selected=new Set([id]);state.requestId=newRequestId();
-    document.getElementById('eventSearch').value='';document.getElementById('typeFilter').value='';
-    form.querySelectorAll('[name="reponse"]').forEach(input=>input.checked=input.value===r.response);
-    form.querySelectorAll('[name="causes"]').forEach(input=>input.checked=r.causes.includes(input.value));
-    Object.entries({precision:r.precision,commentaire:r.comment,heureDebutAide:r.start,heureFinAide:r.end}).forEach(([key,value])=>document.getElementById(key).value=value || '');
-    renderEvents();updateConditionalBlocks();document.getElementById('responseTitle').scrollIntoView({block:'center'});
-  }
-  function fillSelect(id, values){document.getElementById(id).innerHTML='<option value="">Choisir…</option>'+values.map(v=>'<option value="'+Ui.escape(v)+'">'+Ui.escape(v)+'</option>').join('');}
-  function visibleEvents(){const query=Ui.normalize(document.getElementById('eventSearch').value);const type=document.getElementById('typeFilter').value;return (state.config?.events || []).filter(e=>(!type || e.type===type)&&Ui.normalize([e.title,e.type,e.date,e.place].join(' ')).includes(query));}
-  function renderEvents(){
-    const events=visibleEvents();document.getElementById('eventCount').textContent=events.length;
-    document.getElementById('events').innerHTML=events.length?events.map(e=>'<label class="event-choice">'+Ui.dateTile(e.date)+'<div class="event-copy"><span class="event-type">'+Ui.escape(e.type)+'</span><strong>'+Ui.escape(e.title)+'</strong><div class="meta-line">'+Ui.icon('clock')+Ui.escape(e.start ? e.start+(e.end?' – '+e.end:'') : 'Horaire à préciser')+'</div>'+(e.place?'<div class="meta-line">'+Ui.icon('pin')+Ui.escape(e.place)+'</div>':'')+'</div><input type="checkbox" name="eventIds" value="'+Ui.escape(e.id)+'" '+(state.selected.has(String(e.id))?'checked':'')+' aria-label="Sélectionner '+Ui.escape(e.title)+', '+Ui.escape(Ui.date(e.date).label)+'"></label>').join(''):Ui.empty(state.config?.events?.length?'Aucun résultat':'Le calendrier se prépare',state.config?.events?.length?'Essayez un autre mot ou un autre type d’événement.':'Les prochains rendez-vous seront ajoutés par le bureau.');
-    document.getElementById('selectAll').disabled=!events.length;updateSummary();
-  }
-  function updateSummary(){const count=state.selected.size;document.getElementById('selectionSummary').textContent=count?count+' rendez-vous sélectionné'+(count>1?'s':''):'Choisissez vos rendez-vous';document.getElementById('submitBtn').disabled=!state.config || !count || state.busy;}
-  function responseValue(){return form.querySelector('input[name="reponse"]:checked')?.value || '';}
-  function updateConditionalBlocks(){const value=responseValue();document.getElementById('absenceBlock').hidden=value!=='Absent excusé';document.getElementById('aidBlock').hidden=value!=='Disponible pour aider';}
-  function submitForm(event){
-    event.preventDefault();if(state.busy)return;
-    if(!state.selected.size){Ui.notice('publicNotice','Sélectionnez au moins un rendez-vous.');return;}
-    const data=new FormData(form);const reponse=responseValue();const absent=reponse==='Absent excusé';const aide=reponse==='Disponible pour aider';
-    const epoch=state.epoch;
-    const payload={reponse,causes:absent?data.getAll('causes'):[],precision:absent?data.get('precision'):'',heureDebutAide:aide?data.get('heureDebutAide'):'',heureFinAide:aide?data.get('heureFinAide'):'',commentaire:data.get('commentaire'),eventIds:[...state.selected],source:state.selected.size>1?'Réponse anticipée':'Réponse événement'};
-    const fingerprint=JSON.stringify(payload);if(state.lastPayload!==fingerprint)state.requestId=newRequestId();state.lastPayload=fingerprint;payload.requestId=state.requestId;
-    state.busy=true;Ui.loading('submitBtn',true,'Enregistrement…');document.getElementById('publicNotice').hidden=true;
-    google.script.run.withSuccessHandler(result=>{
-      if(epoch!==state.epoch)return;
-      state.busy=false;Ui.loading('submitBtn',false);state.selected.clear();renderEvents();
-      document.getElementById('formContent').hidden=true;document.getElementById('successState').hidden=false;
-      document.getElementById('successMessage').textContent=(result.saved || payload.eventIds.length)+' réponse(s) enregistrée(s). '+(result.warning || 'Le bureau peut maintenant retrouver vos engagements.');
-      document.getElementById('successState').focus();
-      loadSpace(state.config.activeYear,()=>{});
-    }).withFailureHandler(error=>{if(epoch!==state.epoch)return;state.busy=false;Ui.loading('submitBtn',false);updateSummary();memberError(error);document.getElementById('publicNotice').scrollIntoView({block:'center'});}).submitResponses(payload,state.token);
+  function updateSummary(){document.getElementById('selectionSummary').textContent=state.dirty.size?state.dirty.size+' réponse(s) à enregistrer, y compris celles masquées par les filtres':'Toutes vos réponses sont enregistrées';document.getElementById('submitBtn').disabled=state.busy||!state.dirty.size||!state.token;}
+  function renderHistory(){const rows=state.config.responses||[];document.getElementById('memberSummary').textContent=rows.filter(r=>['Présent','Disponible pour aider'].includes(r.response)).length+' présence(s) · '+rows.filter(r=>r.response==='Absent').length+' absence(s) · '+rows.filter(r=>r.response==='Absent excusé').length+' excuse(s) · '+rows.filter(r=>r.response==='Je ne sais pas encore').length+' en attente de décision';document.getElementById('memberHistory').innerHTML=rows.map(r=>'<article class="history-row"><div><strong>'+esc(r.title)+'</strong><p>'+esc(r.date)+' · '+esc(label(r.response))+'</p><p>'+esc([r.participation,...(r.creneaux||[])].filter(Boolean).join(' · '))+'</p></div>'+((state.config.events||[]).some(e=>e.id===r.eventId)?'<button class="btn secondary" type="button" data-edit-event="'+esc(r.eventId)+'">Modifier</button>':'')+'</article>').join('')||Ui.empty('Aucune réponse enregistrée','Répondez aux événements ci-dessous.');}
+  function validate(a){if(!choices.includes(a.reponse))return 'Choisissez une réponse.';if(a.reponse==='Absent excusé'&&(!a.causes.length||(['Autres','Engagement compagnonnique ailleurs'].some(c=>a.causes.includes(c))&&!a.precision.trim())))return 'Complétez le motif et sa précision.';const e=state.config.events.find(e=>e.id===a.eventId);if(a.reponse==='Présent'&&e.modalites==='Repas et aide'&&!a.participation)return 'Choisissez repas et/ou aide.';if(a.reponse==='Présent'&&e.modalites==='Réception'&&!a.creneaux.length)return 'Choisissez le matin et/ou le soir.';return '';}
+  function submitForm(e){e.preventDefault();if(state.busy||!state.dirty.size)return;const answers=Array.from(state.dirty).map(id=>JSON.parse(JSON.stringify(state.drafts.get(id))));for(const a of answers){const error=validate(a);if(error){Ui.notice('publicNotice',state.config.events.find(e=>e.id===a.eventId).title+' : '+error);return;}}const epoch=state.epoch;state.busy=true;['memberYear','memberRefresh'].forEach(id=>document.getElementById(id).disabled=true);document.querySelectorAll('.answer-fields').forEach(n=>n.disabled=true);Ui.loading('submitBtn',true,'Enregistrement…');
+    google.script.run.withSuccessHandler(result=>{if(epoch!==state.epoch)return;for(const a of answers){const event=state.config.events.find(e=>e.id===a.eventId);const r={eventId:a.eventId,date:event.date,title:event.title,response:a.aideDisponible?'Disponible pour aider':a.reponse,causes:a.causes,precision:a.precision,start:a.heureDebutAide,end:a.heureFinAide,comment:a.commentaire,participation:a.participation,creneaux:a.creneaux};state.config.responses=(state.config.responses||[]).filter(r=>r.eventId!==a.eventId).concat([r]);}state.dirty.clear();state.busy=false;['memberYear','memberRefresh'].forEach(id=>document.getElementById(id).disabled=false);state.requestId=newRequestId();Ui.loading('submitBtn',false);renderEvents();renderHistory();Ui.notice('publicNotice',result.warning||result.message||'Vos réponses sont enregistrées. Vous pouvez les modifier à tout moment.','ok');}).withFailureHandler(error=>{if(epoch!==state.epoch)return;state.busy=false;['memberYear','memberRefresh'].forEach(id=>document.getElementById(id).disabled=false);Ui.loading('submitBtn',false);document.querySelectorAll('.answer-fields').forEach(n=>n.disabled=false);memberError(error);updateSummary();}).submitResponses({requestId:state.requestId,answers},state.token);
   }
   </script>
+
 </body>
 </html>

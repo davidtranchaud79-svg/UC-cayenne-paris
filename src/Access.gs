@@ -104,7 +104,8 @@ function memberResponses_(member, year) {
     return {eventId: id, date: formatDate_(row.Date_Evenement), title: clean_(row.Titre_Evenement),
       response: row.Aide_Disponible === 'Oui' ? 'Disponible pour aider' : clean_(row.Reponse),
       causes: clean_(row.Causes).split(' ; ').filter(Boolean), precision: clean_(row.Precision),
-      start: clean_(row.Heure_Debut_Aide), end: clean_(row.Heure_Fin_Aide), comment: clean_(row.Commentaire)};
+      start: clean_(row.Heure_Debut_Aide), end: clean_(row.Heure_Fin_Aide), comment: clean_(row.Commentaire),
+      participation: clean_(row.Participation), creneaux: clean_(row.Creneaux).split(' ; ').filter(Boolean)};
   });
 }
 

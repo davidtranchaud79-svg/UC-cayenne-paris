@@ -99,7 +99,7 @@ Le code commun du bureau est celui de `PARAMETRES`, ligne `admin_pin`. Le code e
 1. Ouvrir l’espace bureau avec le code commun, puis **Membres > Accès personnels**.
 2. Pour un membre déjà présent dans le Sheet, choisir **Créer le code**. Sinon, utiliser **Ajouter un membre**.
 3. Transmettre au membre son code et le lien de l’espace membres. Aucun message n’est envoyé automatiquement.
-4. Le membre entre son code et retrouve son identité, ses réponses et les événements. Il peut modifier une réponse depuis **Mes réponses enregistrées** ou préparer plusieurs dates.
+4. Le membre entre son code et retrouve son identité, ses réponses et les événements. Il retrouve sa réponse sous chaque événement : **Présent**, **Absent**, **Je ne sais pas encore**, **Excusé**. Il peut répondre différemment à plusieurs événements, enregistrer le tout puis revenir au même lien avec son code pour modifier ses réponses.
 5. **Remplacer le code** invalide l’ancien code et les sessions en cours. **Désactiver** retire l’accès sans effacer les réponses.
 
 Les codes personnels sont affichés une seule fois et conservés sous forme d’empreintes dans les propriétés du script, pas dans le Sheet ni dans GitHub. Les sessions membres durent au maximum quatre heures ; la déconnexion les invalide. Les espaces membres et bureau utilisent des sessions distinctes, contrôlées côté serveur à chaque appel. Le code commun du bureau reste dans le Sheet, dont l’accès doit rester réservé au bureau.
@@ -129,3 +129,21 @@ Le bureau garde donc une source unique et évite les copies manuelles.
 L’identité graphique et la source de l’écusson sont décrites dans [`docs/IDENTITE_VISUELLE.md`](docs/IDENTITE_VISUELLE.md). Les styles sont partagés par les espaces membres et bureau ; le tableau des membres devient une liste de fiches sur téléphone.
 
 `npm ci` puis `npm test` vérifient les interactions des interfaces avec un serveur simulé et la validation des déploiements. Ces tests n’envoient aucune réponse dans le classeur réel.
+
+
+### Réponses par événement — septembre 2026
+
+- Chaque événement affiche sa date complète, ses horaires et le commentaire du bureau. Les choix enregistrés sont préremplis lors d’une nouvelle connexion.
+- **Excusé** ouvre un motif déroulant. **Autres** et **Engagement compagnonnique ailleurs** exigent une précision. Le code stocke « Absent excusé » pour préserver les anciennes données.
+- **Repas et aide** propose repas seulement, repas et aide, aide seulement sans repas. **Réception** propose matin et/ou soir. L’aide peut comporter des horaires et chaque réponse un commentaire.
+- Les modifications masquées par un filtre restent dans l’envoi. Un échec conserve la saisie ; un nouvel essai identique ne crée pas de doublon.
+- La dernière réponse de chaque personne à chaque événement est retenue par les comptes rendus, le dashboard mensuel/annuel et `SUIVI_ANNUEL`. L’historique brut reste dans `REPONSES`.
+- Absents, excusés, indécis et sans réponse sont comptés séparément. Les repas et créneaux sont visibles dans le suivi événement et les comptes rendus.
+
+Dans **Bureau > Événements**, choisir un modèle **Réunion … — 19 h à confirmer**, **Fête Paris — dimanche** ou **Réception — samedi**. Renseigner la date réelle et adapter les horaires/précisions. Le champ **Choix proposés aux membres** règle les modalités. Ces modèles complètent ceux du classeur sans écraser les modèles personnalisés. Les dates et horaires des événements déjà créés ne sont pas remplacés automatiquement.
+
+Pour un événement existant, compléter `Commentaire` et la nouvelle colonne `Modalites` dans `CALENDRIER` : `Standard`, `Repas et aide` ou `Réception`. Les modèles personnalisés peuvent utiliser la même colonne dans `BASE_EVENEMENTS`.
+
+Après publication de la nouvelle version Google, les colonnes facultatives sont ajoutées à la première ouverture : `Modalites` dans le calendrier et la base, `Participation` et `Creneaux` dans les réponses. La migration conserve les lignes existantes et repère les en-têtes même en ligne 3. Il n’est pas nécessaire de réinstaller le classeur. Les feuilles calculées s’actualisent au prochain enregistrement ou depuis le menu du Sheet.
+
+Les tests couvrent les envois mixtes, les modifications, la séparation des comptes, la reprise sur erreur, les modalités repas/créneaux et l’extension du classeur.
