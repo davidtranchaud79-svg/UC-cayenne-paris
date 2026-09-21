@@ -837,6 +837,16 @@ function computeDashboard_(year) {
     const eventResponses = latestResponses.filter(function(row) { return row.ID_Evenement === event.ID_Evenement; });
     const responders = {};
     eventResponses.forEach(function(row) { responders[row.Cle_Personne] = true; });
+    const missingMembers = members.filter(function(member) {
+      return !responders[personKey_(member.Nom, member.Prenom, member.Email)];
+    }).map(function(member) {
+      return {
+        nom: member.Nom,
+        prenom: member.Prenom,
+        statut: member.Statut,
+        cayenne: member.Cayenne
+      };
+    });
     const presents = eventResponses.filter(function(row) { return row.Reponse === 'Présent'; }).length;
     const absent = eventResponses.filter(function(row) { return row.Reponse === 'Absent'; }).length;
     const undecided = eventResponses.filter(function(row) { return row.Reponse === 'Je ne sais pas encore'; }).length;
@@ -859,7 +869,8 @@ function computeDashboard_(year) {
       comment: clean_(event.Commentaire),
       start: formatEventTime_(event.Heure_Debut),
       end: formatEventTime_(event.Heure_Fin),
-      noResponse: Math.max(0, members.length - Object.keys(responders).length),
+      noResponse: missingMembers.length,
+      missingMembers: missingMembers.slice(0, 12),
       sheetName: makeCrSheetName_(event)
     };
   });
@@ -902,6 +913,23 @@ function computeDashboard_(year) {
   });
 
   const totalNoResponse = eventStats.reduce(function(sum, event) { return sum + event.noResponse; }, 0);
+  const followUps = eventStats
+    .filter(function(event) { return event.noResponse > 0; })
+    .sort(function(a, b) {
+      const dateA = asDate_(a.date);
+      const dateB = asDate_(b.date);
+      return dateA - dateB;
+    })
+    .slice(0, 8)
+    .map(function(event) {
+      return {
+        eventId: event.id,
+        title: event.title,
+        date: event.date,
+        noResponse: event.noResponse,
+        missingMembers: event.missingMembers
+      };
+    });
   const monthlyStats = buildMonthlyStats_(year, events, latestResponses, eventStats);
   return {
     year: year,
@@ -921,7 +949,8 @@ function computeDashboard_(year) {
     monthly: monthlyStats,
     causes: Object.keys(causeMap).sort().map(function(cause) {
       return { cause: cause, count: causeMap[cause] };
-    })
+    }),
+    followUps: followUps
   };
 }
 
