@@ -21,8 +21,8 @@ const UC_APP = {
   defaults: {
     activeYear: 2026,
     adminPin: '1234',
-    webAppUrl: 'https://script.google.com/macros/s/AKfycbyxk7lHX1J7EC_FRRRSCacU4jvBWemPik9fanpQdWzlpIV4ZS1WKq-ZZ70w_mKh7aXCCg/exec',
-    adminAppUrl: 'https://script.google.com/macros/s/AKfycbyxk7lHX1J7EC_FRRRSCacU4jvBWemPik9fanpQdWzlpIV4ZS1WKq-ZZ70w_mKh7aXCCg/exec?page=admin',
+    webAppUrl: 'https://script.google.com/macros/s/AKfycbx_4yGqiYslsjAyNWW3Kj-Cv_hImNJpphZnJvV4u7JBcwK2Xof1QBO2xkUbmetzIlsB1w/exec',
+    adminAppUrl: 'https://script.google.com/macros/s/AKfycbx_4yGqiYslsjAyNWW3Kj-Cv_hImNJpphZnJvV4u7JBcwK2Xof1QBO2xkUbmetzIlsB1w/exec?page=admin',
     statuses: ['Sociétaire', 'Aspirant', 'Compagnon'],
     cayennes: ['Paris', 'Autre'],
     reponses: ['Présent', 'Absent', 'Je ne sais pas encore', 'Absent excusé', 'Disponible pour aider'],
