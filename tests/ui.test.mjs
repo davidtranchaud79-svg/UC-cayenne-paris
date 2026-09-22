@@ -72,6 +72,25 @@ test('bureau attendance preserves drafts after failure and clears personal data 
 });
 
 function answer(a,id,value){a.doc.querySelector('[data-event="'+id+'"] [data-field="reponse"][value="'+value+'"]').click();}
+
+test('individual validation saves only its event, keeps other drafts, and ignores their incomplete fields',()=>{
+ const a=app('Public.html');answer(a,'evt-1','Présent');answer(a,'evt-2','Absent excusé');
+ a.doc.querySelector('[data-save-event="evt-1"]').click();a.flush();
+ const sent=a.calls.filter(c=>c.method==='submitResponses');assert.equal(sent.length,1);assert.equal(sent[0].args[0].answers.length,1);assert.equal(sent[0].args[0].answers[0].eventId,'evt-1');
+ assert.ok(a.doc.querySelector('[data-save-event="evt-1"]').disabled);assert.equal(a.doc.querySelector('[data-save-event="evt-2"]').disabled,false);
+ assert.match(a.doc.querySelector('[data-event="evt-2"] .save-indicator').textContent,/à enregistrer/);
+ a.doc.querySelector('[data-save-event="evt-2"]').click();a.flush();assert.equal(a.calls.filter(c=>c.method==='submitResponses').length,1);
+ detail(a,'evt-2','cause','Travail');a.doc.querySelector('[data-save-event="evt-2"]').click();a.flush();
+ assert.equal(a.calls.filter(c=>c.method==='submitResponses').length,2);assert.equal(a.doc.querySelector('[data-save-event="evt-2"]').disabled,true);a.dom.window.close();
+});
+
+test('individual retry keeps its ID even after another draft is changed; saving another event uses a different ID',()=>{
+ let fail=true;const a=app('Public.html',{submitResponses:()=>{if(fail)throw Error('Réseau');return {ok:true};}});
+ answer(a,'evt-1','Présent');a.doc.querySelector('[data-save-event="evt-1"]').click();a.flush();
+ answer(a,'evt-2','Absent');fail=false;a.doc.querySelector('[data-save-event="evt-1"]').click();a.flush();
+ a.doc.querySelector('[data-save-event="evt-2"]').click();a.flush();
+ const calls=a.calls.filter(c=>c.method==='submitResponses');assert.equal(calls.length,3);assert.equal(calls[0].args[0].requestId,calls[1].args[0].requestId);assert.notEqual(calls[1].args[0].requestId,calls[2].args[0].requestId);a.dom.window.close();
+});
 function detail(a,id,key,value){const n=a.doc.querySelector('[data-event="'+id+'"] [data-field="'+key+'"]');n.value=value;n.dispatchEvent(new a.dom.window.Event('change',{bubbles:true}));}
 test('one independent response per event, no admin link, and no fabricated initial answer',()=>{
  const a=app('Public.html');assert.equal(a.doc.querySelectorAll('[data-event]').length,2);assert.equal(a.doc.querySelectorAll('[data-field="reponse"]:checked').length,0);assert.ok(a.doc.getElementById('submitBtn').disabled);assert.equal(a.doc.querySelectorAll('a[href*="page=admin"]').length,0);a.dom.window.close();
