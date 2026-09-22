@@ -19,7 +19,7 @@ function fixture(){
     Utilities:{getUuid:randomUUID,computeDigest:(_,text)=>Array.from(createHash('sha256').update(text).digest()),DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},formatDate:d=>d.toISOString().slice(0,10)},
     Session:{getScriptTimeZone:()=> 'Europe/Paris'}
   });
-  vm.runInContext(code+'\n'+access,context);
+  vm.runInContext(code+'\n'+access+'\n'+readFileSync(new URL('../src/Notifications.gs',import.meta.url),'utf8'),context);
   const headers=vm.runInContext('UC_APP.headers.reponses',context);
   context.getSettings_=()=>settings;
   context.getRowsAsObjects_=name=>db[name]||[];

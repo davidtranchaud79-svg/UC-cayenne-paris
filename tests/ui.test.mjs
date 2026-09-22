@@ -54,6 +54,12 @@ function app(file, overrides={}) {
 }
 function identity(a){assert.equal(a.doc.getElementById('prenom').value,'Camille');assert.ok(a.doc.getElementById('prenom').disabled);}
 
+test('bureau mail status shows pending deliveries and clears at logout',()=>{
+ const a=app('Admin.html',{getDashboardData:()=>({...structuredClone(dashboard),notifications:{enabled:true,waiting:2,review:1,lastRun:'2026-09-22T10:00:00Z',error:''}})});
+ a.login();const status=a.doc.getElementById('notificationStatus');assert.match(status.textContent,/activés/);assert.match(status.textContent,/2 envoi/);assert.match(status.textContent,/1 envoi/);
+ a.doc.getElementById('lockSession').click();a.flush();assert.match(status.textContent,/Connectez-vous/);assert.doesNotMatch(status.textContent,/2 envoi/);
+});
+
 test('bureau attendance preserves drafts after failure and clears personal data when locked',()=>{
  const a=app('Admin.html',{getAttendance:()=>({eventId:'evt-1',members:[{key:'camille@example.test',name:'Camille Exemple',announced:'Je ne sais pas encore',actual:'Non pointé',version:''}]}),saveAttendance:()=>{throw Error('Connexion interrompue');}});
  a.login();a.fill('attendanceEvent','evt-1','change');a.doc.getElementById('loadAttendance').click();a.flush();

@@ -147,3 +147,22 @@ Pour un événement existant, compléter `Commentaire` et la nouvelle colonne `M
 Après publication de la nouvelle version Google, les colonnes facultatives sont ajoutées à la première ouverture : `Modalites` dans le calendrier et la base, `Participation` et `Creneaux` dans les réponses. La migration conserve les lignes existantes et repère les en-têtes même en ligne 3. Il n’est pas nécessaire de réinstaller le classeur. Les feuilles calculées s’actualisent au prochain enregistrement ou depuis le menu du Sheet.
 
 Les tests couvrent les envois mixtes, les modifications, la séparation des comptes, la reprise sur erreur, les modalités repas/créneaux et l’extension du classeur.
+
+## Confirmations et rappels par mail
+
+Chaque nouvelle réponse enregistrée reçoit un accusé par événement, à l’adresse du membre dans `MEMBRES`. Une modification reçoit un nouvel accusé. Il contient le rendez-vous, les horaires, la réponse, les modalités, la référence d’enregistrement et le lien de l’espace membre. Il atteste l’enregistrement de la réponse, pas la présence effective. Les codes personnels, motifs détaillés et commentaires privés ne figurent pas dans le mail.
+
+**Activation unique par le propriétaire du projet Google**, une fois les sources synchronisées :
+
+1. Ouvrir le projet Apps Script associé au Sheet, sélectionner `activerNotifications_` dans la liste des fonctions puis **Exécuter**. Accepter les autorisations Google d’envoi de mails et de gestion du déclencheur. Utiliser un seul compte propriétaire pour cette installation.
+2. Cette fonction crée `JOURNAL_MAILS` et un déclencheur horaire. Elle est idempotente et n’envoie aucun mail pendant l’installation. Elle n’envoie pas de confirmations rétroactives pour les anciennes réponses.
+3. Publier les sources mises à jour via **Déployer → Gérer les déploiements → crayon → Nouvelle version → Déployer**, sur le déploiement existant. Conserver le lien actuel et ses réglages d’accès. La synchronisation GitHub seule ne publie pas la version Web.
+4. Dans **Bureau → Réglages**, actualiser pour consulter l’activation, le dernier passage et les envois en attente/à vérifier. Compléter les adresses manquantes dans les profils du Sheet.
+
+Les rappels concernent les membres actifs ayant répondu **Présent** ou **Je ne sais pas encore** (également l’ancien choix « Disponible pour aider »). Ils utilisent la dernière réponse et la date actuelle de l’événement actif, même pour une inscription antérieure à l’activation. Les absents, excusés et membres sans réponse ne sont pas relancés.
+
+Le déclencheur passe chaque heure : rappel la veille entre 9 h et 21 h, heure de Paris, sans garantie d’une minute précise. Un événement reporté pourra recevoir un rappel pour sa nouvelle date. Les confirmations sont tentées dès l’enregistrement (10 au maximum par requête), puis reprises par le déclencheur (50 envois au maximum par passage), avec priorité aux rappels. Une confirmation encore en attente est remplacée par la dernière réponse du membre. Les quotas Google peuvent retarder les confirmations ; un rappel dont la journée est dépassée n’est pas envoyé tardivement.
+
+Le journal conserve les états `ATTENTE`, `SANS_EMAIL`, `EN_COURS`, `ENVOYE`, `A_VERIFIER` et `ANNULE`. `ENVOYE` signifie que Google a accepté le message, pas une preuve de réception. Les entrées `EN_COURS` ou `A_VERIFIER` ne sont jamais renvoyées automatiquement après une erreur ambiguë : vérifier les exécutions et la remise du mail avant toute relance manuelle. Une erreur d’envoi ne supprime pas les réponses enregistrées.
+
+Pour arrêter les mails, le propriétaire exécute `desactiverNotifications_`. Le journal reste conservé. Les tests utilisent un service mail simulé : aucun message n’est envoyé à des membres réels.

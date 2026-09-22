@@ -6,12 +6,14 @@ const UC_APP = {
     calendrier: 'CALENDRIER',
     reponses: 'REPONSES',
     pointages: 'POINTAGES',
+    mails: 'JOURNAL_MAILS',
     suivi: 'SUIVI_ANNUEL',
     dashboard: 'DASHBOARD',
     modeleCr: 'MODELE_CR_EVENEMENT',
     eventBase: 'BASE_EVENEMENTS'
   },
   headers: {
+    mails: ['ID_Notification', 'Type', 'ID_Evenement', 'ID_Reponse', 'Cle_Personne', 'Destinataire', 'Etat', 'Cree_Le', 'Envoye_Le', 'Detail'],
     pointages: ['ID_Pointage', 'Horodatage', 'ID_Evenement', 'Cle_Personne', 'Presence_Reelle'],
     membres: ['Nom', 'Prenom', 'Statut', 'Cayenne', 'Email', 'Telephone', 'Actif', 'Notes'],
     calendrier: ['ID_Evenement', 'Annee', 'Date', 'Titre', 'Type_Evenement', 'Heure_Debut', 'Heure_Fin', 'Lieu', 'Cayenne', 'Categorie_CR', 'Actif', 'Commentaire', 'Modalites'],
@@ -91,6 +93,8 @@ function onOpen() {
     .addItem('Actualiser le dashboard', 'refreshDashboardSheet_')
     .addItem('Générer les feuilles événement', 'generateAllEventSheetsForActiveYear_')
     .addItem('Exporter la feuille active en PDF', 'exportActiveSheetPdf_')
+    .addItem('Activer les confirmations et rappels mail', 'activerNotifications_')
+    .addItem('Désactiver les mails automatiques', 'desactiverNotifications_')
     .addToUi();
 }
 
@@ -317,17 +321,26 @@ function submitMemberResponses_(payload, member) {
   });
   if (savedRows.length) sheet.getRange(sheet.getLastRow() + 1, 1, savedRows.length, UC_APP.headers.reponses.length).setValues(savedRows.map(function(row) { return row.map(sheetLiteral_); }));
   let warning = '';
+  let mailMessage = '';
+  try {
+    const ids = normalized.map(function(a) { return payload.requestId + ':' + accessHash_(key) + ':' + a.eventId; });
+    const mailResult = traiterMails_(ids, new Date());
+    mailMessage = mailResult.enabled ? (mailResult.pending ? ' Confirmation par mail en attente ou à vérifier par le bureau.' : ' Confirmation par mail traitée pour chaque événement.') : ' Les confirmations mail ne sont pas encore activées par le bureau.';
+    if (mailResult.enabled && !mailAddressValid_(clean_(member.Email))) mailMessage = ' Votre réponse est conservée. Demandez au bureau de compléter votre adresse mail pour recevoir les confirmations.';
+  } catch (error) { mailMessage = ' Vos réponses sont conservées ; les confirmations mail restent à traiter par le bureau.'; }
   try {
     refreshDashboardSheet_();
     savedRows.forEach(function(row) { generateEventSheet_(row[4]); });
   } catch (error) { warning = 'Réponses enregistrées. Le bureau devra actualiser les feuilles de suivi.'; }
-  return {ok:true, saved:answers.length, warning:warning, message:answers.length + ' réponse(s) enregistrée(s). Vous pouvez les modifier à tout moment.'};
+  return {ok:true, saved:answers.length, warning:warning ? warning + mailMessage : '', message:answers.length + ' réponse(s) enregistrée(s). Vous pouvez les modifier à tout moment.' + mailMessage};
 }
 
 function getDashboardData(year, adminPin) {
   assertAdmin_(adminPin);
   setupSystemIfMissing_();
-  return computeDashboard_(Number(year || getSettings_().annee_active || UC_APP.defaults.activeYear));
+  const data = computeDashboard_(Number(year || getSettings_().annee_active || UC_APP.defaults.activeYear));
+  data.notifications = notificationStatus_();
+  return data;
 }
 
 function generateEventSheet(eventId, adminPin) {
