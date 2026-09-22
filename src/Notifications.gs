@@ -1,4 +1,28 @@
-// These editor-only functions end in '_' and cannot be called by google.script.run.
+// Visible editor entry points. Verify Google identity before any side effect;
+// a member/bureau application code does not grant this permission.
+function activerMails() {
+  assertMailOperator_();
+  const result = activerNotifications_();
+  console.log(result.message);
+  return result;
+}
+
+function desactiverMails() {
+  assertMailOperator_();
+  const result = desactiverNotifications_();
+  console.log('Mails automatiques désactivés. Le journal est conservé.');
+  return result;
+}
+
+function assertMailOperator_() {
+  const active = clean_(Session.getActiveUser().getEmail()).toLowerCase();
+  const effective = clean_(Session.getEffectiveUser().getEmail()).toLowerCase();
+  if (!active || !effective || active !== effective) {
+    throw new Error('Ouvrez le projet Apps Script avec le compte Google propriétaire pour activer ou désactiver les mails.');
+  }
+}
+
+// Internal functions remain inaccessible to google.script.run.
 function activerNotifications_() {
   return accessLocked_(function() {
     MailApp.getRemainingDailyQuota();

@@ -154,7 +154,7 @@ Chaque nouvelle réponse enregistrée reçoit un accusé par événement, à l�
 
 **Activation unique par le propriétaire du projet Google**, une fois les sources synchronisées :
 
-1. Ouvrir le projet Apps Script associé au Sheet, sélectionner `activerNotifications_` dans la liste des fonctions puis **Exécuter**. Accepter les autorisations Google d’envoi de mails et de gestion du déclencheur. Utiliser un seul compte propriétaire pour cette installation.
+1. Ouvrir le projet Apps Script associé au Sheet, sélectionner `activerMails` dans la liste des fonctions puis **Exécuter**. Accepter les autorisations Google d’envoi de mails et de gestion du déclencheur. Utiliser un seul compte propriétaire pour cette installation.
 2. Cette fonction crée `JOURNAL_MAILS` et un déclencheur horaire. Elle est idempotente et n’envoie aucun mail pendant l’installation. Elle n’envoie pas de confirmations rétroactives pour les anciennes réponses.
 3. Publier les sources mises à jour via **Déployer → Gérer les déploiements → crayon → Nouvelle version → Déployer**, sur le déploiement existant. Conserver le lien actuel et ses réglages d’accès. La synchronisation GitHub seule ne publie pas la version Web.
 4. Dans **Bureau → Réglages**, actualiser pour consulter l’activation, le dernier passage et les envois en attente/à vérifier. Compléter les adresses manquantes dans les profils du Sheet.
@@ -165,4 +165,4 @@ Le déclencheur passe chaque heure : rappel la veille entre 9 h et 21 h, heure d
 
 Le journal conserve les états `ATTENTE`, `SANS_EMAIL`, `EN_COURS`, `ENVOYE`, `A_VERIFIER` et `ANNULE`. `ENVOYE` signifie que Google a accepté le message, pas une preuve de réception. Les entrées `EN_COURS` ou `A_VERIFIER` ne sont jamais renvoyées automatiquement après une erreur ambiguë : vérifier les exécutions et la remise du mail avant toute relance manuelle. Une erreur d’envoi ne supprime pas les réponses enregistrées.
 
-Pour arrêter les mails, le propriétaire exécute `desactiverNotifications_`. Le journal reste conservé. Les tests utilisent un service mail simulé : aucun message n’est envoyé à des membres réels.
+Pour arrêter les mails, le propriétaire exécute `desactiverMails`. Le journal reste conservé. Les tests utilisent un service mail simulé : aucun message n’est envoyé à des membres réels.

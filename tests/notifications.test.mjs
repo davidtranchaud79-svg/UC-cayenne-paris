@@ -40,6 +40,20 @@ function fixture(){
   return {c,props,db,sent,triggers,member,event,response,now,quota:n=>quota=n,failSend:v=>failSend=v,failLog:v=>failLog=v};
 }
 
+test('visible mail commands reject anonymous or other Google users before any changes',()=>{
+ const f=fixture();f.props.clear();
+ f.c.Session.getEffectiveUser=()=>({getEmail:()=> 'owner@example.test'});
+ for(const email of ['', 'member@example.test']){
+   f.c.Session.getActiveUser=()=>({getEmail:()=>email});
+   assert.throws(()=>f.c.activerMails(),/compte Google/);
+   assert.throws(()=>f.c.desactiverMails(),/compte Google/);
+   assert.equal(f.triggers.length,0);assert.equal(f.props.size,0);assert.equal(f.sent.length,0);
+ }
+ f.c.Session.getActiveUser=()=>({getEmail:()=> 'owner@example.test'});
+ assert.equal(f.c.activerMails().ok,true);assert.equal(f.triggers.length,1);assert.equal(f.sent.length,0);
+ f.c.desactiverMails();assert.equal(f.triggers.length,0);assert.equal(f.props.get('uc.mail.enabled'),'false');
+});
+
 test('activation is idempotent, installs one trigger, sends nothing and excludes historical confirmations',()=>{
  const f=fixture();f.props.clear();f.c.activerNotifications_();const since=f.props.get('uc.mail.since');f.c.activerNotifications_();
  assert.equal(f.triggers.length,1);assert.equal(f.props.get('uc.mail.since'),since);assert.equal(f.sent.length,0);
