@@ -157,6 +157,7 @@ function getPublicConfig(token, requestedYear) {
   return {
     activeYear: year,
     profile: memberProfile_(member),
+    notifications: {enabled: PropertiesService.getScriptProperties().getProperty('uc.mail.enabled') === 'true'},
     responses: memberResponses_(member, year),
     urls: { publicUrl: urls.publicUrl },
     statuses: getOptionList_('D', UC_APP.defaults.statuses),

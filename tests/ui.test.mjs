@@ -17,9 +17,13 @@ function render(file) {
 function app(file, overrides={}) {
   config.profile={nom:'Exemple',prenom:'Camille',statut:'Sociétaire',cayenne:'Paris',email:'camille@example.test',telephone:''};
   config.responses=[];
+  config.notifications={enabled:true};
   const calls=[],errors=[],queue=[];
   const console=new VirtualConsole();console.on('jsdomError',error=>errors.push(error));
   const dom=new JSDOM(render(file),{url:'https://preview.invalid/',runScripts:'dangerously',virtualConsole:console,beforeParse(window){
+    for(const [key,value] of Object.entries(overrides.localStorage||{}))window.localStorage.setItem(key,value);
+    for(const [key,value] of Object.entries(overrides.sessionStorage||{}))window.sessionStorage.setItem(key,value);
+    if(overrides.blockStorage)Object.defineProperty(window,'localStorage',{get(){throw Error('Storage blocked');}});
     window.HTMLElement.prototype.scrollIntoView=function(){};
     window.confirm=()=>true;
     window.google={script:{get run(){let success=()=>{},failure=()=>{};const runner=new Proxy({}, {get(_,method){
@@ -28,7 +32,7 @@ function app(file, overrides={}) {
       return (...args)=>{calls.push({method,args});queue.push(()=>{try{
         if(overrides[method])success(overrides[method](...args));
         else if(method==='getPublicConfig'||method==='getBootstrapConfig')success(structuredClone(config));
-        else if(method==='loginMember')success({token:'MEMBER_SESSION'});
+        else if(method==='loginMember')success({token:'MEMBER_SESSION',remembered:args[1]===true});
         else if(method==='loginBureau')success({token:'BUREAU_SESSION'});
         else if(method==='logoutAccess')success({ok:true});
         else if(method==='listMemberAccess')success([{...config.profile,key:config.profile.email,active:true,hasCode:false}]);
@@ -73,6 +77,92 @@ test('bureau attendance preserves drafts after failure and clears personal data 
 
 function answer(a,id,value){a.doc.querySelector('[data-event="'+id+'"] [data-field="reponse"][value="'+value+'"]').click();}
 
+test('either general save button records every changed choice, including the youth meeting hidden by a filter',()=>{
+ for(const buttonId of ['saveAllTop','submitBtn']){
+   const a=app('Public.html',{getPublicConfig:()=>({...structuredClone(config),events:events.map((e,i)=>i?e:{...e,title:'Réunion des jeunes'})})});
+   answer(a,'evt-1','Présent');a.fill('eventSearch','novembre');answer(a,'evt-2','Je ne sais pas encore');
+   assert.match(a.doc.getElementById('pendingResponses').textContent,/Réunion des jeunes/);
+   assert.equal(a.doc.getElementById('saveAllTop').textContent,a.doc.getElementById('submitBtn').textContent);
+   a.doc.getElementById(buttonId).click();a.doc.getElementById(buttonId==='saveAllTop'?'submitBtn':'saveAllTop').click();a.flush();
+   const calls=a.calls.filter(c=>c.method==='submitResponses');assert.equal(calls.length,1);
+   assert.deepEqual(Array.from(calls[0].args[0].answers,a=>[a.eventId,a.reponse]),[['evt-1','Présent'],['evt-2','Je ne sais pas encore']]);
+   assert.equal(a.doc.getElementById('submitBtn').disabled,true);assert.equal(a.doc.getElementById('saveAllTop').disabled,true);
+   assert.equal(a.doc.getElementById('pendingResponses').hidden,true);
+   assert.match(a.doc.getElementById('saveFeedback').textContent,/Aucune autre validation/);
+   assert.match(a.doc.getElementById('memberHistory').textContent,/Réunion des jeunes/);a.dom.window.close();
+ }
+});
+
+test('individual saving names its scope and warns about remaining choices before a single general save',()=>{
+ const a=app('Public.html');answer(a,'evt-1','Présent');answer(a,'evt-2','Absent');
+ assert.match(a.doc.querySelector('[data-save-event]').textContent,/cet événement uniquement/);
+ a.doc.querySelector('[data-save-event="evt-1"]').click();a.flush();
+ assert.match(a.doc.getElementById('saveFeedback').textContent,/1 autre réponse reste à enregistrer/);
+ assert.ok(a.doc.getElementById('saveFeedback').classList.contains('warning'));
+ assert.match(a.doc.getElementById('pendingResponses').textContent,/Fête de novembre/);
+ assert.match(a.doc.getElementById('selectionSummary').textContent,/1 réponse à enregistrer/);
+ a.doc.getElementById('saveAllTop').click();a.flush();
+ const calls=a.calls.filter(c=>c.method==='submitResponses');assert.equal(calls.length,2);
+ assert.deepEqual(Array.from(calls[1].args[0].answers,a=>a.eventId),['evt-2']);
+ assert.match(a.doc.querySelector('[data-event="evt-1"] .save-indicator').textContent,/Enregistré : Présent/);
+ assert.equal(a.doc.getElementById('saveAllTop').disabled,true);a.dom.window.close();
+});
+
+test('general save reveals an incomplete hidden event and saves nothing until it is corrected',()=>{
+ const a=app('Public.html');answer(a,'evt-1','Absent excusé');detail(a,'evt-1','cause','Autres');
+ a.fill('eventSearch','novembre');answer(a,'evt-2','Présent');a.doc.getElementById('saveAllTop').click();a.flush();
+ assert.equal(a.calls.some(c=>c.method==='submitResponses'),false);assert.equal(a.doc.getElementById('eventSearch').value,'');
+ assert.equal(a.doc.activeElement.dataset.field,'precision');assert.match(a.doc.getElementById('saveFeedback').textContent,/non effectué/);
+ detail(a,'evt-1','precision','Déplacement personnel');a.doc.getElementById('saveAllTop').click();a.flush();
+ assert.equal(a.calls.find(c=>c.method==='submitResponses').args[0].answers.length,2);a.dom.window.close();
+});
+
+test('email guidance explains the action, address and delay, and does not promise disabled confirmations',()=>{
+ const a=app('Public.html');const help=a.doc.getElementById('emailHelp').textContent;
+ assert.match(help,/vous recevrez un email de confirmation par événement enregistré/);assert.match(help,/camille@example.test/);
+ assert.match(help,/différé/);a.dom.window.close();
+ const b=app('Public.html',{getPublicConfig:()=>({...structuredClone(config),notifications:{enabled:false}})});
+ assert.match(b.doc.getElementById('emailHelp').textContent,/pas encore activés/);
+ assert.doesNotMatch(b.doc.getElementById('emailHelp').textContent,/vous recevrez/);b.dom.window.close();
+ const c=app('Public.html',{getPublicConfig:()=>({...structuredClone(config),profile:{...config.profile,email:''}})});
+ assert.match(c.doc.getElementById('emailHelp').textContent,/compléter votre adresse/);c.dom.window.close();
+});
+
+test('first login remembers only a session token and a new visit restores the member without asking for the code',()=>{
+ const a=app('Public.html');const storage=a.dom.window.localStorage;
+ assert.equal(a.calls.find(c=>c.method==='loginMember').args[1],true);
+ assert.equal(storage.getItem('uc.member.remembered'),'MEMBER_SESSION');
+ assert.equal(JSON.stringify({...storage}).includes('1234-5678-90AB-CDEF'),false);
+ assert.equal(a.doc.getElementById('memberCode').value,'');assert.match(a.doc.getElementById('memberConnection').textContent,/mémorisée/);
+ const saved={...storage};a.dom.window.close();
+ const b=app('Public.html',{startLocked:true,localStorage:saved});
+ assert.equal(b.calls.some(c=>c.method==='loginMember'),false);assert.equal(b.calls[0].method,'getPublicConfig');
+ assert.equal(b.calls[0].args[0],'MEMBER_SESSION');assert.equal(b.doc.getElementById('memberLogin').hidden,true);
+ b.doc.getElementById('memberLogout').click();b.flush();
+ assert.equal(b.dom.window.localStorage.getItem('uc.member.remembered'),null);
+ assert.equal(b.dom.window.sessionStorage.getItem('uc.member.session'),null);
+ assert.equal(b.doc.getElementById('memberIdentity').textContent,'');
+ assert.equal(b.doc.getElementById('emailHelp').textContent,'');assert.equal(b.calls.at(-1).method,'logoutAccess');b.dom.window.close();
+});
+
+test('remembering is optional and blocked device storage is explained without blocking login',()=>{
+ const a=app('Public.html',{startLocked:true});a.doc.getElementById('rememberMember').checked=false;a.memberLogin();
+ assert.equal(a.calls.find(c=>c.method==='loginMember').args[1],false);
+ assert.equal(a.dom.window.localStorage.getItem('uc.member.remembered'),null);
+ assert.equal(a.dom.window.sessionStorage.getItem('uc.member.session'),'MEMBER_SESSION');a.dom.window.close();
+ const b=app('Public.html',{blockStorage:true});assert.equal(b.doc.getElementById('memberLogin').hidden,true);
+ assert.match(b.doc.getElementById('memberConnection').textContent,/empêche la mémorisation/);b.dom.window.close();
+});
+
+test('a rejected remembered session is removed, while a temporary connection error preserves it for retry',()=>{
+ for(const expired of [true,false]){
+   const a=app('Public.html',{startLocked:true,localStorage:{'uc.member.remembered':'OLD_SESSION'},getPublicConfig:()=>{throw Error(expired?'SESSION_EXPIRED: Reconnectez-vous.':'Réseau indisponible');}});
+   assert.equal(a.dom.window.localStorage.getItem('uc.member.remembered'),expired?null:'OLD_SESSION');
+   assert.equal(a.doc.getElementById('memberLogin').hidden,false);assert.equal(a.doc.getElementById('memberLoginBtn').disabled,false);
+   assert.equal(a.calls.some(c=>c.method==='loginMember'),false);a.dom.window.close();
+ }
+});
+
 test('individual validation saves only its event, keeps other drafts, and ignores their incomplete fields',()=>{
  const a=app('Public.html');answer(a,'evt-1','Présent');answer(a,'evt-2','Absent excusé');
  a.doc.querySelector('[data-save-event="evt-1"]').click();a.flush();
@@ -90,6 +180,15 @@ test('individual retry keeps its ID even after another draft is changed; saving 
  answer(a,'evt-2','Absent');fail=false;a.doc.querySelector('[data-save-event="evt-1"]').click();a.flush();
  a.doc.querySelector('[data-save-event="evt-2"]').click();a.flush();
  const calls=a.calls.filter(c=>c.method==='submitResponses');assert.equal(calls.length,3);assert.equal(calls[0].args[0].requestId,calls[1].args[0].requestId);assert.notEqual(calls[1].args[0].requestId,calls[2].args[0].requestId);a.dom.window.close();
+});
+
+test('returning to a previous choice after a successful edit never reuses an uncertain old request',()=>{
+ let fail=true;const a=app('Public.html',{submitResponses:()=>{if(fail)throw Error('Réponse du serveur perdue');return {ok:true};}});
+ answer(a,'evt-1','Présent');a.doc.getElementById('saveAllTop').click();a.flush();
+ fail=false;answer(a,'evt-1','Absent');a.doc.getElementById('saveAllTop').click();a.flush();
+ answer(a,'evt-1','Présent');a.doc.getElementById('saveAllTop').click();a.flush();
+ const calls=a.calls.filter(c=>c.method==='submitResponses');assert.equal(calls.length,3);
+ assert.notEqual(calls[2].args[0].requestId,calls[0].args[0].requestId);a.dom.window.close();
 });
 function detail(a,id,key,value){const n=a.doc.querySelector('[data-event="'+id+'"] [data-field="'+key+'"]');n.value=value;n.dispatchEvent(new a.dom.window.Event('change',{bubbles:true}));}
 test('one independent response per event, no admin link, and no fabricated initial answer',()=>{

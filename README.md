@@ -99,10 +99,12 @@ Le code commun du bureau est celui de `PARAMETRES`, ligne `admin_pin`. Le code e
 1. Ouvrir l’espace bureau avec le code commun, puis **Membres > Accès personnels**.
 2. Pour un membre déjà présent dans le Sheet, choisir **Créer le code**. Sinon, utiliser **Ajouter un membre**.
 3. Transmettre au membre son code et le lien de l’espace membres. Aucun message n’est envoyé automatiquement.
-4. Le membre entre son code et retrouve son identité, ses réponses et les événements. Il retrouve sa réponse sous chaque événement : **Présent**, **Absent**, **Je ne sais pas encore**, **Excusé**. Il peut répondre différemment à plusieurs événements, enregistrer le tout puis revenir au même lien avec son code pour modifier ses réponses.
+4. Le membre entre son code et retrouve son identité, ses réponses et les événements. Il retrouve sa réponse sous chaque événement : **Présent**, **Absent**, **Je ne sais pas encore**, **Excusé**. Le bouton **Enregistrer toutes mes réponses**, disponible avant et après les événements, enregistre tous ses choix modifiés en un seul clic, y compris ceux masqués par les filtres. **Enregistrer cet événement uniquement** enregistre seulement la fiche concernée ; une alerte précise les autres réponses encore à enregistrer. Aucune seconde validation n’est nécessaire pour une réponse déjà enregistrée.
 5. **Remplacer le code** invalide l’ancien code et les sessions en cours. **Désactiver** retire l’accès sans effacer les réponses.
 
-Les codes personnels sont affichés une seule fois et conservés sous forme d’empreintes dans les propriétés du script, pas dans le Sheet ni dans GitHub. Les sessions membres durent au maximum quatre heures ; la déconnexion les invalide. Les espaces membres et bureau utilisent des sessions distinctes, contrôlées côté serveur à chaque appel. Le code commun du bureau reste dans le Sheet, dont l’accès doit rester réservé au bureau.
+Les codes personnels sont affichés une seule fois et conservés sous forme d’empreintes dans les propriétés du script, pas dans le Sheet ni dans GitHub. **Rester connecté sur cet appareil**, coché par défaut, permet au membre de revenir sans ressaisir son code pendant 90 jours. Seul un jeton aléatoire est mémorisé dans le navigateur ; le code personnel n’y est pas conservé. La session persistante est enregistrée côté serveur sous l’empreinte de ce jeton et ne dépend pas du cache temporaire Google. Cinq appareils au maximum sont mémorisés par membre ; l’ajout d’un sixième remplace un ancien accès. La déconnexion, le remplacement du code ou sa révocation invalident l’accès mémorisé ; un membre inactif ne peut plus utiliser sa session.
+
+Sur un appareil partagé, décocher cette option : la connexion ne reste alors disponible que dans l’onglet courant, pendant quatre heures au maximum. Si le navigateur bloque la mémorisation, l’application le précise sans empêcher la connexion. L’effacement des données du navigateur peut imposer une nouvelle saisie du code. L’espace bureau conserve sa session de quatre heures ; les rôles restent distincts et contrôlés côté serveur à chaque appel.
 
 L’identité d’un compte est rattachée à la ligne MEMBRES par son email, ou à défaut par nom et prénom. Ne changez pas ces champs directement sans recréer l’accès ; les doublons de même identité sont refusés à la connexion. Les fonctions de maintenance terminées par `_` sont exécutables depuis le menu du classeur ou l’éditeur, pas depuis une page membre.
 
@@ -151,6 +153,8 @@ Les tests couvrent les envois mixtes, les modifications, la séparation des comp
 ## Confirmations et rappels par mail
 
 Chaque nouvelle réponse enregistrée reçoit un accusé par événement, à l’adresse du membre dans `MEMBRES`. Une modification reçoit un nouvel accusé. Il contient le rendez-vous, les horaires, la réponse, les modalités, la référence d’enregistrement et le lien de l’espace membre. Il atteste l’enregistrement de la réponse, pas la présence effective. Les codes personnels, motifs détaillés et commentaires privés ne figurent pas dans le mail.
+
+Avant l’enregistrement, l’espace membre explique quel bouton utiliser et indique l’adresse de réception. Si les mails ne sont pas activés ou si l’adresse manque, le message le précise et confirme que les réponses peuvent quand même être enregistrées. L’envoi peut être différé ; la confirmation à l’écran fait foi pour l’enregistrement dans le Sheet, indépendamment de la réception du mail.
 
 **Activation unique par le propriétaire du projet Google**, une fois les sources synchronisées :
 

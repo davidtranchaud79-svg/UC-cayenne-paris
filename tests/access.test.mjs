@@ -13,7 +13,7 @@ function fixture(){
     REPONSES:[], CALENDRIER:[{ID_Evenement:'evt1',Annee:2026,Date:new Date('2026-09-19'),Titre:'JEP',Type_Evenement:'JEP',Actif:'Oui'}]};
   const settings={admin_pin:'bureau-test-code',annee_active:2026};
   const context=vm.createContext({console,Date,Set,JSON,
-    PropertiesService:{getScriptProperties:()=>({getProperty:k=>props.get(k)||null,setProperty:(k,v)=>props.set(k,v),deleteProperty:k=>props.delete(k)})},
+    PropertiesService:{getScriptProperties:()=>({getProperties:()=>Object.fromEntries(props),getProperty:k=>props.get(k)||null,setProperty:(k,v)=>props.set(k,v),deleteProperty:k=>props.delete(k)})},
     CacheService:{getScriptCache:()=>({get:k=>cache.get(k)||null,put:(k,v)=>cache.set(k,v),remove:k=>cache.delete(k)})},
     LockService:{getScriptLock:()=>({waitLock:()=>{assert.ok(!locked,'No nested lock');locked=true;},releaseLock:()=>{locked=false;}})},
     Utilities:{getUuid:randomUUID,computeDigest:(_,text)=>Array.from(createHash('sha256').update(text).digest()),DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},formatDate:d=>d.toISOString().slice(0,10)},
@@ -74,6 +74,58 @@ test('a member code opens only that identity; bureau and member sessions are not
   assert.throws(()=>c.getPublicConfig(),/SESSION_EXPIRED/);
   assert.throws(()=>c.submitResponses({}),/SESSION_EXPIRED/);
   assert.throws(()=>c.manageMemberCode('camille@example.test','reset',token),/SESSION_EXPIRED/);
+});
+
+test('remembered members survive cache eviction for 90 days, without storing the code or raw token on the server',()=>{
+  const {c,issue,props,cache,bureau}=fixture();const code=issue();
+  const login=c.loginMember(code,true);assert.equal(login.remembered,true);
+  const key='uc.remembered.'+c.accessHash_(login.token),session=JSON.parse(props.get(key));
+  assert.ok(session.expires>Date.now()+89*24*60*60*1000);
+  assert.ok(session.expires<=Date.now()+90*24*60*60*1000);
+  cache.clear();assert.equal(c.assertMember_(login.token).Email,'camille@example.test');
+  assert.throws(()=>c.assertAdmin_(login.token),/SESSION_EXPIRED/);
+  assert.throws(()=>c.assertAdmin_(bureau),/SESSION_EXPIRED/);
+  assert.ok(!JSON.stringify([...props]).includes(code.replaceAll('-','')));
+  assert.ok(!JSON.stringify([...props]).includes(login.token));
+  props.set(key,JSON.stringify({...session,expires:Date.now()-1}));
+  assert.throws(()=>c.assertMember_(login.token),/SESSION_EXPIRED/);
+});
+
+test('remembered access ends on logout, code replacement, revocation and member deactivation',()=>{
+  const {c,issue,props,bureau,db}=fixture();let code=issue();
+  const first=c.loginMember(code,true).token;c.logoutAccess(first);
+  assert.equal(props.has('uc.remembered.'+c.accessHash_(first)),false);
+  assert.throws(()=>c.assertMember_(first),/SESSION_EXPIRED/);
+  const second=c.loginMember(code,true).token;
+  code=c.manageMemberCode('camille@example.test','reset',bureau).code;
+  assert.throws(()=>c.assertMember_(second),/SESSION_EXPIRED/);
+  assert.equal(props.has('uc.remembered.'+c.accessHash_(second)),false);
+  const third=c.loginMember(code,true).token;db.MEMBRES[0].Actif='Non';
+  assert.throws(()=>c.assertMember_(third),/SESSION_EXPIRED/);
+  db.MEMBRES[0].Actif='Oui';c.manageMemberCode('camille@example.test','revoke',bureau);
+  assert.throws(()=>c.assertMember_(third),/SESSION_EXPIRED/);
+});
+
+test('remembered storage expires old records and limits devices without affecting another member',()=>{
+  const {c,issue,props}=fixture();const code=issue(),otherCode=issue('alex@example.test');
+  const other=c.loginMember(otherCode,true).token,first=c.loginMember(code,true).token;
+  props.set('uc.remembered.expired',JSON.stringify({role:'member',key:'expired',expires:0}));
+  for(let i=0;i<5;i++)c.loginMember(code,true);
+  assert.equal(props.has('uc.remembered.expired'),false);
+  assert.equal([...props.keys()].filter(k=>k.startsWith('uc.remembered.')).length,6);
+  assert.equal(c.assertMember_(other).Prenom,'Alex');
+  const sessions=[...props.entries()].filter(([k,v])=>k.startsWith('uc.remembered.')&&JSON.parse(v).key==='camille@example.test');
+  assert.equal(sessions.length,5);
+  const ordinary=c.loginMember(code,false);assert.equal(ordinary.remembered,false);
+  assert.equal(props.has('uc.remembered.'+c.accessHash_(ordinary.token)),false);
+});
+
+test('public email guidance receives only activation status and the authenticated member profile',()=>{
+  const {c,props,member}=fixture();const token=member();
+  assert.equal(c.getPublicConfig(token).notifications.enabled,false);
+  props.set('uc.mail.enabled','true');props.set('uc.mail.error','private diagnostic');
+  const config=c.getPublicConfig(token);assert.equal(config.notifications.enabled,true);
+  assert.ok(!JSON.stringify(config).includes('private diagnostic'));
 });
 
 test('personal codes are stored as hashes, can be rotated and revoked, and inactive members cannot sign in',()=>{

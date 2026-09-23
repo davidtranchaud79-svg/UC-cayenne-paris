@@ -25,22 +25,47 @@ function memberByKey_(key) {
   return matches[0];
 }
 
-function createAccessSession_(data) {
+// Remembered member sessions survive cache eviction; the personal code is never stored on the device.
+function pruneRememberedSessions_(memberKey, revokeAll) {
+  const props = PropertiesService.getScriptProperties();
+  const values = props.getProperties(), remaining = [];
+  Object.keys(values).filter(function(key) { return key.indexOf('uc.remembered.') === 0; }).forEach(function(key) {
+    const session = JSON.parse(values[key]);
+    if (session.expires <= Date.now() || (revokeAll && session.key === memberKey)) props.deleteProperty(key);
+    else if (session.key === memberKey) remaining.push({key: key, expires: session.expires});
+  });
+  // Keep at most five remembered devices per member, including the one being added.
+  remaining.sort(function(a, b) { return b.expires - a.expires; }).slice(4).forEach(function(session) { props.deleteProperty(session.key); });
+}
+
+function createAccessSession_(data, remember) {
   const token = Utilities.getUuid() + Utilities.getUuid();
+  if (data.role === 'member' && remember === true) {
+    pruneRememberedSessions_(data.key, false);
+    data.expires = Date.now() + 90 * 24 * 60 * 60 * 1000;
+    PropertiesService.getScriptProperties().setProperty('uc.remembered.' + accessHash_(token), JSON.stringify(data));
+    return token;
+  }
   data.expires = Date.now() + 4 * 60 * 60 * 1000;
   CacheService.getScriptCache().put('uc.session.' + accessHash_(token), JSON.stringify(data), 14400);
   return token;
 }
 
 function accessSession_(token, role) {
-  const raw = typeof token === 'string' && token.length < 200 && CacheService.getScriptCache().get('uc.session.' + accessHash_(token));
+  if (typeof token !== 'string' || !token || token.length >= 200) throw new Error('SESSION_EXPIRED: Reconnectez-vous à votre espace.');
+  const digest = accessHash_(token);
+  const raw = CacheService.getScriptCache().get('uc.session.' + digest) ||
+    (role === 'member' && PropertiesService.getScriptProperties().getProperty('uc.remembered.' + digest));
   const session = raw ? JSON.parse(raw) : null;
   if (!session || session.role !== role || session.expires <= Date.now()) throw new Error('SESSION_EXPIRED: Reconnectez-vous à votre espace.');
   return session;
 }
 
 function logoutAccess(token) {
-  if (typeof token === 'string' && token.length < 200) CacheService.getScriptCache().remove('uc.session.' + accessHash_(token));
+  if (typeof token === 'string' && token.length < 200) {
+    CacheService.getScriptCache().remove('uc.session.' + accessHash_(token));
+    PropertiesService.getScriptProperties().deleteProperty('uc.remembered.' + accessHash_(token));
+  }
   return {ok: true};
 }
 
@@ -62,7 +87,7 @@ function checkLogin_(role, verify) {
   });
 }
 
-function loginMember(code) {
+function loginMember(code, remember) {
   return checkLogin_('member', function() {
     const normalized = clean_(code).toUpperCase().replace(/[\s-]/g, '');
     if (!/^[A-F0-9]{16}$/.test(normalized)) return null;
@@ -72,7 +97,7 @@ function loginMember(code) {
     if (!key || props.getProperty(memberAccessKey_(key)) !== hash) return null;
     let member;
     try { member = memberByKey_(key); } catch (_) { return null; }
-    return {token: createAccessSession_({role: 'member', key: key, version: hash}), profile: memberProfile_(member)};
+    return {token: createAccessSession_({role: 'member', key: key, version: hash}, remember), remembered: remember === true, profile: memberProfile_(member)};
   });
 }
 
@@ -132,6 +157,7 @@ function issueMemberCode_(key, replace) {
   props.setProperty('uc.code.' + hash, key);
   props.setProperty(slot, hash);
   if (old) props.deleteProperty('uc.code.' + old);
+  pruneRememberedSessions_(key, true);
   return {profile: memberProfile_(member), code: code.match(/.{4}/g).join('-')};
 }
 
@@ -145,6 +171,7 @@ function manageMemberCode(key, action, token) {
     const old = props.getProperty(slot);
     props.deleteProperty(slot);
     if (old) props.deleteProperty('uc.code.' + old);
+    pruneRememberedSessions_(String(key), true);
     return {ok: true};
   });
 }
