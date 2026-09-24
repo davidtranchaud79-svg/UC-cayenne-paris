@@ -171,8 +171,37 @@ function issueMemberCode_(key, replace) {
   return {profile: memberProfile_(member), code: code.match(/.{4}/g).join('-')};
 }
 
+function sendMemberAccessEmail_(issued) {
+  const profile = issued && issued.profile || {}, address = clean_(profile.email);
+  if (!mailAddressValid_(address)) return {state:'no_email', address:address};
+  const url = getAppUrls_().publicUrl;
+  const body = [
+    'Bonjour ' + (clean_(profile.prenom) || ''),
+    '',
+    'Le bureau de la Cayenne de Paris vient de créer ou de renouveler votre accès personnel.',
+    '',
+    'Votre code personnel : ' + issued.code,
+    '',
+    'Lien direct vers votre espace membre :',
+    url,
+    '',
+    'À la première connexion, votre iPhone ou votre téléphone Android peut vous proposer d’enregistrer ce code dans son gestionnaire de mots de passe. Vous pouvez l’accepter.',
+    'Sur votre appareil personnel, vous pouvez également cocher « Garder ma session ouverte sur cet appareil pendant 90 jours ».',
+    '',
+    'Ce code est personnel. Ne le transmettez pas à une autre personne.',
+    '',
+    'Cayenne de Paris — Union Compagnonnique'
+  ].join('\n');
+  try {
+    MailApp.sendEmail({to:address, subject:'Votre code d’accès — Cayenne de Paris', body:body, name:'Cayenne de Paris'});
+    return {state:'sent', address:address};
+  } catch (error) {
+    return {state:'error', address:address, detail:clean_(error && error.message).slice(0,250)};
+  }
+}
+
 function manageMemberCode(key, action, token) {
-  return accessLocked_(function() {
+  const result = accessLocked_(function() {
     assertAdmin_(token);
     ensureAuditSchema_();
     if (action === 'issue' || action === 'reset') return issueMemberCode_(String(key), action === 'reset');
@@ -186,10 +215,12 @@ function manageMemberCode(key, action, token) {
     pruneRememberedSessions_(String(key), true);
     return {ok: true};
   });
+  if (result && result.code) result.delivery = sendMemberAccessEmail_(result);
+  return result;
 }
 
 function createMemberAccess(payload, token) {
-  return accessLocked_(function() {
+  const result = accessLocked_(function() {
     assertAdmin_(token);
     ensureAuditSchema_();
     payload = payload || {};
@@ -207,6 +238,8 @@ function createMemberAccess(payload, token) {
     upsertMember_(member);
     return issueMemberCode_(key, false);
   });
+  if (result && result.code) result.delivery = sendMemberAccessEmail_(result);
+  return result;
 }
 
 function changeBureauCode(newCode, token) {

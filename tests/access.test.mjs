@@ -7,7 +7,7 @@ import {createHash,randomUUID} from 'node:crypto';
 const code=readFileSync(new URL('../src/Code.gs',import.meta.url),'utf8');
 const access=readFileSync(new URL('../src/Access.gs',import.meta.url),'utf8');
 function fixture(){
-  const props=new Map(),cache=new Map();let locked=false;
+  const props=new Map(),cache=new Map(),sent=[];let locked=false;
   const db={MEMBRES:[{Nom:'Exemple',Prenom:'Camille',Email:'camille@example.test',Statut:'Compagnon',Cayenne:'Paris',Actif:'Oui'},
     {Nom:'Autre',Prenom:'Alex',Email:'alex@example.test',Statut:'Aspirant',Cayenne:'Paris',Actif:'Oui'}],
     REPONSES:[], CALENDRIER:[{ID_Evenement:'evt1',Annee:2026,Date:new Date('2026-09-19'),Titre:'JEP',Type_Evenement:'JEP',Actif:'Oui'}]};
@@ -17,7 +17,9 @@ function fixture(){
     CacheService:{getScriptCache:()=>({get:k=>cache.get(k)||null,put:(k,v)=>cache.set(k,v),remove:k=>cache.delete(k)})},
     LockService:{getScriptLock:()=>({waitLock:()=>{assert.ok(!locked,'No nested lock');locked=true;},releaseLock:()=>{locked=false;}})},
     Utilities:{getUuid:randomUUID,computeDigest:(_,text)=>Array.from(createHash('sha256').update(text).digest()),DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},formatDate:d=>d.toISOString().slice(0,10)},
-    Session:{getScriptTimeZone:()=> 'Europe/Paris'}
+    Session:{getScriptTimeZone:()=> 'Europe/Paris'},
+    ScriptApp:{getService:()=>({getUrl:()=> 'https://script.google.com/macros/s/TEST/exec'})},
+    MailApp:{sendEmail:message=>sent.push(message)}
   });
   vm.runInContext(code+'\n'+access+'\n'+['Notifications.gs','Reliability.gs','Background.gs'].map(f=>readFileSync(new URL('../src/'+f,import.meta.url),'utf8')).join('\n'),context);
   const headers=vm.runInContext('UC_APP.headers.reponses',context);
@@ -32,7 +34,7 @@ function fixture(){
   const bureau=context.loginBureau(settings.admin_pin).token;
   function issue(key='camille@example.test'){return context.manageMemberCode(key,'issue',bureau).code;}
   function member(key){return context.loginMember(issue(key)).token;}
-  return {c:context,db,settings,props,cache,bureau,issue,member,headers};
+  return {c:context,db,settings,props,cache,bureau,issue,member,headers,sent};
 }
 
 test('attendance is bureau-only, validates a whole batch, preserves announcements and detects conflicting corrections',()=>{
@@ -128,6 +130,16 @@ test('public email guidance receives only activation status and the authenticate
   assert.ok(!JSON.stringify(config).includes('private diagnostic'));
 });
 
+test('creating or replacing a member code emails the code and direct member link when an email is valid',()=>{
+  const {c,bureau,sent}=fixture();
+  const first=c.manageMemberCode('camille@example.test','issue',bureau);
+  assert.equal(first.delivery.state,'sent');assert.equal(first.delivery.address,'camille@example.test');
+  assert.equal(sent.length,1);assert.ok(sent[0].body.includes(first.code));
+  assert.ok(sent[0].body.includes('https://script.google.com/macros/s/TEST/exec'));
+  assert.match(sent[0].body,/gestionnaire de mots de passe/);
+  const replacement=c.manageMemberCode('camille@example.test','reset',bureau);
+  assert.equal(replacement.delivery.state,'sent');assert.equal(sent.length,2);
+});
 test('personal codes are stored as hashes, can be rotated and revoked, and inactive members cannot sign in',()=>{
   const {c,issue,bureau,props,db}=fixture();const code=issue();const token=c.loginMember(code.toLowerCase()).token;
   assert.ok(!JSON.stringify([...props]).includes(code.replaceAll('-','')));

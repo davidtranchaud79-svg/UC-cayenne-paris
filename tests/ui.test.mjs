@@ -178,12 +178,12 @@ test('email guidance explains the action, address and delay, and does not promis
  assert.match(c.doc.getElementById('emailHelp').textContent,/Complétez ou corrigez/);c.dom.window.close();
 });
 
-test('first login remembers the access and code on the device, and a new visit restores the member',()=>{
+test('first login remembers the session without storing the raw member code, and a new visit restores the member',()=>{
  const a=app('Public.html');const storage=a.dom.window.localStorage;
  assert.equal(a.calls.find(c=>c.method==='loginMember').args[1],true);
  assert.equal(storage.getItem('uc.member.remembered'),'MEMBER_SESSION');
- assert.equal(storage.getItem('uc.member.savedCode'),'1234-5678-90AB-CDEF');
- assert.equal(a.doc.getElementById('memberCode').value,'');assert.match(a.doc.getElementById('memberConnection').textContent,/mémorisés/);
+ assert.equal(storage.getItem('uc.member.savedCode'),null);
+ assert.equal(a.doc.getElementById('memberCode').value,'');assert.match(a.doc.getElementById('memberConnection').textContent,/Session conservée/);
  const saved={...storage};a.dom.window.close();
  const b=app('Public.html',{startLocked:true,localStorage:saved});
  assert.equal(b.calls.some(c=>c.method==='loginMember'),false);assert.equal(b.calls[0].method,'getPublicConfig');
@@ -208,9 +208,9 @@ test('remembering is optional and blocked device storage is explained without bl
 
 test('a rejected remembered session is removed, while a temporary connection error preserves it for retry',()=>{
  for(const expired of [true,false]){
-   const a=app('Public.html',{startLocked:true,localStorage:{'uc.member.remembered':'OLD_SESSION','uc.member.savedCode':'1234-5678-90AB-CDEF'},getPublicConfig:()=>{throw Error(expired?'SESSION_EXPIRED: Reconnectez-vous.':'Réseau indisponible');}});
-   assert.equal(a.dom.window.localStorage.getItem('uc.member.remembered'),expired?null:'OLD_SESSION');assert.equal(a.dom.window.localStorage.getItem('uc.member.savedCode'),'1234-5678-90AB-CDEF');
-   assert.equal(a.doc.getElementById('memberLogin').hidden,false);if(expired)assert.equal(a.doc.getElementById('memberCode').value,'1234-5678-90AB-CDEF');assert.equal(a.doc.getElementById('memberLoginBtn').disabled,false);
+   const a=app('Public.html',{startLocked:true,localStorage:{'uc.member.remembered':'OLD_SESSION'},getPublicConfig:()=>{throw Error(expired?'SESSION_EXPIRED: Reconnectez-vous.':'Réseau indisponible');}});
+   assert.equal(a.dom.window.localStorage.getItem('uc.member.remembered'),expired?null:'OLD_SESSION');assert.equal(a.dom.window.localStorage.getItem('uc.member.savedCode'),null);
+   assert.equal(a.doc.getElementById('memberLogin').hidden,false);if(expired)assert.equal(a.doc.getElementById('memberCode').value,'');assert.equal(a.doc.getElementById('memberLoginBtn').disabled,false);
    assert.equal(a.calls.some(c=>c.method==='loginMember'),false);a.dom.window.close();
  }
 });
@@ -257,6 +257,15 @@ test('failed batch preserves drafts and reuses the request ID on retry',()=>{
 });
 test('other reason requires text even when its event is filtered out',()=>{
  const a=app('Public.html');answer(a,'evt-1','Absent excusé');detail(a,'evt-1','cause','Autres');a.fill('eventSearch','novembre');a.submit('presenceForm');a.flush();assert.equal(a.calls.some(c=>c.method==='submitResponses'),false);assert.match(a.doc.getElementById('publicNotice').textContent,/précision/);a.dom.window.close();
+});
+test('member and bureau login forms expose standard password-manager metadata',()=>{
+  const member=app('Public.html',{startLocked:true}),bureau=app('Admin.html');
+  const memberPassword=member.doc.getElementById('memberCode'),bureauPassword=bureau.doc.getElementById('adminPin');
+  assert.equal(memberPassword.getAttribute('name'),'password');assert.equal(memberPassword.getAttribute('autocomplete'),'current-password');
+  assert.equal(member.doc.querySelector('#memberLoginForm [name="username"]').value,'membre-cayenne-paris');
+  assert.equal(bureauPassword.getAttribute('name'),'password');assert.equal(bureauPassword.getAttribute('autocomplete'),'current-password');
+  assert.equal(bureau.doc.querySelector('#accessForm [name="username"]').value,'bureau-cayenne-paris');
+  member.dom.window.close();bureau.dom.window.close();
 });
 test('bureau shows no fabricated figures before authentication and clears data when locked',()=>{
   const a=app('Admin.html');assert.match(a.doc.getElementById('kpiRoot').textContent,/—/);assert.equal(a.calls.some(c=>c.method==='getDashboardData'),false);a.login();assert.equal(a.doc.getElementById('accessPanel').hidden,true);assert.match(a.doc.getElementById('membersRoot').textContent,/Camille Exemple/);a.doc.getElementById('lockSession').click();assert.equal(a.doc.getElementById('adminPin').value,'');assert.doesNotMatch(a.doc.getElementById('membersRoot').textContent,/Camille Exemple/);assert.ok(a.doc.getElementById('generateAll').disabled);a.dom.window.close();

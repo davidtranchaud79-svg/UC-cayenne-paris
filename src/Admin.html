@@ -29,7 +29,7 @@
       <div id="adminNotice" class="notice" role="status" aria-live="polite" hidden></div>
       <section class="panel access-panel" id="accessPanel" aria-labelledby="accessTitle">
         <div class="access-copy"><div class="access-icon"><span data-icon="lock"></span></div><div><h2 id="accessTitle">Bienvenue dans l’espace bureau.</h2><p>Entrez votre code pour retrouver les présences, préparer les événements et générer les comptes rendus.</p></div></div>
-        <form class="access-form" id="accessForm"><div class="field"><label for="adminPin">Code commun du bureau</label><input id="adminPin" type="password" autocomplete="current-password" placeholder="Code du bureau" required></div><button class="btn" id="loadDashboard" type="submit">Ouvrir l’espace bureau <span data-icon="arrow"></span></button></form>
+        <form class="access-form" id="accessForm"><input class="sr-only" type="text" name="username" autocomplete="username" value="bureau-cayenne-paris" tabindex="-1" aria-hidden="true"><div class="field"><label for="adminPin">Code commun du bureau</label><input id="adminPin" name="password" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" placeholder="Code du bureau" required></div><button class="btn" id="loadDashboard" type="submit">Ouvrir l’espace bureau <span data-icon="arrow"></span></button></form>
       </section>
       <div class="session-bar" id="sessionBar" hidden><span class="dot"></span><span id="sessionStatus"></span><button class="text-button" type="button" id="lockSession"><span data-icon="logout"></span>Verrouiller l’espace</button></div>
       <section id="screen-dashboard" class="screen active" aria-label="Vue d’ensemble">
@@ -60,6 +60,7 @@
       <section id="screen-members" class="screen" aria-label="Suivi des membres">
         <div class="access-management" id="memberAccessPanel" hidden>
           <h2>Accès personnels</h2>
+          <p class="small muted">Lorsqu’un code est créé ou remplacé, il est envoyé automatiquement au membre si son adresse email est valide. Le message contient le lien d’accès et les explications pour enregistrer le code sur son téléphone.</p>
           <div id="accessNotice" class="notice" role="status" hidden></div>
           <details><summary>Ajouter un membre</summary>
             <form id="newMemberForm" class="fields">
@@ -203,7 +204,7 @@
     google.script.run.withSuccessHandler(members=>{if(session!==state.session)return;state.accessMembers=members;document.getElementById('memberAccessPanel').hidden=false;renderMemberAccess();}).withFailureHandler(error=>{if(session!==state.session)return;Ui.notice('adminNotice',error.message || error);}).listMemberAccess(pin());
   }
   function renderMemberAccess(){
-    document.getElementById('memberAccessList').innerHTML=state.accessMembers.length?state.accessMembers.map(m=>'<div class="history-row"><div><strong>'+Ui.escape(m.prenom+' '+m.nom)+'</strong><p>'+Ui.escape(m.statut+' · '+m.cayenne)+' · '+(!m.active?'Membre inactif':m.hasCode?'Accès créé':'Sans code')+'</p></div><div class="access-actions"><button class="text-button" type="button" data-email-member="'+Ui.escape(m.key)+'">Modifier l’email</button>'+ (m.active?'<button class="btn secondary" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="'+(m.hasCode?'reset':'issue')+'">'+(m.hasCode?'Remplacer le code':'Créer le code')+'</button>':'')+(m.hasCode?'<button class="text-button" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="revoke">Désactiver</button>':'')+'</div></div>').join(''):Ui.empty('Aucun membre','Ajoutez le premier membre pour créer son accès.','users');
+    document.getElementById('memberAccessList').innerHTML=state.accessMembers.length?state.accessMembers.map(m=>'<div class="history-row"><div><strong>'+Ui.escape(m.prenom+' '+m.nom)+'</strong><p>'+Ui.escape(m.statut+' · '+m.cayenne)+' · '+(!m.active?'Membre inactif':m.hasCode?'Accès créé':'Sans code')+'</p></div><div class="access-actions"><button class="text-button" type="button" data-email-member="'+Ui.escape(m.key)+'">Modifier l’email</button>'+ (m.active?'<button class="btn secondary" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="'+(m.hasCode?'reset':'issue')+'">'+(m.hasCode?(m.email?'Remplacer et envoyer':'Remplacer le code'):(m.email?'Créer et envoyer':'Créer le code'))+'</button>':'')+(m.hasCode?'<button class="text-button" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="revoke">Désactiver</button>':'')+'</div></div>').join(''):Ui.empty('Aucun membre','Ajoutez le premier membre pour créer son accès.','users');
     document.querySelectorAll('[data-access-action]').forEach(button=>button.disabled=state.accessBusy);
   }
   function accessAction(invoke,created){
@@ -212,7 +213,7 @@
     const runner=google.script.run.withSuccessHandler(result=>{
       if(session!==state.session)return;finish();
       if(result.code){document.getElementById('issuedCode').value=result.code;document.getElementById('issuedCodeLabel').textContent='Code personnel de '+result.profile.prenom+' '+result.profile.nom;document.getElementById('issuedCodePanel').hidden=false;document.getElementById('issuedCode').focus();}
-      Ui.notice('accessNotice',result.code?'Accès prêt. Transmettez ce code personnel au membre.':'Accès désactivé.','ok');
+      const delivery=result.delivery||{};const message=!result.code?'Accès désactivé.':delivery.state==='sent'?'Accès prêt. Le code a été envoyé à '+delivery.address+'.':delivery.state==='no_email'?'Accès prêt. Aucune adresse email valide : transmettez le code affiché au membre.':'Accès prêt, mais le mail n’a pas pu être envoyé. Copiez le code affiché et transmettez-le au membre.';Ui.notice('accessNotice',message,result.code&&delivery.state==='error'?'error':'ok');
       if(created){document.getElementById('newMemberForm').reset();loadDashboard();}loadMemberAccess();
     }).withFailureHandler(error=>{if(session!==state.session)return;finish();Ui.notice('accessNotice',error.message || error);});
     invoke(runner);
