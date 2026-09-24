@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.24.3',
+  version: '2026.09.24.4',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -24,8 +24,8 @@ const UC_APP = {
   defaults: {
     activeYear: 2026,
     adminPin: '1234',
-    webAppUrl: 'https://script.google.com/macros/s/AKfycbx1I5MSCD5HsThFZ3jFJ_2rekGFMuoiztfBrIKkM92kIb6rh-EoKdXKjKDXGzLftK9-dA/exec',
-    adminAppUrl: 'https://script.google.com/macros/s/AKfycbx1I5MSCD5HsThFZ3jFJ_2rekGFMuoiztfBrIKkM92kIb6rh-EoKdXKjKDXGzLftK9-dA/exec?page=admin',
+    webAppUrl: 'https://script.google.com/macros/s/AKfycbxA1zGRlYDrtHzQCUKBDi17WK9-IdnM_kd9wQ0-beRzqRQ7qC--AtZTj40tvL-gmQQp3A/exec',
+    adminAppUrl: 'https://script.google.com/macros/s/AKfycbxA1zGRlYDrtHzQCUKBDi17WK9-IdnM_kd9wQ0-beRzqRQ7qC--AtZTj40tvL-gmQQp3A/exec?page=admin',
     statuses: ['Sociétaire', 'Aspirant', 'Compagnon'],
     cayennes: ['Paris', 'Autre'],
     reponses: ['Présent', 'Absent', 'Je ne sais pas encore', 'Absent excusé', 'Disponible pour aider'],
