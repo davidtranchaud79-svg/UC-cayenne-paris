@@ -220,9 +220,9 @@ test('a new deployment keeps bureau and member links on the same live app',()=>{
 
 test('mixed event answers are atomic, retry-safe, and classified separately',()=>{
  const {c,db,member}=fixture(),token=member();db.CALENDRIER.push({...db.CALENDRIER[0],ID_Evenement:'evt2'});
- const payload={requestId:randomUUID(),answers:[{eventId:'evt1',reponse:'Je ne sais pas encore'},{eventId:'evt2',reponse:'Absent excusé',causes:['Autres'],precision:'Déplacement personnel'}]};
+ const payload={requestId:randomUUID(),answers:[{eventId:'evt1',reponse:'Absent'},{eventId:'evt2',reponse:'Absent excusé',causes:['Autres'],precision:'Déplacement personnel'}]};
  c.submitResponses(payload,token);c.submitResponses(payload,token);assert.equal(db.REPONSES.length,2);
- let d=c.computeDashboard_(2026);assert.equal(d.kpis.presents,0);assert.equal(d.kpis.undecided,1);assert.equal(d.kpis.excused,1);assert.equal(d.kpis.noResponse,2);assert.equal(d.monthly[0].undecided,1);
+ let d=c.computeDashboard_(2026);assert.equal(d.kpis.presents,0);assert.equal(d.kpis.undecided,0);assert.equal(d.kpis.absent,1);assert.equal(d.kpis.excused,1);assert.equal(d.kpis.noResponse,2);assert.equal(d.monthly[0].undecided,0);
  c.submitResponses({requestId:randomUUID(),answers:[{eventId:'evt1',reponse:'Présent'}]},token);
  db.REPONSES[2].Horodatage=db.REPONSES[0].Horodatage;d=c.computeDashboard_(2026);assert.equal(d.kpis.undecided,0);assert.equal(d.kpis.presents,1);assert.equal(d.kpis.responses,2);assert.equal(d.members[0].presenceRate,.5);
  const rows=[];const sheet={clear(){},setHiddenGridlines(){},setFrozenRows(){},autoResizeColumns(){},getRange(){const r={merge:()=>r,setValue:()=>r,setFontWeight:()=>r,setFontColor:()=>r,setBackground:()=>r,setNumberFormat:()=>r,setValues:v=>{rows.push(v);return r;}};return r;}};
@@ -230,7 +230,7 @@ test('mixed event answers are atomic, retry-safe, and classified separately',()=
 });
 test('one invalid event or missing other reason rejects the whole batch',()=>{
  const {c,db,member}=fixture(),token=member();
- for(const answer of [{eventId:'missing',reponse:'Présent'},{eventId:'evt1',reponse:'Absent excusé',causes:['Autres']},{eventId:'evt1',reponse:'peut-être'}]){
+ for(const answer of [{eventId:'missing',reponse:'Présent'},{eventId:'evt1',reponse:'Absent excusé',causes:['Autres']},{eventId:'evt1',reponse:'peut-être'},{eventId:'evt1',reponse:'Je ne sais pas encore'}]){
   assert.throws(()=>c.submitResponses({requestId:randomUUID(),answers:[answer]},token));assert.equal(db.REPONSES.length,0);
  }
  db.CALENDRIER.push({...db.CALENDRIER[0],ID_Evenement:'evt2',Actif:'Non'});

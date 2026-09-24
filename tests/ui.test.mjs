@@ -9,7 +9,7 @@ const events = [
   {id:'evt-1',date:'19/09/2026',title:'Journées du patrimoine',type:'JEP',start:'09:00',end:'18:00',place:'Paris',sheetName:'CR_JEP'},
   {id:'evt-2',date:'21/11/2026',title:'Fête de novembre',type:'Fête de novembre',start:'19:00',end:'23:00',place:'Paris',sheetName:'CR_FETE'}
 ];
-const config = {activeYear:2026,statuses:['Sociétaire','Aspirant','Compagnon'],cayennes:['Paris','Autre'],responseTypes:['Présent','Absent excusé','Disponible pour aider'],causes:['Travail','Familiale'],events,eventTypes:['JEP','Fête de novembre'],eventTemplates:[{id:'tpl-1',name:'JEP',defaultTitle:'Journées du patrimoine',type:'JEP',cayenne:'Paris',start:'09:00',end:'18:00',place:'Paris'}],urls:{publicUrl,adminUrl:publicUrl+'?page=admin'}};
+const config = {activeYear:2026,statuses:['Sociétaire','Aspirant','Compagnon'],cayennes:['Paris','Autre'],responseTypes:['Présent','Absent','Absent excusé'],causes:['Travail','Familiale'],events,eventTypes:['JEP','Fête de novembre'],eventTemplates:[{id:'tpl-1',name:'JEP',defaultTitle:'Journées du patrimoine',type:'JEP',cayenne:'Paris',start:'09:00',end:'18:00',place:'Paris'}],urls:{publicUrl,adminUrl:publicUrl+'?page=admin'}};
 const dashboard = {year:2026,kpis:{events:2,members:1,presents:1,excused:0,noResponse:1,aids:1},events:events.map(e=>({...e,presents:1,excused:0,noResponse:0,aids:1})),members:[{nom:'Exemple',prenom:'Camille',statut:'Sociétaire',cayenne:'Paris',presents:1,excused:0,noResponse:1,aids:1,presenceRate:0.5}],causes:[]};
 function render(file) {
   return readFileSync(new URL(file,src),'utf8').replace(/<\?!= include\('([A-Za-z]+)'\); \?>/g,(_,name)=>readFileSync(new URL(name+'.html',src),'utf8')).replaceAll('<?= appVersion ?>','2026.09.23.2').replaceAll('<?= publicUrl ?>',publicUrl).replaceAll('<?= adminUrl ?>',publicUrl+'?page=admin');
@@ -38,6 +38,8 @@ function app(file, overrides={}) {
         else if(method==='listMemberAccess')success([{...config.profile,key:config.profile.email,active:true,hasCode:false}]);
         else if(method==='manageMemberCode'||method==='createMemberAccess')success({profile:config.profile,code:'1234-5678-90AB-CDEF'});
         else if(method==='changeBureauCode')success({ok:true});
+        else if(method==='updateOwnEmail')success({ok:true,email:args[0],message:'Adresse email mise à jour.'});
+        else if(method==='deleteEvent')success({ok:true,message:'Événement supprimé.'});
         else if(method==='getDashboardData')success(structuredClone(dashboard));
         else if(method==='submitResponses')success({ok:true,saved:args[0].answers.length});
         else if(method==='createEventFromTemplate')success({ok:true,message:'Événement créé.'});
@@ -77,11 +79,11 @@ test('bureau attendance preserves drafts after failure and clears personal data 
 
 function answer(a,id,value){a.doc.querySelector('[data-event="'+id+'"] [data-field="reponse"][value="'+value+'"]').click();}
 
-test('upcoming unanswered events come first, filters retain drafts, and server receipt time appears after saving',()=>{
- const data={...structuredClone(config),today:'2026-09-23',events:[{...events[0],date:'2026-09-19',version:'V1'},{...events[1],date:'2026-11-21',version:'V2'}],responses:[]};
+test('upcoming events stay chronological, filters retain drafts, and server receipt time appears after saving',()=>{
+ const data={...structuredClone(config),today:'2026-09-23',events:[{...events[0],date:'2026-12-10',version:'V1'},{...events[1],date:'2026-11-21',version:'V2'}],responses:[{eventId:'evt-2',date:'2026-11-21',title:'Fête de novembre',response:'Présent',causes:[]}]};
  const a=app('Public.html',{getPublicConfig:()=>data,submitResponses:payload=>({ok:true,receipts:payload.answers.map(r=>({eventId:r.eventId,savedAt:'2026-09-23T12:34:00Z'}))})});
- assert.equal(a.doc.querySelector('[data-event]').dataset.event,'evt-2');
- answer(a,'evt-1','Présent');a.fill('eventView','upcoming','change');answer(a,'evt-2','Je ne sais pas encore');
+ assert.equal(a.doc.querySelector('[data-event]').dataset.event,'evt-2','future events are sorted by date even when the earliest is already answered');
+ answer(a,'evt-1','Présent');a.fill('eventView','upcoming','change');answer(a,'evt-2','Absent');
  a.doc.getElementById('saveAllTop').click();a.flush();assert.equal(a.calls.find(c=>c.method==='submitResponses').args[0].answers.length,2);
  assert.match(a.doc.querySelector('[data-event="evt-2"] .save-indicator').textContent,/23\/09.*14:34/);
  assert.equal(a.calls.find(c=>c.method==='submitResponses').args[0].answers[0].eventVersion,'V1');
@@ -98,6 +100,7 @@ test('bureau edits or cancels an existing event with its ID, version and selecte
  const call=a.calls.find(c=>c.method==='updateEvent');assert.equal(call.args[0].id,'evt-1');assert.equal(call.args[0].version,'ORIGINAL');assert.equal(call.args[0].date,'2027-02-04');assert.equal(call.args[0].statuses[0],'Compagnon');
  assert.equal(a.calls.filter(c=>c.method==='createEventFromTemplate').length,0);
  a.doc.querySelector('[data-toggle-calendar]').click();a.flush();assert.equal(a.calls.filter(c=>c.method==='updateEvent').at(-1).args[0].active,false);
+ a.doc.querySelector('[data-delete-calendar]').click();a.flush();assert.equal(a.calls.find(c=>c.method==='deleteEvent').args[0],'evt-1');
  a.dom.window.close();
 });
 
@@ -127,12 +130,12 @@ test('a late confidential response is discarded after closing the panel or locki
 test('either general save button records every changed choice, including the youth meeting hidden by a filter',()=>{
  for(const buttonId of ['saveAllTop','submitBtn']){
    const a=app('Public.html',{getPublicConfig:()=>({...structuredClone(config),events:events.map((e,i)=>i?e:{...e,title:'Réunion des jeunes'})})});
-   answer(a,'evt-1','Présent');a.fill('eventSearch','novembre');answer(a,'evt-2','Je ne sais pas encore');
+   answer(a,'evt-1','Présent');a.fill('eventSearch','novembre');answer(a,'evt-2','Absent');
    assert.match(a.doc.getElementById('pendingResponses').textContent,/Réunion des jeunes/);
    assert.equal(a.doc.getElementById('saveAllTop').textContent,a.doc.getElementById('submitBtn').textContent);
    a.doc.getElementById(buttonId).click();a.doc.getElementById(buttonId==='saveAllTop'?'submitBtn':'saveAllTop').click();a.flush();
    const calls=a.calls.filter(c=>c.method==='submitResponses');assert.equal(calls.length,1);
-   assert.deepEqual(Array.from(calls[0].args[0].answers,a=>[a.eventId,a.reponse]),[['evt-1','Présent'],['evt-2','Je ne sais pas encore']]);
+   assert.deepEqual(Array.from(calls[0].args[0].answers,a=>[a.eventId,a.reponse]),[['evt-1','Présent'],['evt-2','Absent']]);
    assert.equal(a.doc.getElementById('submitBtn').disabled,true);assert.equal(a.doc.getElementById('saveAllTop').disabled,true);
    assert.equal(a.doc.getElementById('pendingResponses').hidden,true);
    assert.match(a.doc.getElementById('saveFeedback').textContent,/Aucune autre validation/);
@@ -166,27 +169,28 @@ test('general save reveals an incomplete hidden event and saves nothing until it
 
 test('email guidance explains the action, address and delay, and does not promise disabled confirmations',()=>{
  const a=app('Public.html');const help=a.doc.getElementById('emailHelp').textContent;
- assert.match(help,/vous recevrez un email de confirmation par événement enregistré/);assert.match(help,/camille@example.test/);
- assert.match(help,/différé/);a.dom.window.close();
+ assert.match(help,/confirmation par événement/);assert.match(help,/camille@example.test/);
+ assert.match(help,/corriger cette adresse/);a.dom.window.close();
  const b=app('Public.html',{getPublicConfig:()=>({...structuredClone(config),notifications:{enabled:false}})});
  assert.match(b.doc.getElementById('emailHelp').textContent,/pas encore activés/);
  assert.doesNotMatch(b.doc.getElementById('emailHelp').textContent,/vous recevrez/);b.dom.window.close();
  const c=app('Public.html',{getPublicConfig:()=>({...structuredClone(config),profile:{...config.profile,email:''}})});
- assert.match(c.doc.getElementById('emailHelp').textContent,/compléter votre adresse/);c.dom.window.close();
+ assert.match(c.doc.getElementById('emailHelp').textContent,/Complétez ou corrigez/);c.dom.window.close();
 });
 
-test('first login remembers only a session token and a new visit restores the member without asking for the code',()=>{
+test('first login remembers the access and code on the device, and a new visit restores the member',()=>{
  const a=app('Public.html');const storage=a.dom.window.localStorage;
  assert.equal(a.calls.find(c=>c.method==='loginMember').args[1],true);
  assert.equal(storage.getItem('uc.member.remembered'),'MEMBER_SESSION');
- assert.equal(JSON.stringify({...storage}).includes('1234-5678-90AB-CDEF'),false);
- assert.equal(a.doc.getElementById('memberCode').value,'');assert.match(a.doc.getElementById('memberConnection').textContent,/mémorisée/);
+ assert.equal(storage.getItem('uc.member.savedCode'),'1234-5678-90AB-CDEF');
+ assert.equal(a.doc.getElementById('memberCode').value,'');assert.match(a.doc.getElementById('memberConnection').textContent,/mémorisés/);
  const saved={...storage};a.dom.window.close();
  const b=app('Public.html',{startLocked:true,localStorage:saved});
  assert.equal(b.calls.some(c=>c.method==='loginMember'),false);assert.equal(b.calls[0].method,'getPublicConfig');
  assert.equal(b.calls[0].args[0],'MEMBER_SESSION');assert.equal(b.doc.getElementById('memberLogin').hidden,true);
  b.doc.getElementById('memberLogout').click();b.flush();
  assert.equal(b.dom.window.localStorage.getItem('uc.member.remembered'),null);
+ assert.equal(b.dom.window.localStorage.getItem('uc.member.savedCode'),null);
  assert.equal(b.dom.window.sessionStorage.getItem('uc.member.session'),null);
  assert.equal(b.doc.getElementById('memberIdentity').textContent,'');
  assert.equal(b.doc.getElementById('emailHelp').textContent,'');assert.equal(b.calls.at(-1).method,'logoutAccess');b.dom.window.close();
@@ -196,6 +200,7 @@ test('remembering is optional and blocked device storage is explained without bl
  const a=app('Public.html',{startLocked:true});a.doc.getElementById('rememberMember').checked=false;a.memberLogin();
  assert.equal(a.calls.find(c=>c.method==='loginMember').args[1],false);
  assert.equal(a.dom.window.localStorage.getItem('uc.member.remembered'),null);
+ assert.equal(a.dom.window.localStorage.getItem('uc.member.savedCode'),null);
  assert.equal(a.dom.window.sessionStorage.getItem('uc.member.session'),'MEMBER_SESSION');a.dom.window.close();
  const b=app('Public.html',{blockStorage:true});assert.equal(b.doc.getElementById('memberLogin').hidden,true);
  assert.match(b.doc.getElementById('memberConnection').textContent,/empêche la mémorisation/);b.dom.window.close();
@@ -203,9 +208,9 @@ test('remembering is optional and blocked device storage is explained without bl
 
 test('a rejected remembered session is removed, while a temporary connection error preserves it for retry',()=>{
  for(const expired of [true,false]){
-   const a=app('Public.html',{startLocked:true,localStorage:{'uc.member.remembered':'OLD_SESSION'},getPublicConfig:()=>{throw Error(expired?'SESSION_EXPIRED: Reconnectez-vous.':'Réseau indisponible');}});
-   assert.equal(a.dom.window.localStorage.getItem('uc.member.remembered'),expired?null:'OLD_SESSION');
-   assert.equal(a.doc.getElementById('memberLogin').hidden,false);assert.equal(a.doc.getElementById('memberLoginBtn').disabled,false);
+   const a=app('Public.html',{startLocked:true,localStorage:{'uc.member.remembered':'OLD_SESSION','uc.member.savedCode':'1234-5678-90AB-CDEF'},getPublicConfig:()=>{throw Error(expired?'SESSION_EXPIRED: Reconnectez-vous.':'Réseau indisponible');}});
+   assert.equal(a.dom.window.localStorage.getItem('uc.member.remembered'),expired?null:'OLD_SESSION');assert.equal(a.dom.window.localStorage.getItem('uc.member.savedCode'),'1234-5678-90AB-CDEF');
+   assert.equal(a.doc.getElementById('memberLogin').hidden,false);if(expired)assert.equal(a.doc.getElementById('memberCode').value,'1234-5678-90AB-CDEF');assert.equal(a.doc.getElementById('memberLoginBtn').disabled,false);
    assert.equal(a.calls.some(c=>c.method==='loginMember'),false);a.dom.window.close();
  }
 });
@@ -242,7 +247,7 @@ test('one independent response per event, no admin link, and no fabricated initi
  const a=app('Public.html');assert.equal(a.doc.querySelectorAll('[data-event]').length,2);assert.equal(a.doc.querySelectorAll('[data-field="reponse"]:checked').length,0);assert.ok(a.doc.getElementById('submitBtn').disabled);assert.equal(a.doc.querySelectorAll('a[href*="page=admin"]').length,0);a.dom.window.close();
 });
 test('different answers survive filtering and are sent together without member identity',()=>{
- const a=app('Public.html');answer(a,'evt-1','Absent excusé');detail(a,'evt-1','cause','Travail');a.fill('eventSearch','novembre');answer(a,'evt-2','Je ne sais pas encore');a.submit('presenceForm');a.flush();const sent=a.calls.find(c=>c.method==='submitResponses');assert.equal(sent.args[0].answers.length,2);assert.equal(sent.args[0].answers[0].reponse,'Absent excusé');assert.equal(sent.args[0].answers[1].reponse,'Je ne sais pas encore');assert.equal(sent.args[1],'MEMBER_SESSION');assert.equal('nom' in sent.args[0],false);assert.equal(a.doc.getElementById('submitBtn').disabled,true);a.dom.window.close();
+ const a=app('Public.html');answer(a,'evt-1','Absent excusé');detail(a,'evt-1','cause','Travail');a.fill('eventSearch','novembre');answer(a,'evt-2','Absent');a.submit('presenceForm');a.flush();const sent=a.calls.find(c=>c.method==='submitResponses');assert.equal(sent.args[0].answers.length,2);assert.equal(sent.args[0].answers[0].reponse,'Absent excusé');assert.equal(sent.args[0].answers[1].reponse,'Absent');assert.equal(sent.args[1],'MEMBER_SESSION');assert.equal('nom' in sent.args[0],false);assert.equal(a.doc.getElementById('submitBtn').disabled,true);a.dom.window.close();
 });
 test('changing an excuse to help removes stale reasons and retains overnight hours',()=>{
  const a=app('Public.html');answer(a,'evt-1','Absent excusé');detail(a,'evt-1','cause','Travail');answer(a,'evt-1','Présent');a.doc.querySelector('[data-event="evt-1"] [data-field="aideDisponible"]').click();detail(a,'evt-1','heureDebutAide','22:00');detail(a,'evt-1','heureFinAide','01:00');a.submit('presenceForm');a.flush();const row=a.calls.find(c=>c.method==='submitResponses').args[0].answers[0];assert.equal(row.causes.length,0);assert.equal(row.aideDisponible,true);assert.equal(row.heureFinAide,'01:00');a.dom.window.close();
@@ -258,6 +263,10 @@ test('bureau shows no fabricated figures before authentication and clears data w
 });
 test('bureau navigation, filters, model creation, and individual report generation keep their server contracts',()=>{
   const a=app('Admin.html');a.login();a.doc.querySelector('[data-screen="events"]').click();assert.ok(a.doc.getElementById('screen-events').classList.contains('active'));assert.equal(a.doc.getElementById('eventTitle').value,'Journées du patrimoine');a.fill('eventDate','2026-10-10');a.submit('eventForm');a.flush();const sent=a.calls.find(c=>c.method==='createEventFromTemplate');assert.equal(sent.args[0].date,'2026-10-10');assert.equal(sent.args[0].templateId,'tpl-1');assert.equal(sent.args[1],'BUREAU_SESSION');a.doc.querySelector('[data-screen="members"]').click();a.fill('memberSearch','introuvable');assert.match(a.doc.getElementById('membersRoot').textContent,/Aucun membre/);a.fill('memberSearch','Camille');assert.match(a.doc.getElementById('membersRoot').textContent,/Camille Exemple/);a.doc.querySelector('[data-screen="reports"]').click();a.doc.querySelector('[data-event-id="evt-1"]').click();a.flush();assert.equal(a.calls.find(c=>c.method==='generateEventSheet').args[0],'evt-1');assert.ok(a.doc.querySelector('.report-links a[href^="https://docs.google.com/spreadsheets/"]'));a.dom.window.close();
+});
+test('members can correct their own email and public choices no longer offer undecided',()=>{
+ const a=app('Public.html');assert.equal(a.doc.querySelectorAll('[data-field="reponse"]').length,6);assert.equal(a.doc.querySelector('[data-field="reponse"][value="Je ne sais pas encore"]'),null);
+ a.fill('memberOwnEmail','nouvelle@example.test');a.submit('memberOwnEmailForm');a.flush();const call=a.calls.find(c=>c.method==='updateOwnEmail');assert.equal(call.args[0],'nouvelle@example.test');assert.equal(call.args[1],'MEMBER_SESSION');assert.match(a.doc.getElementById('emailHelp').textContent,/nouvelle@example.test/);a.dom.window.close();
 });
 test('event titles from the Sheet remain escaped text',()=>{
   const hostile=structuredClone(config);hostile.events[0].title='<img src=x onerror="alert(1)">';const a=app('Public.html',{getPublicConfig:()=>hostile});assert.equal(a.doc.querySelectorAll('.event-answer img').length,0);assert.match(a.doc.getElementById('events').textContent,/<img src=x/);a.dom.window.close();
@@ -281,9 +290,9 @@ test('bureau issues a code without exposing it after locking, and uses only its 
   assert.equal(a.doc.getElementById('issuedCode').value,'');assert.equal(a.doc.getElementById('memberAccessList').textContent,'');
   a.dom.window.close();
 });
-test('saved answers load under each event and can change from undecided to present',()=>{
+test('legacy undecided answers are shown as needing completion and can change to present',()=>{
  const a=app('Public.html',{getPublicConfig:()=>({...config,responses:[{eventId:'evt-1',date:'19/09/2026',title:'JEP',response:'Je ne sais pas encore',causes:[]}]})});
- assert.equal(a.doc.querySelector('[data-event="evt-1"] [data-field="reponse"]:checked').value,'Je ne sais pas encore');a.doc.querySelector('[data-edit-event]').click();answer(a,'evt-1','Présent');a.submit('presenceForm');a.flush();assert.equal(a.calls.find(c=>c.method==='submitResponses').args[0].answers[0].reponse,'Présent');assert.match(a.doc.getElementById('memberSummary').textContent,/1 présence/);a.dom.window.close();
+ assert.equal(a.doc.querySelector('[data-event="evt-1"] [data-field="reponse"]:checked'),null);assert.match(a.doc.getElementById('memberHistory').textContent,/À compléter/);a.doc.querySelector('[data-edit-event]').click();answer(a,'evt-1','Présent');a.submit('presenceForm');a.flush();assert.equal(a.calls.find(c=>c.method==='submitResponses').args[0].answers[0].reponse,'Présent');assert.match(a.doc.getElementById('memberSummary').textContent,/1 présence/);a.dom.window.close();
 });
 test('meal and reception choices are independent and retained after save',()=>{
  const a=app('Public.html',{getPublicConfig:()=>({...config,events:config.events.map((e,i)=>({...e,modalites:i?'Réception':'Repas et aide'}))})});

@@ -65,8 +65,8 @@ test('one confirmation per saved event, server identity, retries deduplicated, u
  const payload={requestId:'request-number-0001',email:'attacker@example.test',answers:[{eventId:'e1',reponse:'Présent'},{eventId:'e2',reponse:'Absent'}]};
  const first=f.c.submitResponses(payload,'MEMBER');assert.equal(first.ok,true);assert.equal(f.sent.length,2,'confirmation is sent in the save request');assert.match(first.message,/immédiatement/);assert.ok(f.sent.every(m=>m.to===f.member.Email));assert.equal(f.c.backgroundStatus_().pending,0);
  f.c.submitResponses(payload,'MEMBER');assert.equal(f.sent.length,2);assert.equal(f.db.REPONSES.length,2);
- f.c.submitResponses({...payload,requestId:'request-number-0002',answers:[{eventId:'e1',reponse:'Je ne sais pas encore'}]},'MEMBER');
- assert.equal(f.sent.length,3);assert.match(f.sent[2].body,/Je ne sais pas encore/);
+ f.c.submitResponses({...payload,requestId:'request-number-0002',answers:[{eventId:'e1',reponse:'Absent excusé',causes:['Travail']}]},'MEMBER');
+ assert.equal(f.sent.length,3);assert.match(f.sent[2].body,/Absent excusé/);
 });
 test('quota exhausted defers confirmations and background recovers once; send failure preserves the answer',()=>{
  const f=fixture();f.quota(0);f.c.traiterMails_(['r1'],f.now);assert.equal(f.db.JOURNAL_MAILS[0].Etat,'ATTENTE');assert.equal(f.sent.length,0);
