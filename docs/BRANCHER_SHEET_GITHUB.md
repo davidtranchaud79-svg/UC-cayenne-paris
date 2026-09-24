@@ -10,8 +10,8 @@ Les données nominatives, les excuses et les motifs d'absence restent dans le Go
 
 ## Liens actuels
 
-- Formulaire public : https://script.google.com/macros/s/AKfycbxA1zGRlYDrtHzQCUKBDi17WK9-IdnM_kd9wQ0-beRzqRQ7qC--AtZTj40tvL-gmQQp3A/exec
-- Dashboard admin : https://script.google.com/macros/s/AKfycbxA1zGRlYDrtHzQCUKBDi17WK9-IdnM_kd9wQ0-beRzqRQ7qC--AtZTj40tvL-gmQQp3A/exec?page=admin
+- Formulaire public : https://script.google.com/macros/s/AKfycbx9zoucD6znfc28lZjfCFTbGzVHlqk5v55EKir53O7IGBipUHu-y1PmxrDP293P_YC11A/exec
+- Dashboard admin : https://script.google.com/macros/s/AKfycbx9zoucD6znfc28lZjfCFTbGzVHlqk5v55EKir53O7IGBipUHu-y1PmxrDP293P_YC11A/exec?page=admin
 - Google Sheet : https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit
 - Dépôt GitHub : https://github.com/davidtranchaud79-svg/UC-cayenne-paris
 
@@ -71,7 +71,7 @@ Ce fichier permet d'accéder aux projets Apps Script du compte. Le coller unique
 Le workflow contient déjà l’identifiant public du déploiement, extrait du lien partagé :
 
 ```text
-AKfycbxA1zGRlYDrtHzQCUKBDi17WK9-IdnM_kd9wQ0-beRzqRQ7qC--AtZTj40tvL-gmQQp3A
+AKfycbx9zoucD6znfc28lZjfCFTbGzVHlqk5v55EKir53O7IGBipUHu-y1PmxrDP293P_YC11A
 ```
 
 Cet identifiant n’est pas un mot de passe. Il est conservé dans `.github/workflows/deploy-apps-script.yml` pour que la publication vise exactement le lien partagé. L’ancien secret `CLASP_DEPLOYMENT_ID` n’est plus utilisé et peut rester en place.
