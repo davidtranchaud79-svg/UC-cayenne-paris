@@ -54,7 +54,7 @@ const eventTemplates = [
   ["TPL-AG", "Assemblée générale", "Autre", "Assemblée générale", "19:30", "22:00", "Cayenne de Paris", "Paris", "Réunion", "Oui", "Assemblée générale"],
   ["TPL-TRAVAIL-UC", "Travail UC", "Autre", "Travail UC", "09:00", "17:00", "Cayenne de Paris", "Paris", "Travail", "Oui", "Travail compagnonnique à préciser"]
 ];
-const webAppUrl = "https://script.google.com/macros/s/AKfycbxrpespSlthNRMKo6SlArl3Ex1tb_KqHbEPw3zk5sKHc4HkYCVXTbmMt2Lp_j1wJ_zyzw/exec";
+const webAppUrl = "https://script.google.com/macros/s/AKfycbx1I5MSCD5HsThFZ3jFJ_2rekGFMuoiztfBrIKkM92kIb6rh-EoKdXKjKDXGzLftK9-dA/exec";
 const adminAppUrl = `${webAppUrl}?page=admin`;
 
 const headers = {
