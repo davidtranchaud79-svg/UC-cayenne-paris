@@ -25,6 +25,12 @@ function toggleCalendarEvent(id){
   const session=state.session;state.eventBusy=true;
   google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;state.eventBusy=false;Ui.notice('adminNotice',result.message,'ok');loadDashboard();}).withFailureHandler(error=>{if(session!==state.session)return;state.eventBusy=false;Ui.notice('adminNotice',error.message||error);}).updateEvent({...e,active:e.active===false},pin());
 }
+function deleteCalendarEvent(id){
+  if(!state.token||state.eventBusy)return;const e=calendarEvent(id);if(!e)return;
+  if(!confirm('Supprimer définitivement « '+e.title+' » ? Cette action n’est possible que si aucune réponse n’a encore été enregistrée.'))return;
+  const session=state.session;state.eventBusy=true;
+  google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;state.eventBusy=false;Ui.notice('adminNotice',result.message,'ok');resetEventEdit();loadDashboard();}).withFailureHandler(error=>{if(session!==state.session)return;state.eventBusy=false;Ui.notice('adminNotice',error.message||error);}).deleteEvent(id,pin());
+}
 function editMemberEmail(key){
   const member=state.accessMembers.find(m=>m.key===key);if(!member||state.accessBusy)return;
   state.emailMember=member;document.getElementById('memberEmailForm').hidden=false;
@@ -64,8 +70,8 @@ function clearAuditPanels(){
   resetEventEdit();
 }
 document.getElementById('eventsRoot').addEventListener('click',event=>{
-  const edit=event.target.closest('[data-edit-calendar]'),toggle=event.target.closest('[data-toggle-calendar]');
-  if(edit)editCalendarEvent(edit.dataset.editCalendar);if(toggle)toggleCalendarEvent(toggle.dataset.toggleCalendar);
+  const edit=event.target.closest('[data-edit-calendar]'),toggle=event.target.closest('[data-toggle-calendar]'),remove=event.target.closest('[data-delete-calendar]');
+  if(edit)editCalendarEvent(edit.dataset.editCalendar);if(toggle)toggleCalendarEvent(toggle.dataset.toggleCalendar);if(remove)deleteCalendarEvent(remove.dataset.deleteCalendar);
 });
 document.getElementById('cancelEventEdit').addEventListener('click',()=>{if(!state.eventBusy)resetEventEdit();});
 document.getElementById('memberAccessList').addEventListener('click',event=>{const button=event.target.closest('[data-email-member]');if(button)editMemberEmail(button.dataset.emailMember);});

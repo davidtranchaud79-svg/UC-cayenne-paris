@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.24.4',
+  version: '2026.09.24.5',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -166,7 +166,7 @@ function getPublicConfig(token, requestedYear) {
     urls: { publicUrl: urls.publicUrl },
     statuses: getOptionList_('D', UC_APP.defaults.statuses),
     cayennes: getOptionList_('E', UC_APP.defaults.cayennes),
-    responseTypes: UC_APP.defaults.reponses.filter(function(v) { return v !== 'Disponible pour aider'; }),
+    responseTypes: ['Présent', 'Absent', 'Absent excusé'],
     causes: Array.from(new Set(getOptionList_('G', UC_APP.defaults.causes).concat(['Autres']))),
     eventTypes: getOptionList_('H', UC_APP.defaults.eventTypes),
     events: getEventsForYear_(year).filter(function(e) { return eventForMember_(e, member); }).map(formatEventForClient_)
@@ -316,7 +316,7 @@ function submitMemberResponses_(payload, member) {
     if (seen.has(a.eventId)) throw new Error('Un événement apparaît deux fois dans votre envoi.');
     seen.add(a.eventId);
     a.reponse = clean_(a.reponse);
-    if (!UC_APP.defaults.reponses.includes(a.reponse)) throw new Error('Réponse invalide.');
+    if (!['Présent', 'Absent', 'Absent excusé', 'Disponible pour aider'].includes(a.reponse)) throw new Error('Réponse invalide. Choisissez Présent, Absent ou Absent excusé.');
     const legacyAid = a.reponse === 'Disponible pour aider';
     if (legacyAid) a.reponse = 'Présent';
     a.causes = Array.isArray(a.causes) ? a.causes.map(clean_).filter(Boolean) : [];
@@ -384,7 +384,7 @@ function getDashboardData(year, adminPin) {
   data.notifications = notificationStatus_();
   data.background = backgroundStatus_();
   data.version = UC_APP.version;
-  data.calendar = calendarRows_().filter(function(e) { return eventYear_(e) === data.year; }).map(formatEventForClient_);
+  data.calendar = calendarRows_().filter(function(e) { return eventYear_(e) === data.year; }).sort(function(a,b) { return asDate_(a.Date) - asDate_(b.Date); }).map(formatEventForClient_);
   return data;
 }
 

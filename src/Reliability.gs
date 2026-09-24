@@ -120,6 +120,31 @@ function updateEvent(payload, token) {
     return {ok:true,message:changes.Actif === 'Non' ? 'Événement annulé. Les réponses sont conservées.' : 'Événement mis à jour. Les réponses restent rattachées à ce rendez-vous.'};
   });
 }
+function updateOwnEmail(email, token) {
+  ensureAuditSchema_();
+  const member = assertMember_(token), key = memberKey_(member), value = clean_(email);
+  if (value && !mailAddressValid_(value)) throw new Error('Adresse email invalide.');
+  return accessLocked_(function() {
+    const table = getTableData_(UC_APP.sheets.membres), index = table.rows.findIndex(function(m) { return memberKey_(m) === key; });
+    if (index < 0) throw new Error('Membre introuvable.');
+    writeRecord_(UC_APP.sheets.membres, table.rowNumbers[index], {Email:value});
+    return {ok:true,email:value,message:value?'Adresse email mise à jour. Les prochaines confirmations utiliseront cette adresse.':'Adresse email retirée. Vous ne recevrez plus de confirmation par mail tant qu’une nouvelle adresse ne sera pas renseignée.'};
+  });
+}
+function deleteEvent(eventId, token) {
+  assertAdmin_(token); setupSystemIfMissing_();
+  return accessLocked_(function() {
+    const id = clean_(eventId), table = getTableData_(UC_APP.sheets.calendrier);
+    const matches = table.rows.map(function(e,i) { return {e:e,i:i}; }).filter(function(x) { return clean_(x.e.ID_Evenement) === id; });
+    if (matches.length !== 1) throw new Error('Événement introuvable ou en double.');
+    if (getRowsAsObjects_(UC_APP.sheets.reponses).some(function(r) { return clean_(r.ID_Evenement) === id; })) throw new Error('Cet événement a déjà reçu des réponses. Annulez-le plutôt afin de conserver l’historique.');
+    const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier);
+    sheet.deleteRow(table.rowNumbers[matches[0].i]);
+    PropertiesService.getScriptProperties().deleteProperty('uc.job.event.' + accessHash_(id));
+    queueFollowup_([]);
+    return {ok:true,message:'Événement supprimé définitivement.'};
+  });
+}
 function updateMemberProfile(payload, token) {
   assertAdmin_(token); ensureAuditSchema_();
   return accessLocked_(function() {
