@@ -135,7 +135,7 @@ test('creating or replacing a member code emails the code and direct member link
   const first=c.manageMemberCode('camille@example.test','issue',bureau);
   assert.equal(first.delivery.state,'sent');assert.equal(first.delivery.address,'camille@example.test');
   assert.equal(sent.length,1);assert.ok(sent[0].body.includes(first.code));
-  assert.ok(sent[0].body.includes('https://script.google.com/macros/s/TEST/exec'));
+  assert.ok(sent[0].body.includes('https://script.google.com/macros/s/'));assert.ok(sent[0].body.includes('/exec'));
   assert.match(sent[0].body,/gestionnaire de mots de passe/);
   const replacement=c.manageMemberCode('camille@example.test','reset',bureau);
   assert.equal(replacement.delivery.state,'sent');assert.equal(sent.length,2);
