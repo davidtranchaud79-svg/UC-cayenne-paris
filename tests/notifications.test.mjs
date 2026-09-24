@@ -63,16 +63,16 @@ test('activation is idempotent, installs one trigger, sends nothing and excludes
 test('one confirmation per saved event, server identity, retries deduplicated, updates get a new receipt',()=>{
  const f=fixture();f.db.REPONSES=[];f.db.CALENDRIER.push({...f.event,ID_Evenement:'e2'});
  const payload={requestId:'request-number-0001',email:'attacker@example.test',answers:[{eventId:'e1',reponse:'Présent'},{eventId:'e2',reponse:'Absent'}]};
- assert.equal(f.c.submitResponses(payload,'MEMBER').ok,true);assert.equal(f.sent.length,0,'response saves before email');f.c.traiterMails_(null,new Date());assert.equal(f.sent.length,2);assert.ok(f.sent.every(m=>m.to===f.member.Email));
- f.c.submitResponses(payload,'MEMBER');f.c.traiterMails_(null,new Date());assert.equal(f.sent.length,2);assert.equal(f.db.REPONSES.length,2);
+ const first=f.c.submitResponses(payload,'MEMBER');assert.equal(first.ok,true);assert.equal(f.sent.length,2,'confirmation is sent in the save request');assert.match(first.message,/immédiatement/);assert.ok(f.sent.every(m=>m.to===f.member.Email));assert.equal(f.c.backgroundStatus_().pending,0);
+ f.c.submitResponses(payload,'MEMBER');assert.equal(f.sent.length,2);assert.equal(f.db.REPONSES.length,2);
  f.c.submitResponses({...payload,requestId:'request-number-0002',answers:[{eventId:'e1',reponse:'Je ne sais pas encore'}]},'MEMBER');
- f.c.traiterMails_(null,new Date());assert.equal(f.sent.length,3);assert.match(f.sent[2].body,/Je ne sais pas encore/);
+ assert.equal(f.sent.length,3);assert.match(f.sent[2].body,/Je ne sais pas encore/);
 });
 test('quota exhausted defers confirmations and background recovers once; send failure preserves the answer',()=>{
  const f=fixture();f.quota(0);f.c.traiterMails_(['r1'],f.now);assert.equal(f.db.JOURNAL_MAILS[0].Etat,'ATTENTE');assert.equal(f.sent.length,0);
  f.quota(10);const early=new Date('2026-09-22T05:00:00Z');f.c.traiterMails_(null,early);f.c.traiterMails_(null,early);assert.equal(f.sent.length,1);
  f.failSend(true);const result=f.c.submitResponses({requestId:'request-number-0003',answers:[{eventId:'e1',reponse:'Absent'}]},'MEMBER');
- assert.equal(result.ok,true);assert.equal(f.db.REPONSES.length,2);assert.match(result.message,/arrière-plan/);f.c.traiterMails_(null,early);
+ assert.equal(result.ok,true);assert.equal(f.db.REPONSES.length,2);assert.match(result.message,/reste suivie/);
  assert.equal(f.db.JOURNAL_MAILS.at(-1).Etat,'A_VERIFIER');f.failSend(false);f.c.traiterMails_(null,early);assert.equal(f.sent.length,1);
 });
 test('crash after sending never causes a blind duplicate',()=>{

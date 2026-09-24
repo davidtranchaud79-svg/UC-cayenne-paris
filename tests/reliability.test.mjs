@@ -125,16 +125,18 @@ test('audience controls visibility, missing counts, reports, pointage and save a
   assert.equal(f.c.getPublicConfig(token,2026).events.length,0);
 });
 
-test('request receipts keep their original time on retry and a queued failure cannot erase saved answers',()=>{
+test('request receipts keep their original time on retry and an immediate synthesis failure cannot erase saved answers',()=>{
   const f=fixture();f.c.ensureAuditSchema_();const key=f.c.getRowsAsObjects_('MEMBRES')[0].ID_Membre;
   const token=f.c.loginMember(f.c.manageMemberCode(key,'issue',f.bureau).code).token;
+  f.c.refreshDashboardSheet_=()=>{assert.equal(f.locked(),false);throw Error('Quota synthèse');};
+  f.c.generateEventSheet_=()=>{assert.equal(f.locked(),false);throw Error('Quota synthèse');};
   const payload={requestId:randomUUID(),answers:[{eventId:'EVT-1',reponse:'Absent'}]};
   const first=f.c.submitResponses(payload,token),retry=f.c.submitResponses(payload,token);
   assert.equal(first.receipts[0].savedAt,retry.receipts[0].savedAt);assert.equal(f.responses.grid.length,5);
-  f.c.refreshDashboardSheet_=()=>{assert.equal(f.locked(),false);throw Error('Quota synthèse');};
-  f.c.generateEventSheet_=()=>{assert.equal(f.locked(),false);throw Error('Quota synthèse');};
-  f.c.withBackgroundLease_(()=>f.c.processFollowups_());assert.equal(f.c.backgroundStatus_().pending,2);
-  assert.equal(f.responses.grid.length,5);assert.match(f.c.backgroundStatus_().error,/Quota synthèse/);
+  assert.equal(f.c.backgroundStatus_().pending,2);assert.match(f.c.backgroundStatus_().error,/Quota synthèse/);
+  f.c.refreshDashboardSheet_=()=>{};f.c.generateEventSheet_=()=>{};
+  f.c.withBackgroundLease_(()=>f.c.processFollowups_());assert.equal(f.c.backgroundStatus_().pending,0);
+  assert.equal(f.responses.grid.length,5);
 });
 
 test('background lease prevents overlapping workers and does not delete a newer job queued during a calculation',()=>{

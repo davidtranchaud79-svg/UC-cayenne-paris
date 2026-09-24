@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.23.2',
+  version: '2026.09.24.1',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -250,9 +250,48 @@ function createEventFromTemplate(payload, adminPin) {
 }
 
 function submitResponses(payload, token) {
-  return accessLocked_(function() {
+  // Persist first under the write lock. Slow mail/report work must happen only
+  // after releasing it so members do not block one another.
+  const result = accessLocked_(function() {
     return submitMemberResponses_(payload, assertMember_(token));
   });
+
+  const responseIds = Array.isArray(result._newResponseIds) ? result._newResponseIds.slice() : [];
+  delete result._newResponseIds;
+  if (!responseIds.length) return result;
+
+  let mailResult = null;
+  try {
+    // Confirm only the rows created by this save. The 5-minute worker remains
+    // the fallback for quota/pending work and continues to handle reminders.
+    mailResult = traiterMails_(responseIds, new Date());
+  } catch (error) {
+    result.warning = 'Vos réponses sont enregistrées. L’état de la confirmation mail doit être vérifié par le bureau.';
+  }
+
+  try {
+    // Consume the dashboard/event jobs immediately when the worker is free.
+    // Jobs remain durable, so a busy/failing worker will retry them later.
+    withBackgroundLease_(function() { return {ok:true, done:processFollowups_()}; });
+  } catch (error) {
+    // Saving the member response is authoritative; synthesis failures must
+    // never roll it back. The queued jobs remain for the 5-minute fallback.
+  }
+
+  if (!result.warning) {
+    if (mailResult && mailResult.enabled && mailResult.sent >= responseIds.length) {
+      result.message += responseIds.length === 1
+        ? ' Confirmation envoyée immédiatement par mail.'
+        : ' Confirmations envoyées immédiatement par mail.';
+    } else if (mailResult && mailResult.enabled && mailResult.sent > 0) {
+      result.message += ' Une partie des confirmations a été envoyée immédiatement ; les autres restent suivies par le système.';
+    } else if (mailResult && mailResult.enabled && mailResult.pending > 0) {
+      result.message += ' La confirmation mail n’a pas été remise immédiatement ; elle reste suivie par le système.';
+    } else if (mailResult && !mailResult.enabled) {
+      result.message += ' Les mails ne sont pas encore activés par le bureau.';
+    }
+  }
+  return result;
 }
 
 function submitMemberResponses_(payload, member) {
@@ -322,13 +361,20 @@ function submitMemberResponses_(payload, member) {
       date ? Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM') : '', date ? getWeekNumber_(date) : '', '', a.participation, a.creneaux.join(' ; ')]);
   });
   if (savedRows.length) {
-    queueFollowup_(savedRows.map(function(row) { return row[4]; }));
     sheet.getRange(sheet.getLastRow() + 1, 1, savedRows.length, UC_APP.headers.reponses.length).setValues(savedRows.map(function(row) { return row.map(sheetLiteral_); }));
     SpreadsheetApp.flush();
+    // Queue only after the write is durable so a concurrent worker can never
+    // rebuild a dashboard/report from data that has not been committed yet.
+    queueFollowup_(savedRows.map(function(row) { return row[4]; }));
   }
-  const enabled = PropertiesService.getScriptProperties().getProperty('uc.mail.enabled') === 'true';
-  const mailMessage = !enabled ? ' Les mails ne sont pas encore activés par le bureau.' : !mailAddressValid_(clean_(member.Email)) ? ' Demandez au bureau de compléter votre adresse mail pour recevoir les confirmations.' : ' Vous recevrez une confirmation par mail pour chaque événement enregistré. Les envois sont traités en arrière-plan.';
-  return {ok:true, saved:answers.length, receipts:receipts, warning:'', message:answers.length + ' réponse(s) enregistrée(s). Vous pouvez les modifier à tout moment.' + mailMessage};
+  return {
+    ok:true,
+    saved:answers.length,
+    receipts:receipts,
+    warning:'',
+    message:answers.length + ' réponse(s) enregistrée(s). Vous pouvez les modifier à tout moment.',
+    _newResponseIds:savedRows.map(function(row) { return row[0]; })
+  };
 }
 
 function getDashboardData(year, adminPin) {
