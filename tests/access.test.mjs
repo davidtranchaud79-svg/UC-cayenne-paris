@@ -163,10 +163,12 @@ test('member history never returns another member, and the latest response repla
   assert.equal(c.getPublicConfig(a,2026).responses[0].response,'Disponible pour aider');assert.equal(db.REPONSES.length,3);
 });
 
-test('saving is independent of reports, and failed background jobs remain visible for retry',()=>{
+test('saving is independent of reports, and a failed immediate event report remains queued for retry',()=>{
   const {c,member,db}=fixture();const token=member();c.generateEventSheet_=()=>{throw Error('M3 validation');};
   const result=c.submitResponses({requestId:randomUUID(),eventIds:['evt1'],reponse:'Présent'},token);
-  assert.equal(result.ok,true);assert.equal(result.warning,'');assert.equal(db.REPONSES.length,1);assert.equal(c.backgroundStatus_().pending,2);c.processFollowups_();assert.equal(c.backgroundStatus_().pending,1);assert.match(c.backgroundStatus_().error,/M3 validation/);
+  assert.equal(result.ok,true);assert.equal(result.warning,'');assert.equal(db.REPONSES.length,1);
+  assert.equal(c.backgroundStatus_().pending,1);assert.match(c.backgroundStatus_().error,/M3 validation/);
+  c.generateEventSheet_=()=>{};c.processFollowups_();assert.equal(c.backgroundStatus_().pending,0);
 });
 
 test('bureau code changes, expired sessions and logout invalidate previous access',()=>{
