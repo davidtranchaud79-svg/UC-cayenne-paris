@@ -39,7 +39,7 @@ function app(file, overrides={}) {
         else if(method==='manageMemberCode'||method==='createMemberAccess')success({profile:config.profile,code:'1234-5678-90AB-CDEF'});
         else if(method==='changeBureauCode')success({ok:true});
         else if(method==='updateOwnEmail')success({ok:true,email:args[0],message:'Adresse email mise à jour.'});
-        else if(method==='deleteEvent')success({ok:true,message:'Événement supprimé.'});
+        else if(method==='deleteEvent')success({ok:true,deletedResponses:2,message:'Événement supprimé définitivement avec 2 réponse(s) associée(s).'});
         else if(method==='getDashboardData')success(structuredClone(dashboard));
         else if(method==='submitResponses')success({ok:true,saved:args[0].answers.length});
         else if(method==='createEventFromTemplate')success({ok:true,message:'Événement créé.'});

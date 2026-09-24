@@ -10,7 +10,7 @@ function fixture(){
   function makeSheet(name,grid=[]){
     const sheet={grid,getName:()=>name,getSheetId:()=>Array.from(sheets.keys()).indexOf(name)+1,
       getLastRow:()=>grid.length,getLastColumn:()=>Math.max(1,...grid.map(r=>r.length)),getMaxColumns:()=>50,getMaxRows:()=>1000,
-      insertColumnsAfter(){},insertRowsAfter(){},setFrozenRows(){},setHiddenGridlines(){},autoResizeColumns(){},setConditionalFormatRules(){},
+      insertColumnsAfter(){},insertRowsAfter(){},deleteRow(row){grid.splice(row-1,1);},setFrozenRows(){},setHiddenGridlines(){},autoResizeColumns(){},setConditionalFormatRules(){},
       clear(){grid.length=0;},clearContents(){grid.length=0;},getRange(row,col=1,n=1,m=1){
         if(typeof row==='string'){
           const match=row.match(/^([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?$/);
@@ -113,6 +113,18 @@ test('event moved to another year remains one event across member history, dashb
   assert.equal(f.c.computeDashboard_(2027).kpis.events,0);assert.equal(f.c.memberResponses_(m,2027)[0].cancelled,true);
 });
 
+test('deleting an event also deletes linked responses, attendance and mail rows',()=>{
+  const f=fixture();f.c.ensureAuditSchema_();
+  f.sheets.get('POINTAGES').grid.push(['P1',new Date('2026-09-22T12:00:00Z'),'EVT-1','camille@example.test','Présent']);
+  f.sheets.get('JOURNAL_MAILS').grid.push(['N1','CONFIRMATION','EVT-1',f.responses.grid[3][0],'camille@example.test','camille@example.test','ENVOYE',new Date(),new Date(),'']);
+  const result=f.c.deleteEvent('EVT-1',f.bureau);
+  assert.equal(result.deletedResponses,1);assert.equal(result.deletedAttendance,1);assert.equal(result.deletedMails,1);
+  assert.equal(f.c.getRowsAsObjects_('CALENDRIER').length,0);
+  assert.equal(f.c.getRowsAsObjects_('REPONSES').length,0);
+  assert.equal(f.c.getRowsAsObjects_('POINTAGES').length,0);
+  assert.equal(f.c.getRowsAsObjects_('JOURNAL_MAILS').length,0);
+  assert.match(result.message,/1 réponse/);
+});
 test('audience controls visibility, missing counts, reports, pointage and save authorization; stale event form is rejected',()=>{
   const f=fixture();f.c.ensureAuditSchema_();const all=f.c.getRowsAsObjects_('MEMBRES'),event=f.c.formatEventForClient_(f.c.calendarRows_()[0]);
   f.c.updateEvent({...event,statuses:['Compagnon'],cayennes:['Paris']},f.bureau);

@@ -131,18 +131,28 @@ function updateOwnEmail(email, token) {
     return {ok:true,email:value,message:value?'Adresse email mise à jour. Les prochaines confirmations utiliseront cette adresse.':'Adresse email retirée. Vous ne recevrez plus de confirmation par mail tant qu’une nouvelle adresse ne sera pas renseignée.'};
   });
 }
+function deleteEventRows_(sheetName, eventId) {
+  const table = getTableData_(sheetName), sheet = getSpreadsheet_().getSheetByName(sheetName);
+  const rows = table.rows.map(function(row,i) { return {row:row,number:table.rowNumbers[i]}; })
+    .filter(function(item) { return clean_(item.row.ID_Evenement) === eventId; })
+    .map(function(item) { return item.number; }).sort(function(a,b) { return b-a; });
+  rows.forEach(function(rowNumber) { sheet.deleteRow(rowNumber); });
+  return rows.length;
+}
 function deleteEvent(eventId, token) {
   assertAdmin_(token); setupSystemIfMissing_();
   return accessLocked_(function() {
     const id = clean_(eventId), table = getTableData_(UC_APP.sheets.calendrier);
     const matches = table.rows.map(function(e,i) { return {e:e,i:i}; }).filter(function(x) { return clean_(x.e.ID_Evenement) === id; });
     if (matches.length !== 1) throw new Error('Événement introuvable ou en double.');
-    if (getRowsAsObjects_(UC_APP.sheets.reponses).some(function(r) { return clean_(r.ID_Evenement) === id; })) throw new Error('Cet événement a déjà reçu des réponses. Annulez-le plutôt afin de conserver l’historique.');
-    const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier);
-    sheet.deleteRow(table.rowNumbers[matches[0].i]);
+    const deletedResponses = deleteEventRows_(UC_APP.sheets.reponses, id);
+    const deletedAttendance = deleteEventRows_(UC_APP.sheets.pointages, id);
+    const deletedMails = deleteEventRows_(UC_APP.sheets.mails, id);
+    getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier).deleteRow(table.rowNumbers[matches[0].i]);
     PropertiesService.getScriptProperties().deleteProperty('uc.job.event.' + accessHash_(id));
     queueFollowup_([]);
-    return {ok:true,message:'Événement supprimé définitivement.'};
+    return {ok:true,deletedResponses:deletedResponses,deletedAttendance:deletedAttendance,deletedMails:deletedMails,
+      message:'Événement supprimé définitivement avec ' + deletedResponses + ' réponse(s) associée(s).'};
   });
 }
 function updateMemberProfile(payload, token) {

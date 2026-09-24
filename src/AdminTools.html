@@ -27,7 +27,7 @@ function toggleCalendarEvent(id){
 }
 function deleteCalendarEvent(id){
   if(!state.token||state.eventBusy)return;const e=calendarEvent(id);if(!e)return;
-  if(!confirm('Supprimer définitivement « '+e.title+' » ? Cette action n’est possible que si aucune réponse n’a encore été enregistrée.'))return;
+  if(!confirm('Supprimer définitivement « '+e.title+' » ? Toutes les réponses, les pointages et le journal de mails liés à cet événement seront également supprimés. Cette action est irréversible.'))return;
   const session=state.session;state.eventBusy=true;
   google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;state.eventBusy=false;Ui.notice('adminNotice',result.message,'ok');resetEventEdit();loadDashboard();}).withFailureHandler(error=>{if(session!==state.session)return;state.eventBusy=false;Ui.notice('adminNotice',error.message||error);}).deleteEvent(id,pin());
 }
