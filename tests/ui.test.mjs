@@ -142,7 +142,7 @@ test('either general save button records every changed choice, including the you
 
 test('individual saving names its scope and warns about remaining choices before a single general save',()=>{
  const a=app('Public.html');answer(a,'evt-1','Présent');answer(a,'evt-2','Absent');
- assert.match(a.doc.querySelector('[data-save-event]').textContent,/cet événement uniquement/);
+ assert.match(a.doc.querySelector('[data-save-event]').textContent,/Enregistrer ma réponse/);assert.ok(a.doc.querySelector('[data-save-event]').classList.contains('event-save-btn'));
  a.doc.querySelector('[data-save-event="evt-1"]').click();a.flush();
  assert.match(a.doc.getElementById('saveFeedback').textContent,/1 autre réponse reste à enregistrer/);
  assert.ok(a.doc.getElementById('saveFeedback').classList.contains('warning'));
