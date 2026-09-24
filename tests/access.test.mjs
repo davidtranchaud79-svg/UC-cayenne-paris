@@ -19,12 +19,12 @@ function fixture(){
     Utilities:{getUuid:randomUUID,computeDigest:(_,text)=>Array.from(createHash('sha256').update(text).digest()),DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},formatDate:d=>d.toISOString().slice(0,10)},
     Session:{getScriptTimeZone:()=> 'Europe/Paris'}
   });
-  vm.runInContext(code+'\n'+access+'\n'+readFileSync(new URL('../src/Notifications.gs',import.meta.url),'utf8'),context);
+  vm.runInContext(code+'\n'+access+'\n'+['Notifications.gs','Reliability.gs','Background.gs'].map(f=>readFileSync(new URL('../src/'+f,import.meta.url),'utf8')).join('\n'),context);
   const headers=vm.runInContext('UC_APP.headers.reponses',context);
   context.getSettings_=()=>settings;
   context.getRowsAsObjects_=name=>db[name]||[];
   context.getOptionList_=(_,fallback)=>fallback;
-  context.setupSystemIfMissing_=()=>{};
+  context.setupSystemIfMissing_=()=>{};context.ensureAuditSchema_=()=>{};context.SpreadsheetApp={flush(){}};
   context.refreshDashboardSheet_=()=>{};
   context.generateEventSheet_=()=>{};
   context.getSpreadsheet_=()=>({getSheetByName:()=>({getLastRow:()=>db.REPONSES.length+1,getRange:()=>({setValues:rows=>rows.forEach(row=>db.REPONSES.push(Object.fromEntries(headers.map((h,i)=>[h,row[i]]))))})})});
@@ -163,10 +163,10 @@ test('member history never returns another member, and the latest response repla
   assert.equal(c.getPublicConfig(a,2026).responses[0].response,'Disponible pour aider');assert.equal(db.REPONSES.length,3);
 });
 
-test('a report failure after a saved response returns success with a warning, not a retry error',()=>{
+test('saving is independent of reports, and failed background jobs remain visible for retry',()=>{
   const {c,member,db}=fixture();const token=member();c.generateEventSheet_=()=>{throw Error('M3 validation');};
   const result=c.submitResponses({requestId:randomUUID(),eventIds:['evt1'],reponse:'Présent'},token);
-  assert.equal(result.ok,true);assert.match(result.warning,/enregistrées/);assert.equal(db.REPONSES.length,1);
+  assert.equal(result.ok,true);assert.equal(result.warning,'');assert.equal(db.REPONSES.length,1);assert.equal(c.backgroundStatus_().pending,2);c.processFollowups_();assert.equal(c.backgroundStatus_().pending,1);assert.match(c.backgroundStatus_().error,/M3 validation/);
 });
 
 test('bureau code changes, expired sessions and logout invalidate previous access',()=>{

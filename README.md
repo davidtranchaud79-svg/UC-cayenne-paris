@@ -1,5 +1,7 @@
 # Logiciel Présences, Engagements et Excuses - Cayenne
 
+Version **2026.09.23.2** : identifiants stables, événements modifiables et ciblés, traitements en arrière-plan, suivi des mails et comptes rendus sans motifs privés. Voir [les changements et la publication de cette version](docs/MISE_EN_OEUVRE_AUDIT.md).
+
 Ce pack contient une base Google Sheets + Apps Script pour suivre les présences sur l'année :
 
 - espace personnel avec code individuel pour les sociétaires, aspirants et compagnons ;
@@ -42,6 +44,9 @@ La procédure détaillée est dans [`docs/BRANCHER_SHEET_GITHUB.md`](docs/BRANCH
 | `Modele_Presences_Engagements_Cayenne.xlsx` | Modèle de classeur à importer dans Google Sheets |
 | `src/Code.gs` | Code serveur Apps Script |
 | `src/Access.gs` | Codes personnels, sessions et contrôle des accès |
+| `src/Reliability.gs` | Migration additive des identifiants et modification des événements |
+| `src/Background.gs` | File persistante, traitement des feuilles et consultation des envois |
+| `src/AdminTools.html` | Modification des rendez-vous, emails et détails réservés au bureau |
 | `src/Index.html` | Petite page routeur avec les deux accès |
 | `src/Public.html` | Formulaire public membres |
 | `src/Admin.html` | Dashboard bureau |
@@ -165,7 +170,7 @@ Avant l’enregistrement, l’espace membre explique quel bouton utiliser et ind
 
 Les rappels concernent les membres actifs ayant répondu **Présent** ou **Je ne sais pas encore** (également l’ancien choix « Disponible pour aider »). Ils utilisent la dernière réponse et la date actuelle de l’événement actif, même pour une inscription antérieure à l’activation. Les absents, excusés et membres sans réponse ne sont pas relancés.
 
-Le déclencheur passe chaque heure : rappel la veille entre 9 h et 21 h, heure de Paris, sans garantie d’une minute précise. Un événement reporté pourra recevoir un rappel pour sa nouvelle date. Les confirmations sont tentées dès l’enregistrement (10 au maximum par requête), puis reprises par le déclencheur (50 envois au maximum par passage), avec priorité aux rappels. Une confirmation encore en attente est remplacée par la dernière réponse du membre. Les quotas Google peuvent retarder les confirmations ; un rappel dont la journée est dépassée n’est pas envoyé tardivement.
+Le déclencheur demande un passage toutes les cinq minutes : rappel la veille entre 9 h et 21 h, heure de Paris, sans garantie d’une minute précise. Un événement reporté pourra recevoir un rappel pour sa nouvelle date. Les confirmations sont traitées en arrière-plan après l’enregistrement (50 envois au maximum par passage), avec priorité aux rappels. Une confirmation encore en attente est remplacée par la dernière réponse du membre. Les quotas Google peuvent retarder les confirmations ; un rappel dont la journée est dépassée n’est pas envoyé tardivement.
 
 Le journal conserve les états `ATTENTE`, `SANS_EMAIL`, `EN_COURS`, `ENVOYE`, `A_VERIFIER` et `ANNULE`. `ENVOYE` signifie que Google a accepté le message, pas une preuve de réception. Les entrées `EN_COURS` ou `A_VERIFIER` ne sont jamais renvoyées automatiquement après une erreur ambiguë : vérifier les exécutions et la remise du mail avant toute relance manuelle. Une erreur d’envoi ne supprime pas les réponses enregistrées.
 

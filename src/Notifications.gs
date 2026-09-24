@@ -27,9 +27,7 @@ function activerNotifications_() {
   return accessLocked_(function() {
     MailApp.getRemainingDailyQuota();
     const props = PropertiesService.getScriptProperties();
-    const triggers = ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === 'envoyerNotifications_'; });
-    if (!triggers.length) ScriptApp.newTrigger('envoyerNotifications_').timeBased().everyHours(1).create();
-    triggers.slice(1).forEach(function(t) { ScriptApp.deleteTrigger(t); });
+    ensureBackgroundTrigger_();
     mailJournal_();
     if (props.getProperty('uc.mail.enabled') !== 'true') props.setProperty('uc.mail.since', String(Date.now()));
     props.setProperty('uc.mail.enabled', 'true');
@@ -40,24 +38,28 @@ function activerNotifications_() {
 function desactiverNotifications_() {
   return accessLocked_(function() {
     PropertiesService.getScriptProperties().setProperty('uc.mail.enabled', 'false');
-    ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === 'envoyerNotifications_'; })
-      .forEach(function(t) { ScriptApp.deleteTrigger(t); });
     return {ok: true};
   });
 }
 
 function envoyerNotifications_() {
-  return accessLocked_(function() {
+  return withBackgroundLease_(function() {
     const props = PropertiesService.getScriptProperties();
+    setupSystemIfMissing_();
+    let result;
     try {
-      const result = traiterMails_(null, new Date());
+      result = traiterMails_(null, new Date());
       props.setProperty('uc.mail.lastRun', new Date().toISOString());
       props.deleteProperty('uc.mail.error');
-      return result;
     } catch (error) {
       props.setProperty('uc.mail.error', 'Traitement interrompu. Consultez les exécutions Apps Script et JOURNAL_MAILS.');
-      throw error;
+      result = {ok:false,error:clean_(error.message)};
     }
+    props.deleteProperty('uc.worker.error');
+    redactLegacyReports_();
+    processFollowups_();
+    props.setProperty('uc.worker.lastRun', new Date().toISOString());
+    return result;
   });
 }
 
@@ -132,7 +134,7 @@ function mailCandidates_(responses, events, members, since, now, onlyIds) {
   const hour = Number(Utilities.formatDate(now, 'Europe/Paris', 'HH'));
   Object.keys(latest).forEach(function(key) {
     const response = latest[key], event = byEvent[response.ID_Evenement], member = byMember[response.Cle_Personne];
-    if (!event || !isActive_(event.Actif) || !member) return;
+    if (!event || !isActive_(event.Actif) || !member || !eventForMember_(event, member)) return;
     const common = {event: event, response: response, member: member};
     const timestamp = asDate_(response.Horodatage);
     if (timestamp && timestamp.getTime() >= since && (!ids || ids.has(response.ID_Reponse))) {
@@ -169,22 +171,23 @@ function mailContent_(candidate) {
   }
   if (!reminder) lines.push('Enregistrement : ' + Utilities.formatDate(asDate_(response.Horodatage), 'Europe/Paris', 'dd/MM/yyyy HH:mm') + ' (heure de Paris)', 'Référence : ' + response.ID_Reponse);
   if (reminder && response.Reponse === 'Je ne sais pas encore') lines.push('', 'Merci de confirmer votre présence ou votre absence.');
-  lines.push('', 'Vous pouvez modifier votre réponse dans votre espace avec votre code personnel :',
-    UC_APP.defaults.webAppUrl, '', 'Cayenne de Paris — Union Compagnonnique');
+  lines.push('', 'Vous pouvez modifier votre réponse dans votre espace personnel :',
+    getAppUrls_().publicUrl, '', 'Cayenne de Paris — Union Compagnonnique');
   return {subject: (reminder ? 'Rappel pour demain' : 'Confirmation de votre réponse') + ' — ' + title + ' — ' + date, body: lines.join('\n')};
 }
 
-// Caller holds the shared script lock. A durable claim precedes each send;
+// A short, durable claim precedes each send; sending never holds the script lock.
 // an ambiguous MailApp failure is reviewed manually rather than resent blindly.
 function traiterMails_(onlyIds, now) {
+  now = now || new Date();
   const props = PropertiesService.getScriptProperties();
   if (props.getProperty('uc.mail.enabled') !== 'true') return {enabled: false, sent: 0, pending: 0};
   const since = Number(props.getProperty('uc.mail.since'));
   if (!since) throw new Error('Activation des mails incomplète.');
-  const candidates = mailCandidates_(getRowsAsObjects_(UC_APP.sheets.reponses), getRowsAsObjects_(UC_APP.sheets.calendrier),
+  const candidates = mailCandidates_(responseRows_(), calendarRows_(),
     getRowsAsObjects_(UC_APP.sheets.membres), since, now, onlyIds);
-  const journal = mailJournal_();
-  if (!onlyIds) {
+  if (!onlyIds) accessLocked_(function() {
+    const journal = mailJournal_();
     const currentIds = new Set(candidates.map(function(c) { return c.id; }));
     Object.keys(journal.entries).forEach(function(id) {
       const entry = journal.entries[id], data = entry.data;
@@ -197,29 +200,48 @@ function traiterMails_(onlyIds, now) {
         journal.sheet.getRange(entry.row, 1, 1, UC_APP.headers.mails.length).setValues([UC_APP.headers.mails.map(function(h) { return sheetLiteral_(data[h]); })]);
       }
     });
-  }
+  });
   let quota = MailApp.getRemainingDailyQuota(), sent = 0, pending = 0;
   const started = Date.now(), limit = onlyIds ? 10 : 50;
+  const logged = mailJournal_().entries;
   candidates.forEach(function(candidate) {
-    const previous = journal.entries[candidate.id];
-    if (previous && previous.data.Etat === 'ENVOYE') return;
-    if (previous && ['EN_COURS', 'A_VERIFIER'].includes(previous.data.Etat)) { pending++; return; }
+    const known = logged[candidate.id] && logged[candidate.id].data;
+    if (known && known.Etat === 'ENVOYE') return;
+    if (known && (['EN_COURS','A_VERIFIER'].includes(known.Etat) ||
+        (known.Etat === 'SANS_EMAIL' && known.Destinataire === clean_(candidate.member.Email)) ||
+        (known.Etat === 'ATTENTE' && quota < 1))) { pending++; return; }
+    if (Date.now() - started > 45000) { pending++; return; }
+    const claimed = accessLocked_(function() {
+      // Recheck data after waiting for the lock; an event or response may have changed.
+      const current = mailCandidates_(responseRows_(), calendarRows_(), getRowsAsObjects_(UC_APP.sheets.membres), since, now, onlyIds)
+        .find(function(c) { return c.id === candidate.id; });
+      if (!current) return false;
+      candidate = current;
+      const journal = mailJournal_();
+      const oldIds = candidate.type === 'RAPPEL' ? memberAliases_(candidate.member).map(function(key) { return 'RAPPEL:' + candidate.event.ID_Evenement + ':' + formatDate_(candidate.event.Date) + ':' + accessHash_(key); }) : [candidate.id];
+      const previous = oldIds.map(function(id) { return journal.entries[id]; }).filter(Boolean);
+      if (previous.some(function(p) { return p.data.Etat === 'ENVOYE'; })) return false;
+      if (previous.some(function(p) { return ['EN_COURS','A_VERIFIER'].includes(p.data.Etat); })) { pending++; return false; }
+      const address = clean_(candidate.member.Email);
+      if (!mailAddressValid_(address)) {
+        mailLog_(journal, candidate, 'SANS_EMAIL', now, 'Adresse absente ou invalide dans MEMBRES.', address); pending++; return false;
+      }
+      if (quota < 1 || sent >= limit) {
+        mailLog_(journal, candidate, 'ATTENTE', now, 'En attente du quota Google ou du prochain passage.', address); pending++; return false;
+      }
+      mailLog_(journal, candidate, 'EN_COURS', now, 'Envoi demandé à Google.', address);
+      SpreadsheetApp.flush();
+      return true;
+    });
+    if (!claimed) return;
     const address = clean_(candidate.member.Email);
-    if (!mailAddressValid_(address)) {
-      mailLog_(journal, candidate, 'SANS_EMAIL', now, 'Adresse absente ou invalide dans MEMBRES.', address); pending++; return;
-    }
-    if (quota < 1 || sent >= limit || Date.now() - started > 90000) {
-      mailLog_(journal, candidate, 'ATTENTE', now, 'En attente du quota Google ou du prochain passage.', address); pending++; return;
-    }
     const content = mailContent_(candidate);
-    mailLog_(journal, candidate, 'EN_COURS', now, 'Envoi demandé à Google.', address);
-    SpreadsheetApp.flush();
     try {
       MailApp.sendEmail({to: address, subject: content.subject, body: content.body, name: 'Cayenne de Paris'});
-      mailLog_(journal, candidate, 'ENVOYE', now, 'Message remis au service Google. La réception finale dépend de la messagerie.', address);
+      accessLocked_(function() { mailLog_(mailJournal_(), candidate, 'ENVOYE', now, 'Message remis au service Google. La réception finale dépend de la messagerie.', address); });
       SpreadsheetApp.flush(); sent++; quota--;
     } catch (error) {
-      mailLog_(journal, candidate, 'A_VERIFIER', now, 'Résultat incertain : vérifier les envois Google avant toute relance. ' + clean_(error.message).slice(0, 250), address);
+      accessLocked_(function() { mailLog_(mailJournal_(), candidate, 'A_VERIFIER', now, 'Résultat incertain : vérifier les envois Google avant toute relance. ' + clean_(error.message).slice(0, 250), address); });
       SpreadsheetApp.flush(); pending++;
     }
   });

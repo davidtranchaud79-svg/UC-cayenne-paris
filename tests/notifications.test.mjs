@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-import {createHash} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
 
 function formatDate(date,zone,pattern){
   const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date).map(p=>[p.type,p.value]));
@@ -11,14 +11,14 @@ function formatDate(date,zone,pattern){
 function fixture(){
   const props=new Map([['uc.mail.enabled','true'],['uc.mail.since',String(Date.parse('2026-09-01'))]]),db={REPONSES:[],MEMBRES:[],CALENDRIER:[]},sent=[],triggers=[];
   let quota=100,failSend=false,failLog=false,locked=false;
-  const c=vm.createContext({Date,Set,console,Utilities:{formatDate,computeDigest:(_,s)=>Array.from(createHash('sha256').update(s).digest()),DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'}},Session:{getScriptTimeZone:()=> 'Europe/Paris'},
-    PropertiesService:{getScriptProperties:()=>({getProperty:k=>props.get(k)||null,setProperty:(k,v)=>props.set(k,v),deleteProperty:k=>props.delete(k)})},
+  const c=vm.createContext({Date,Set,console,Utilities:{getUuid:randomUUID,formatDate,computeDigest:(_,s)=>Array.from(createHash('sha256').update(s).digest()),DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'}},Session:{getScriptTimeZone:()=> 'Europe/Paris'},
+    PropertiesService:{getScriptProperties:()=>({getProperties:()=>Object.fromEntries(props),getProperty:k=>props.get(k)||null,setProperty:(k,v)=>props.set(k,v),deleteProperty:k=>props.delete(k)})},
     LockService:{getScriptLock:()=>({waitLock(){assert.equal(locked,false);locked=true;},releaseLock(){locked=false;}})},
     SpreadsheetApp:{flush(){}},
-    MailApp:{getRemainingDailyQuota:()=>quota,sendEmail(message){if(failSend)throw Error('Timeout');sent.push(message);}},
-    ScriptApp:{getProjectTriggers:()=>triggers.slice(),deleteTrigger:t=>triggers.splice(triggers.indexOf(t),1),newTrigger:name=>({timeBased(){return this;},everyHours(n){assert.equal(n,1);return this;},create(){triggers.push({getHandlerFunction:()=>name});}})}
+    MailApp:{getRemainingDailyQuota:()=>quota,sendEmail(message){assert.equal(locked,false,'Slow send must not hold write lock');if(failSend)throw Error('Timeout');sent.push(message);}},
+    ScriptApp:{getProjectTriggers:()=>triggers.slice(),deleteTrigger:t=>triggers.splice(triggers.indexOf(t),1),newTrigger:name=>({timeBased(){return this;},everyMinutes(n){assert.equal(n,5);return this;},create(){triggers.push({getHandlerFunction:()=>name});}})}
   });
-  vm.runInContext(['Code.gs','Access.gs','Notifications.gs'].map(f=>readFileSync(new URL('../src/'+f,import.meta.url),'utf8')).join('\n'),c);
+  vm.runInContext(['Code.gs','Access.gs','Notifications.gs','Reliability.gs','Background.gs'].map(f=>readFileSync(new URL('../src/'+f,import.meta.url),'utf8')).join('\n'),c);
   const headers=vm.runInContext('UC_APP.headers',c);
   const sheet=name=>({getLastRow:()=>db[name]?db[name].length+1:0,setFrozenRows(){},getRange(row){return {setValues(values){
     if(name==='JOURNAL_MAILS'&&failLog&&values.some(r=>r[6]==='ENVOYE'||r[6]==='A_VERIFIER'))throw Error('Storage unavailable');
@@ -29,7 +29,7 @@ function fixture(){
   c.getRowsAsObjects_=name=>db[name]||[];
   c.getTableData_=name=>({rows:db[name]||[],rowNumbers:(db[name]||[]).map((_,i)=>i+2)});
   c.getSpreadsheet_=()=>({getSheetByName:sheet});c.ensureSheet_=(_,name)=>sheet(name);
-  c.setupSystemIfMissing_=()=>{};c.getOptionList_=(_,fallback)=>fallback;c.refreshDashboardSheet_=()=>{};c.generateEventSheet_=()=>{};
+  c.ensureAuditSchema_=()=>{};c.redactLegacyReports_=()=>{};c.getAppUrls_=()=>({publicUrl:'https://script.google.com/macros/s/TEST/exec'});c.setupSystemIfMissing_=()=>{};c.getOptionList_=(_,fallback)=>fallback;c.refreshDashboardSheet_=()=>{};c.generateEventSheet_=()=>{};
   const member={Nom:'Exemple',Prenom:'Camille',Email:'camille@example.test',Statut:'Compagnon',Cayenne:'Paris',Actif:'Oui'};
   db.MEMBRES.push(member);c.assertMember_=token=>{assert.equal(token,'MEMBER');return member;};
   const event={ID_Evenement:'e1',Date:new Date('2026-09-23T12:00:00Z'),Annee:2026,Titre:'Réunion',Actif:'Oui',Heure_Debut:'19:00',Heure_Fin:'21:00',Lieu:'Paris'};
@@ -51,28 +51,28 @@ test('visible mail commands reject anonymous or other Google users before any ch
  }
  f.c.Session.getActiveUser=()=>({getEmail:()=> 'owner@example.test'});
  assert.equal(f.c.activerMails().ok,true);assert.equal(f.triggers.length,1);assert.equal(f.sent.length,0);
- f.c.desactiverMails();assert.equal(f.triggers.length,0);assert.equal(f.props.get('uc.mail.enabled'),'false');
+ f.c.desactiverMails();assert.equal(f.triggers.length,1);assert.equal(f.props.get('uc.mail.enabled'),'false');
 });
 
 test('activation is idempotent, installs one trigger, sends nothing and excludes historical confirmations',()=>{
  const f=fixture();f.props.clear();f.c.activerNotifications_();const since=f.props.get('uc.mail.since');f.c.activerNotifications_();
  assert.equal(f.triggers.length,1);assert.equal(f.props.get('uc.mail.since'),since);assert.equal(f.sent.length,0);
  const candidates=f.c.mailCandidates_([f.response],[f.event],[f.member],Number(since),f.now,['r1']);assert.equal(candidates.length,0);
- f.c.desactiverNotifications_();assert.equal(f.triggers.length,0);assert.equal(f.c.traiterMails_(null,f.now).enabled,false);
+ f.c.desactiverNotifications_();assert.equal(f.triggers.length,1);assert.equal(f.c.traiterMails_(null,f.now).enabled,false);
 });
 test('one confirmation per saved event, server identity, retries deduplicated, updates get a new receipt',()=>{
  const f=fixture();f.db.REPONSES=[];f.db.CALENDRIER.push({...f.event,ID_Evenement:'e2'});
  const payload={requestId:'request-number-0001',email:'attacker@example.test',answers:[{eventId:'e1',reponse:'Présent'},{eventId:'e2',reponse:'Absent'}]};
- assert.equal(f.c.submitResponses(payload,'MEMBER').ok,true);assert.equal(f.sent.length,2);assert.ok(f.sent.every(m=>m.to===f.member.Email));
- f.c.submitResponses(payload,'MEMBER');assert.equal(f.sent.length,2);assert.equal(f.db.REPONSES.length,2);
+ assert.equal(f.c.submitResponses(payload,'MEMBER').ok,true);assert.equal(f.sent.length,0,'response saves before email');f.c.traiterMails_(null,new Date());assert.equal(f.sent.length,2);assert.ok(f.sent.every(m=>m.to===f.member.Email));
+ f.c.submitResponses(payload,'MEMBER');f.c.traiterMails_(null,new Date());assert.equal(f.sent.length,2);assert.equal(f.db.REPONSES.length,2);
  f.c.submitResponses({...payload,requestId:'request-number-0002',answers:[{eventId:'e1',reponse:'Je ne sais pas encore'}]},'MEMBER');
- assert.equal(f.sent.length,3);assert.match(f.sent[2].body,/Je ne sais pas encore/);
+ f.c.traiterMails_(null,new Date());assert.equal(f.sent.length,3);assert.match(f.sent[2].body,/Je ne sais pas encore/);
 });
 test('quota exhausted defers confirmations and background recovers once; send failure preserves the answer',()=>{
  const f=fixture();f.quota(0);f.c.traiterMails_(['r1'],f.now);assert.equal(f.db.JOURNAL_MAILS[0].Etat,'ATTENTE');assert.equal(f.sent.length,0);
  f.quota(10);const early=new Date('2026-09-22T05:00:00Z');f.c.traiterMails_(null,early);f.c.traiterMails_(null,early);assert.equal(f.sent.length,1);
  f.failSend(true);const result=f.c.submitResponses({requestId:'request-number-0003',answers:[{eventId:'e1',reponse:'Absent'}]},'MEMBER');
- assert.equal(result.ok,true);assert.equal(f.db.REPONSES.length,2);assert.match(result.message,/attente/);
+ assert.equal(result.ok,true);assert.equal(f.db.REPONSES.length,2);assert.match(result.message,/arrière-plan/);f.c.traiterMails_(null,early);
  assert.equal(f.db.JOURNAL_MAILS.at(-1).Etat,'A_VERIFIER');f.failSend(false);f.c.traiterMails_(null,early);assert.equal(f.sent.length,1);
 });
 test('crash after sending never causes a blind duplicate',()=>{
@@ -91,6 +91,15 @@ test('reminder deduplicates per event date, revised date permits a new reminder'
  const f=fixture();f.props.set('uc.mail.since',String(Date.now()+10000));
  f.c.traiterMails_(null,f.now);f.response.Reponse='Je ne sais pas encore';f.c.traiterMails_(null,f.now);assert.equal(f.sent.length,1);
  f.event.Date=new Date('2026-09-24T12:00:00Z');f.c.traiterMails_(null,new Date('2026-09-23T10:00:00Z'));assert.equal(f.sent.length,2);
+});
+test('migrating identity and correcting email does not duplicate a reminder; a new date uses the corrected address',()=>{
+ const f=fixture();f.props.set('uc.mail.since',String(Date.now()+10000));
+ f.c.traiterMails_(null,f.now);assert.equal(f.sent.length,1);
+ f.member.ID_Membre='MEM-STABLE';f.member.Cle_Historique='camille@example.test';f.member.Email='nouvelle@example.test';
+ f.c.traiterMails_(null,f.now);assert.equal(f.sent.length,1,'legacy reminder claim survives migration');
+ f.event.Date=new Date('2026-09-24T12:00:00Z');
+ f.c.traiterMails_(null,new Date('2026-09-23T10:00:00Z'));assert.equal(f.sent.length,2);assert.equal(f.sent[1].to,'nouvelle@example.test');
+ assert.equal(f.db.JOURNAL_MAILS.at(-1).Cle_Personne,'MEM-STABLE');
 });
 test('Paris calendar date, midnight and DST transitions define the previous day and sending window',()=>{
  const f=fixture();

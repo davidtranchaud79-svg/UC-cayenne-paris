@@ -1,4 +1,5 @@
 const UC_APP = {
+  version: '2026.09.23.2',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -90,7 +91,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Présences UC')
     .addItem('Installer / réparer le classeur', 'setupSystem_')
-    .addItem('Actualiser le dashboard', 'refreshDashboardSheet_')
+    .addItem('Actualiser le dashboard', 'refreshDashboardFromMenu_')
     .addItem('Générer les feuilles événement', 'generateAllEventSheetsForActiveYear_')
     .addItem('Exporter la feuille active en PDF', 'exportActiveSheetPdf_')
     .addItem('Activer les confirmations et rappels mail', 'activerNotifications_')
@@ -105,6 +106,7 @@ function doGet(e) {
   const urls = getAppUrls_();
   template.publicUrl = urls.publicUrl;
   template.adminUrl = urls.adminUrl;
+  template.appVersion = UC_APP.version;
 
   return template
     .evaluate()
@@ -156,6 +158,8 @@ function getPublicConfig(token, requestedYear) {
   if (!Number.isInteger(year) || year < 2020 || year > 2100) throw new Error('Année invalide.');
   return {
     activeYear: year,
+    version: UC_APP.version,
+    today: formatDate_(new Date()),
     profile: memberProfile_(member),
     notifications: {enabled: PropertiesService.getScriptProperties().getProperty('uc.mail.enabled') === 'true'},
     responses: memberResponses_(member, year),
@@ -165,7 +169,7 @@ function getPublicConfig(token, requestedYear) {
     responseTypes: UC_APP.defaults.reponses.filter(function(v) { return v !== 'Disponible pour aider'; }),
     causes: Array.from(new Set(getOptionList_('G', UC_APP.defaults.causes).concat(['Autres']))),
     eventTypes: getOptionList_('H', UC_APP.defaults.eventTypes),
-    events: getEventsForYear_(year).map(formatEventForClient_)
+    events: getEventsForYear_(year).filter(function(e) { return eventForMember_(e, member); }).map(formatEventForClient_)
   };
 }
 
@@ -173,6 +177,8 @@ function getBootstrapConfig() {
   setupSystemIfMissing_();
   const settings = getSettings_();
   return {
+    version: UC_APP.version,
+    statuses: getOptionList_('D', UC_APP.defaults.statuses),
     activeYear: Number(settings.annee_active || UC_APP.defaults.activeYear),
     urls: getAppUrls_(settings),
     eventTemplates: getEventTemplates_(),
@@ -186,6 +192,8 @@ function getAdminConfig(adminPin) {
   setupSystemIfMissing_();
   const settings = getSettings_();
   return {
+    version: UC_APP.version,
+    statuses: getOptionList_('D', UC_APP.defaults.statuses),
     activeYear: Number(settings.annee_active || UC_APP.defaults.activeYear),
     urls: getAppUrls_(settings),
     eventTemplates: getEventTemplates_(),
@@ -197,6 +205,7 @@ function getAdminConfig(adminPin) {
 function createEventFromTemplate(payload, adminPin) {
   assertAdmin_(adminPin);
   setupSystemIfMissing_();
+  return accessLocked_(function() {
   payload = payload || {};
 
   const date = parseInputDate_(payload.date);
@@ -218,44 +227,32 @@ function createEventFromTemplate(payload, adminPin) {
     Lieu: clean_(payload.place || template.place || 'Cayenne de Paris'),
     Cayenne: clean_(payload.cayenne || template.cayenne || 'Paris'),
     Categorie_CR: clean_(payload.category || template.category || 'Événement'),
-    Actif: clean_(payload.active || template.active || 'Oui'),
+    Actif: payload.active === false ? 'Non' : 'Oui',
     Commentaire: clean_(payload.comment || template.comment),
     Modalites: clean_(payload.modalites || template.modalites || 'Standard')
   };
 
   if (!['Standard', 'Repas et aide', 'Réception'].includes(event.Modalites)) throw new Error('Modalités invalides.');
+  if (event.Titre.length > 200 || event.Commentaire.length > 2000 || event.Lieu.length > 300) throw new Error('Texte trop long.');
+  ['Heure_Debut','Heure_Fin'].forEach(function(k) { if (event[k] && !/^([01]\d|2[0-3]):[0-5]\d$/.test(event[k])) throw new Error('Horaire invalide.'); });
+  Object.assign(event, validateAudience_(payload), {Version: Utilities.getUuid(), Modifie_Le: new Date()});
   const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier);
-  sheet.appendRow([
-    event.ID_Evenement,
-    event.Annee,
-    event.Date,
-    event.Titre,
-    event.Type_Evenement,
-    event.Heure_Debut,
-    event.Heure_Fin,
-    event.Lieu,
-    event.Cayenne,
-    event.Categorie_CR,
-    event.Actif,
-    event.Commentaire,
-    event.Modalites
-  ]);
+  queueFollowup_([event.ID_Evenement]);
+  writeRecord_(UC_APP.sheets.calendrier, sheet.getLastRow() + 1, event);
   sheet.getRange(sheet.getLastRow(), 3).setNumberFormat('yyyy-mm-dd');
-  refreshDashboardSheet_();
 
   return {
     ok: true,
     event: formatEventForClient_(event),
     message: 'Événement créé : ' + event.Titre
   };
+  });
 }
 
 function submitResponses(payload, token) {
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
+  return accessLocked_(function() {
     return submitMemberResponses_(payload, assertMember_(token));
-  } finally { lock.releaseLock(); }
+  });
 }
 
 function submitMemberResponses_(payload, member) {
@@ -266,7 +263,7 @@ function submitMemberResponses_(payload, member) {
   const batch = Array.isArray(payload.answers);
   const answers = batch ? payload.answers : Array.from(new Set(payload.eventIds || [])).map(function(id) { return Object.assign({}, payload, {eventId:id}); });
   if (!answers.length || answers.length > 200) throw new Error('Répondez à au moins un événement (200 maximum par envoi).');
-  const eventsById = indexBy_(getRowsAsObjects_(UC_APP.sheets.calendrier), 'ID_Evenement');
+  const eventsById = indexBy_(calendarRows_(), 'ID_Evenement');
   const seen = new Set();
   const causesAllowed = getOptionList_('G', UC_APP.defaults.causes).concat(['Autres']);
   // Validate the entire batch before writing a single response.
@@ -275,6 +272,8 @@ function submitMemberResponses_(payload, member) {
     a.eventId = clean_(a.eventId);
     const event = eventsById[a.eventId];
     if (!event || !isActive_(event.Actif)) throw new Error('Un événement sélectionné n’est plus disponible. Actualisez le calendrier.');
+    if (!eventForMember_(event, member)) throw new Error('Cet événement ne concerne plus votre profil. Actualisez le calendrier.');
+    if (a.eventVersion && a.eventVersion !== eventVersion_(event)) throw new Error('Un événement a été modifié par le bureau. Actualisez le calendrier avant de confirmer.');
     if (seen.has(a.eventId)) throw new Error('Un événement apparaît deux fois dans votre envoi.');
     seen.add(a.eventId);
     a.reponse = clean_(a.reponse);
@@ -308,32 +307,28 @@ function submitMemberResponses_(payload, member) {
     return a;
   });
   const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.reponses);
-  const existingIds = new Set(getRowsAsObjects_(UC_APP.sheets.reponses).map(function(r) { return r.ID_Reponse; }));
-  const now = new Date(), key = personKey_(payload.nom, payload.prenom, payload.email);
+  const existing = indexBy_(responseRows_(), 'ID_Reponse');
+  const existingIds = new Set(Object.keys(existing));
+  const now = new Date(), key = memberKey_(member), receipts = [];
   const savedRows = [];
   normalized.forEach(function(a) {
     const event = eventsById[a.eventId], date = asDate_(event.Date);
     const responseId = payload.requestId + ':' + accessHash_(key) + ':' + a.eventId;
+    receipts.push({eventId: a.eventId, savedAt: existing[responseId] ? asDate_(existing[responseId].Horodatage).toISOString() : now.toISOString()});
     if (existingIds.has(responseId)) return;
-    savedRows.push([responseId, now, 'Réponse événement', Number(event.Annee), event.ID_Evenement, date, event.Titre, event.Type_Evenement,
+    savedRows.push([responseId, now, 'Réponse événement', eventYear_(event), event.ID_Evenement, date, event.Titre, event.Type_Evenement,
       payload.nom, payload.prenom, clean_(payload.email), clean_(payload.telephone), payload.statut, payload.cayenne,
       a.reponse, a.causes.join(' ; '), a.precision, a.aide ? 'Oui' : 'Non', a.heureDebutAide, a.heureFinAide, a.commentaire, key,
       date ? Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM') : '', date ? getWeekNumber_(date) : '', '', a.participation, a.creneaux.join(' ; ')]);
   });
-  if (savedRows.length) sheet.getRange(sheet.getLastRow() + 1, 1, savedRows.length, UC_APP.headers.reponses.length).setValues(savedRows.map(function(row) { return row.map(sheetLiteral_); }));
-  let warning = '';
-  let mailMessage = '';
-  try {
-    const ids = normalized.map(function(a) { return payload.requestId + ':' + accessHash_(key) + ':' + a.eventId; });
-    const mailResult = traiterMails_(ids, new Date());
-    mailMessage = mailResult.enabled ? (mailResult.pending ? ' Confirmation par mail en attente ou à vérifier par le bureau.' : ' Confirmation par mail traitée pour chaque événement.') : ' Les confirmations mail ne sont pas encore activées par le bureau.';
-    if (mailResult.enabled && !mailAddressValid_(clean_(member.Email))) mailMessage = ' Votre réponse est conservée. Demandez au bureau de compléter votre adresse mail pour recevoir les confirmations.';
-  } catch (error) { mailMessage = ' Vos réponses sont conservées ; les confirmations mail restent à traiter par le bureau.'; }
-  try {
-    refreshDashboardSheet_();
-    savedRows.forEach(function(row) { generateEventSheet_(row[4]); });
-  } catch (error) { warning = 'Réponses enregistrées. Le bureau devra actualiser les feuilles de suivi.'; }
-  return {ok:true, saved:answers.length, warning:warning ? warning + mailMessage : '', message:answers.length + ' réponse(s) enregistrée(s). Vous pouvez les modifier à tout moment.' + mailMessage};
+  if (savedRows.length) {
+    queueFollowup_(savedRows.map(function(row) { return row[4]; }));
+    sheet.getRange(sheet.getLastRow() + 1, 1, savedRows.length, UC_APP.headers.reponses.length).setValues(savedRows.map(function(row) { return row.map(sheetLiteral_); }));
+    SpreadsheetApp.flush();
+  }
+  const enabled = PropertiesService.getScriptProperties().getProperty('uc.mail.enabled') === 'true';
+  const mailMessage = !enabled ? ' Les mails ne sont pas encore activés par le bureau.' : !mailAddressValid_(clean_(member.Email)) ? ' Demandez au bureau de compléter votre adresse mail pour recevoir les confirmations.' : ' Vous recevrez une confirmation par mail pour chaque événement enregistré. Les envois sont traités en arrière-plan.';
+  return {ok:true, saved:answers.length, receipts:receipts, warning:'', message:answers.length + ' réponse(s) enregistrée(s). Vous pouvez les modifier à tout moment.' + mailMessage};
 }
 
 function getDashboardData(year, adminPin) {
@@ -341,18 +336,23 @@ function getDashboardData(year, adminPin) {
   setupSystemIfMissing_();
   const data = computeDashboard_(Number(year || getSettings_().annee_active || UC_APP.defaults.activeYear));
   data.notifications = notificationStatus_();
+  data.background = backgroundStatus_();
+  data.version = UC_APP.version;
+  data.calendar = calendarRows_().filter(function(e) { return eventYear_(e) === data.year; }).map(formatEventForClient_);
   return data;
 }
 
 function generateEventSheet(eventId, adminPin) {
   assertAdmin_(adminPin);
-  return generateEventSheet_(eventId);
+  const result = withBackgroundLease_(function() { return generateEventSheet_(eventId); });
+  if (result.busy) throw new Error('Les feuilles sont en cours de mise à jour. Réessayez dans quelques instants.');
+  return result;
 }
 
 function generateEventSheet_(eventId) {
   setupSystemIfMissing_();
 
-  const events = getRowsAsObjects_(UC_APP.sheets.calendrier);
+  const events = calendarRows_();
   const event = events.filter(function(row) { return row.ID_Evenement === eventId; })[0];
   if (!event) throw new Error('Événement introuvable.');
 
@@ -370,13 +370,13 @@ function generateEventSheet_(eventId) {
   const noResponseCount = rows.filter(function(row) { return row.reponse === 'Sans réponse'; }).length;
   const aidCount = rows.filter(function(row) { return row.aide === 'Oui'; }).length;
 
-  sheet.getRange('A1:I1').merge().setValue('Compte rendu présences - ' + event.Titre);
+  sheet.getRange('A1:I1').merge().setValue((isActive_(event.Actif) ? 'Compte rendu présences - ' : 'ÉVÉNEMENT ANNULÉ - ') + event.Titre);
   sheet.getRange('A2:I2').merge().setValue(formatDate_(event.Date) + ' | ' + event.Type_Evenement + ' | ' + (event.Lieu || 'Lieu à préciser'));
   sheet.getRange('A1:I2').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#7A1F2B');
   sheet.getRange('A1').setFontSize(16);
 
   sheet.getRange('A4:B8').setValues([
-    ['Présents', presentCount],
+    ['Présences annoncées', presentCount],
     ['Absents excusés', excusedCount],
     ['Sans réponse', noResponseCount],
     ['Disponibles pour aider', aidCount],
@@ -386,7 +386,7 @@ function generateEventSheet_(eventId) {
   sheet.getRange('A4:A8').setFontWeight('bold').setBackground('#F2E7E9');
   sheet.getRange('B4:B8').setNumberFormat('0');
 
-  const headers = ['Nom', 'Prénom', 'Statut', 'Cayenne', 'Réponse annoncée', 'Cause', 'Précision', 'Aide', 'Horaire', 'Participation repas / aide', 'Créneaux', 'Commentaire', 'Présence réelle'];
+  const headers = ['Nom', 'Prénom', 'Statut', 'Cayenne', 'Réponse annoncée', 'Aide', 'Horaire', 'Participation repas / aide', 'Créneaux', 'Présence réelle'];
   sheet.getRange(10, 1, 1, headers.length).setValues([headers]);
   sheet.getRange(10, 1, 1, headers.length).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
 
@@ -398,11 +398,9 @@ function generateEventSheet_(eventId) {
         row.statut,
         row.cayenne,
         row.reponse,
-        row.causes,
-        row.precision,
         row.aide,
         [row.heureDebut, row.heureFin].filter(Boolean).join(' - '),
-        row.participation, row.creneaux, row.commentaire,
+        row.participation, row.creneaux,
         (pointages[eventId + '|' + row.key] || {}).Presence_Reelle || 'Non pointé'
       ];
     });
@@ -433,16 +431,24 @@ function generateAllEventSheets(year, adminPin) {
 }
 
 function generateAllEventSheets_(year) {
+  setupSystemIfMissing_();
   const targetYear = Number(year || getSettings_().annee_active || UC_APP.defaults.activeYear);
-  const events = getEventsForYear_(targetYear);
-  return events.map(function(event) {
-    return generateEventSheet_(event.ID_Evenement);
+  if (!Number.isInteger(targetYear) || targetYear < 2020 || targetYear > 2100) throw new Error('Année invalide.');
+  return accessLocked_(function() {
+    const events = getEventsForYear_(targetYear);
+    queueFollowup_(events.map(function(e) { return e.ID_Evenement; }));
+    return {queued:events.length,message:events.length + ' compte(s) rendu(s) ajouté(s) aux mises à jour automatiques.'};
   });
 }
 
 function generateAllEventSheetsForActiveYear_() {
   const results = generateAllEventSheets_(getSettings_().annee_active);
-  SpreadsheetApp.getUi().alert(results.length + ' feuille(s) événement générée(s).');
+  SpreadsheetApp.getUi().alert(results.message);
+}
+
+function refreshDashboardFromMenu_() {
+  const result = withBackgroundLease_(function() { setupSystemIfMissing_(); refreshDashboardSheet_(); return {ok:true}; });
+  SpreadsheetApp.getUi().alert(result.busy ? result.message : 'Dashboard actualisé.');
 }
 
 function refreshDashboardSheet_() {
@@ -463,7 +469,7 @@ function refreshDashboardSheet_() {
   sheet.getRange('A3:B8').setValues([
     ['Événements actifs', data.kpis.events],
     ['Membres actifs', data.kpis.members],
-    ['Présents', data.kpis.presents],
+    ['Présences annoncées', data.kpis.presents],
     ['Absents excusés', data.kpis.excused],
     ['Sans réponse', data.kpis.noResponse],
     ['Aides proposées', data.kpis.aids]
@@ -500,14 +506,14 @@ function refreshDashboardSheet_() {
   const memberRows = data.members.map(function(member) {
     return [member.nom, member.prenom, member.statut, member.cayenne, member.presents, member.excused, member.noResponse, member.aids, member.presenceRate, member.absent, member.undecided];
   });
-  sheet.getRange('A23:K23').setValues([['Nom', 'Prénom', 'Statut', 'Cayenne', 'Présences', 'Excusés', 'Sans réponse', 'Aides', 'Taux', 'Absents', 'Indécis']]);
+  sheet.getRange('A23:K23').setValues([['Nom', 'Prénom', 'Statut', 'Cayenne', 'Présences annoncées', 'Excusés', 'Sans réponse', 'Aides', 'Taux', 'Absents', 'Indécis']]);
   sheet.getRange('A23:K23').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
   if (memberRows.length) {
     sheet.getRange(24, 1, memberRows.length, 11).setValues(memberRows);
     sheet.getRange(24, 9, memberRows.length, 1).setNumberFormat('0%');
   }
 
-  sheet.getRange('K3:S3').setValues([['Mois', 'Événements', 'Réponses', 'Présences', 'Excusés', 'Aides', 'Sans réponse', 'Absents', 'Indécis']]);
+  sheet.getRange('K3:S3').setValues([['Mois', 'Événements', 'Réponses', 'Présences annoncées', 'Excusés', 'Aides', 'Sans réponse', 'Absents', 'Indécis']]);
   sheet.getRange('K3:S3').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
   const monthlyRows = data.monthly.map(function(month) {
     return [month.label, month.events, month.responses, month.presents, month.excused, month.aids, month.noResponse, month.absent, month.undecided];
@@ -540,6 +546,7 @@ function setupSystemIfMissing_() {
   const ss = getSpreadsheet_();
   if (!ss.getSheetByName(UC_APP.sheets.reponses) || !ss.getSheetByName(UC_APP.sheets.eventBase)) setupSystem_();
   ensureParticipationSchema_();
+  ensureAuditSchema_();
 }
 
 function ensureSheet_(ss, name) {
@@ -592,7 +599,7 @@ function setupSuiviSheet_(sheet, data) {
   sheet.clear();
   sheet.setHiddenGridlines(true);
   sheet.getRange('A1:M1').merge().setValue('Suivi annuel par personne — ' + data.year);
-  const headers = ['Nom', 'Prénom', 'Statut', 'Cayenne', 'Clé personne', 'Présences', 'Excusés', 'Absents', 'Indécis', 'Sans réponse', 'Aides', 'Taux présence', 'Dernière réponse'];
+  const headers = ['Nom', 'Prénom', 'Statut', 'Cayenne', 'Clé personne', 'Présences annoncées', 'Excusés', 'Absents', 'Indécis', 'Sans réponse', 'Aides', 'Taux annoncé', 'Dernière réponse'];
   sheet.getRange(3, 1, 1, headers.length).setValues([headers]).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#7A1F2B');
   const rows = data.members.map(function(m) { return [m.nom, m.prenom, m.statut, m.cayenne, m.key, m.presents, m.excused, m.absent, m.undecided, m.noResponse, m.aids, m.presenceRate, m.lastResponse]; });
   if (rows.length) {
@@ -616,7 +623,7 @@ function setupModeleCr_(sheet) {
     ['Disponibles pour aider', ''],
     ['Total suivi', '']
   ]);
-  sheet.getRange('A11:I11').setValues([['Nom', 'Prénom', 'Statut', 'Cayenne', 'Réponse', 'Cause', 'Précision', 'Aide', 'Horaire']]);
+  sheet.getRange('A11:I11').setValues([['Nom', 'Prénom', 'Statut', 'Cayenne', 'Réponse annoncée', 'Aide', 'Horaire', 'Participation', 'Présence réelle']]);
   sheet.getRange('A11:I11').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#3F3F46');
   sheet.autoResizeColumns(1, 9);
 }
@@ -763,9 +770,9 @@ function assertAdmin_(pin) {
 }
 
 function getEventsForYear_(year) {
-  return getRowsAsObjects_(UC_APP.sheets.calendrier)
+  return calendarRows_()
     .filter(function(row) {
-      return Number(row.Annee) === Number(year) && isActive_(row.Actif);
+      return eventYear_(row) === Number(year) && isActive_(row.Actif);
     })
     .sort(function(a, b) { return asDate_(a.Date) - asDate_(b.Date); });
 }
@@ -773,7 +780,11 @@ function getEventsForYear_(year) {
 function formatEventForClient_(event) {
   return {
     id: event.ID_Evenement,
-    year: Number(event.Annee),
+    year: eventYear_(event),
+    version: eventVersion_(event),
+    active: isActive_(event.Actif),
+    statuses: audienceList_(event.Public_Statuts),
+    cayennes: audienceList_(event.Public_Cayennes),
     date: formatDate_(event.Date),
     title: event.Titre,
     type: event.Type_Evenement,
@@ -845,8 +856,10 @@ function computeDashboard_(year) {
   const members = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(member) {
     return member.Nom && member.Prenom && isActive_(member.Actif);
   });
-  const responses = getRowsAsObjects_(UC_APP.sheets.reponses).filter(function(row) {
-    return Number(row.Annee) === Number(year) && events.some(function(e) { return e.ID_Evenement === row.ID_Evenement; });
+  const responses = responseRows_().filter(function(row) {
+    const event = events.find(function(e) { return e.ID_Evenement === row.ID_Evenement; });
+    const member = members.find(function(m) { return memberKey_(m) === row.Cle_Personne; });
+    return event && member && eventForMember_(event, member);
   });
 
   const latestByEventPerson = {};
@@ -859,7 +872,7 @@ function computeDashboard_(year) {
 
   const membersByKey = {};
   members.forEach(function(member) {
-    const key = personKey_(member.Nom, member.Prenom, member.Email);
+    const key = memberKey_(member);
     membersByKey[key] = member;
   });
 
@@ -868,7 +881,7 @@ function computeDashboard_(year) {
     const responders = {};
     eventResponses.forEach(function(row) { responders[row.Cle_Personne] = true; });
     const missingMembers = members.filter(function(member) {
-      return !responders[personKey_(member.Nom, member.Prenom, member.Email)];
+      return eventForMember_(event, member) && !responders[memberKey_(member)];
     }).map(function(member) {
       return {
         nom: member.Nom,
@@ -906,7 +919,7 @@ function computeDashboard_(year) {
   });
 
   const memberStats = members.map(function(member) {
-    const key = personKey_(member.Nom, member.Prenom, member.Email);
+    const key = memberKey_(member);
     const memberResponses = latestResponses.filter(function(row) { return row.Cle_Personne === key; });
     const answered = {};
     memberResponses.forEach(function(row) { answered[row.ID_Evenement] = true; });
@@ -915,7 +928,7 @@ function computeDashboard_(year) {
     const undecided = memberResponses.filter(function(row) { return row.Reponse === 'Je ne sais pas encore'; }).length;
     const excused = memberResponses.filter(function(row) { return row.Reponse === 'Absent excusé'; }).length;
     const aids = memberResponses.filter(function(row) { return row.Aide_Disponible === 'Oui'; }).length;
-    const noResponse = Math.max(0, events.length - Object.keys(answered).length);
+    const noResponse = Math.max(0, events.filter(function(e) { return eventForMember_(e, member); }).length - Object.keys(answered).length);
     const denominator = presents + excused + absent + undecided + noResponse;
     return {
       key: key,
@@ -1030,25 +1043,26 @@ function buildMonthlyStats_(year, events, latestResponses, eventStats) {
 }
 
 function attendanceLatest_() {
-  const latest = {};
+  const latest = {}, resolve = identityResolver_();
   getRowsAsObjects_(UC_APP.sheets.pointages).forEach(function(row) {
-    latest[row.ID_Evenement + '|' + row.Cle_Personne] = row;
+    latest[row.ID_Evenement + '|' + resolve(row)] = row;
   });
   return latest;
 }
 
 function getAttendance(eventId, token) {
   assertAdmin_(token);
-  const event = getRowsAsObjects_(UC_APP.sheets.calendrier).find(function(e) { return e.ID_Evenement === eventId && isActive_(e.Actif); });
+  setupSystemIfMissing_();
+  const event = calendarRows_().find(function(e) { return e.ID_Evenement === eventId && isActive_(e.Actif); });
   if (!event) throw new Error('Événement introuvable ou inactif.');
   if (formatDate_(event.Date) > formatDate_(new Date())) throw new Error('Le pointage ouvre le jour de l’événement.');
   const latest = attendanceLatest_();
   const answers = {};
-  getRowsAsObjects_(UC_APP.sheets.reponses).filter(function(r) { return r.ID_Evenement === eventId; }).forEach(function(r) {
+  responseRows_().filter(function(r) { return r.ID_Evenement === eventId; }).forEach(function(r) {
     if (!answers[r.Cle_Personne] || asDate_(r.Horodatage) >= asDate_(answers[r.Cle_Personne].Horodatage)) answers[r.Cle_Personne] = r;
   });
-  return {eventId: eventId, members: getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) { return m.Nom && m.Prenom && isActive_(m.Actif); }).map(function(m) {
-    const key = personKey_(m.Nom, m.Prenom, m.Email);
+  return {eventId: eventId, members: getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) { return m.Nom && m.Prenom && isActive_(m.Actif) && eventForMember_(event, m); }).map(function(m) {
+    const key = memberKey_(m);
     const row = latest[eventId + '|' + key];
     return {key: key, name: m.Prenom + ' ' + m.Nom, announced: answers[key] ? answers[key].Reponse : 'Sans réponse', actual: row ? row.Presence_Reelle : 'Non pointé', version: row ? row.ID_Pointage : ''};
   })};
@@ -1057,9 +1071,7 @@ function getAttendance(eventId, token) {
 function saveAttendance(payload, token) {
   assertAdmin_(token);
   if (!payload || !Array.isArray(payload.changes) || !payload.changes.length) throw new Error('Aucun pointage à enregistrer.');
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
+  return accessLocked_(function() {
     const roster = getAttendance(payload.eventId, token);
     const seen = new Set();
     const rows = payload.changes.map(function(change) {
@@ -1073,16 +1085,14 @@ function saveAttendance(payload, token) {
       return [Utilities.getUuid(), new Date(), payload.eventId, change.key, change.actual];
     }).filter(Boolean);
     if (rows.length) {
+      queueFollowup_([payload.eventId]);
       const sheet = ensureSheet_(getSpreadsheet_(), UC_APP.sheets.pointages);
       if (!sheet.getLastRow()) sheet.getRange(1, 1, 1, UC_APP.headers.pointages.length).setValues([UC_APP.headers.pointages]);
       getTableData_(UC_APP.sheets.pointages);
       sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 5).setValues(rows.map(function(row) { return row.map(sheetLiteral_); }));
     }
-  } finally { lock.releaseLock(); }
-  let warning = '';
-  try { refreshDashboardSheet_(); generateEventSheet_(payload.eventId); }
-  catch (error) { warning = 'Pointage enregistré. Les synthèses Sheets ou le compte rendu restent à actualiser : ' + error.message; }
-  return {ok: true, warning: warning};
+    return {ok: true, warning: ''};
+  });
 }
 
 function attendanceSummary_(events, members) {
@@ -1093,8 +1103,8 @@ function attendanceSummary_(events, members) {
   events.filter(function(e) { return formatDate_(e.Date) <= today; }).forEach(function(event) {
     const month = Number(formatDate_(event.Date).slice(5, 7));
     if (!monthly[month]) monthly[month] = empty();
-    members.forEach(function(m) {
-      const key = personKey_(m.Nom, m.Prenom, m.Email);
+    members.filter(function(m) { return eventForMember_(event, m); }).forEach(function(m) {
+      const key = memberKey_(m);
       if (!byMember[key]) byMember[key] = Object.assign({name: m.Prenom + ' ' + m.Nom}, empty());
       const row = latest[event.ID_Evenement + '|' + key];
       const field = ({'Présent': 'present', 'Absent': 'absent', 'Excusé': 'excused'})[row && row.Presence_Reelle] || 'unmarked';
@@ -1105,10 +1115,12 @@ function attendanceSummary_(events, members) {
 }
 
 function buildEventRows_(eventId) {
+  const event = calendarRows_().find(function(e) { return e.ID_Evenement === eventId; });
+  if (!event) throw new Error('Événement introuvable.');
   const members = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(member) {
-    return member.Nom && member.Prenom && isActive_(member.Actif);
+    return member.Nom && member.Prenom && isActive_(member.Actif) && eventForMember_(event, member);
   });
-  const responses = getRowsAsObjects_(UC_APP.sheets.reponses)
+  const responses = responseRows_()
     .filter(function(row) { return row.ID_Evenement === eventId; });
   const latestByPerson = {};
   responses.forEach(function(row) {
@@ -1118,7 +1130,7 @@ function buildEventRows_(eventId) {
   });
 
   const rows = members.map(function(member) {
-    const key = personKey_(member.Nom, member.Prenom, member.Email);
+    const key = memberKey_(member);
     const response = latestByPerson[key];
     return {
       nom: member.Nom,
@@ -1136,29 +1148,6 @@ function buildEventRows_(eventId) {
       creneaux: response ? response.Creneaux || '' : '',
       commentaire: response ? response.Commentaire || '' : ''
     };
-  });
-
-  Object.keys(latestByPerson).forEach(function(key) {
-    const alreadyListed = rows.some(function(row) {
-      return row.key === key || personKey_(row.nom, row.prenom, '') === key;
-    });
-    if (alreadyListed) return;
-    const response = latestByPerson[key];
-    rows.push({
-      nom: response.Nom,
-      prenom: response.Prenom,
-      statut: response.Statut,
-      cayenne: response.Cayenne,
-      reponse: response.Reponse,
-      causes: response.Causes,
-      precision: response.Precision,
-      aide: response.Aide_Disponible,
-      heureDebut: response.Heure_Debut_Aide,
-      heureFin: response.Heure_Fin_Aide,
-      participation: response.Participation || '',
-      creneaux: response.Creneaux || '',
-      commentaire: response.Commentaire || ''
-    });
   });
 
   const order = { 'Présent': 1, 'Je ne sais pas encore': 2, 'Absent excusé': 3, 'Absent': 4, 'Sans réponse': 5 };
@@ -1202,17 +1191,8 @@ function getRowsAsObjects_(sheetName) {
 function upsertMember_(member) {
   const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.membres);
   const table = getTableData_(UC_APP.sheets.membres);
-  const members = table.rows;
-  const key = personKey_(member.Nom, member.Prenom, member.Email);
-  const index = members.findIndex(function(row) {
-    return personKey_(row.Nom, row.Prenom, row.Email) === key;
-  });
-  const values = [[member.Nom, member.Prenom, member.Statut, member.Cayenne, member.Email, member.Telephone, 'Oui', member.Notes || '']];
-  if (index >= 0) {
-    sheet.getRange(table.rowNumbers[index], 1, 1, values[0].length).setValues(values);
-  } else {
-    sheet.getRange(sheet.getLastRow() + 1, 1, 1, values[0].length).setValues(values);
-  }
+  const index = table.rows.findIndex(function(m) { return memberKey_(m) === memberKey_(member); });
+  writeRecord_(UC_APP.sheets.membres, index < 0 ? sheet.getLastRow() + 1 : table.rowNumbers[index], member);
 }
 
 function markResponseReportSheet_(eventId, sheetName) {
@@ -1250,9 +1230,7 @@ function exportSheetToPdf_(sheet) {
 }
 
 function makeCrSheetName_(event) {
-  const date = asDate_(event.Date);
-  const datePart = date ? Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy_MM_dd') : String(event.Annee || 'ANNEE');
-  return ('CR_' + datePart + '_' + slug_(event.Type_Evenement || event.Titre)).substring(0, 95);
+  return 'CR_' + slug_(event.ID_Evenement).slice(0, 70) + '_' + accessHash_(event.ID_Evenement).slice(0, 8);
 }
 
 function indexBy_(rows, key) {
@@ -1304,8 +1282,10 @@ function asDate_(value) {
 function parseInputDate_(value) {
   const text = clean_(value);
   const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return asDate_(value);
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  if (!match) return null;
+  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return year >= 2020 && year <= 2100 && date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
 }
 
 function formatDate_(value) {

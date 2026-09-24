@@ -12,7 +12,7 @@ const events = [
 const config = {activeYear:2026,statuses:['Sociétaire','Aspirant','Compagnon'],cayennes:['Paris','Autre'],responseTypes:['Présent','Absent excusé','Disponible pour aider'],causes:['Travail','Familiale'],events,eventTypes:['JEP','Fête de novembre'],eventTemplates:[{id:'tpl-1',name:'JEP',defaultTitle:'Journées du patrimoine',type:'JEP',cayenne:'Paris',start:'09:00',end:'18:00',place:'Paris'}],urls:{publicUrl,adminUrl:publicUrl+'?page=admin'}};
 const dashboard = {year:2026,kpis:{events:2,members:1,presents:1,excused:0,noResponse:1,aids:1},events:events.map(e=>({...e,presents:1,excused:0,noResponse:0,aids:1})),members:[{nom:'Exemple',prenom:'Camille',statut:'Sociétaire',cayenne:'Paris',presents:1,excused:0,noResponse:1,aids:1,presenceRate:0.5}],causes:[]};
 function render(file) {
-  return readFileSync(new URL(file,src),'utf8').replace(/<\?!= include\('([A-Za-z]+)'\); \?>/g,(_,name)=>readFileSync(new URL(name+'.html',src),'utf8')).replaceAll('<?= publicUrl ?>',publicUrl).replaceAll('<?= adminUrl ?>',publicUrl+'?page=admin');
+  return readFileSync(new URL(file,src),'utf8').replace(/<\?!= include\('([A-Za-z]+)'\); \?>/g,(_,name)=>readFileSync(new URL(name+'.html',src),'utf8')).replaceAll('<?= appVersion ?>','2026.09.23.2').replaceAll('<?= publicUrl ?>',publicUrl).replaceAll('<?= adminUrl ?>',publicUrl+'?page=admin');
 }
 function app(file, overrides={}) {
   config.profile={nom:'Exemple',prenom:'Camille',statut:'Sociétaire',cayenne:'Paris',email:'camille@example.test',telephone:''};
@@ -76,6 +76,53 @@ test('bureau attendance preserves drafts after failure and clears personal data 
 });
 
 function answer(a,id,value){a.doc.querySelector('[data-event="'+id+'"] [data-field="reponse"][value="'+value+'"]').click();}
+
+test('upcoming unanswered events come first, filters retain drafts, and server receipt time appears after saving',()=>{
+ const data={...structuredClone(config),today:'2026-09-23',events:[{...events[0],date:'2026-09-19',version:'V1'},{...events[1],date:'2026-11-21',version:'V2'}],responses:[]};
+ const a=app('Public.html',{getPublicConfig:()=>data,submitResponses:payload=>({ok:true,receipts:payload.answers.map(r=>({eventId:r.eventId,savedAt:'2026-09-23T12:34:00Z'}))})});
+ assert.equal(a.doc.querySelector('[data-event]').dataset.event,'evt-2');
+ answer(a,'evt-1','Présent');a.fill('eventView','upcoming','change');answer(a,'evt-2','Je ne sais pas encore');
+ a.doc.getElementById('saveAllTop').click();a.flush();assert.equal(a.calls.find(c=>c.method==='submitResponses').args[0].answers.length,2);
+ assert.match(a.doc.querySelector('[data-event="evt-2"] .save-indicator').textContent,/23\/09.*14:34/);
+ assert.equal(a.calls.find(c=>c.method==='submitResponses').args[0].answers[0].eventVersion,'V1');
+ a.fill('eventView','unanswered','change');assert.equal(a.doc.querySelectorAll('[data-event]').length,0);a.dom.window.close();
+});
+
+test('bureau edits or cancels an existing event with its ID, version and selected audience',()=>{
+ const event={...events[0],date:'2026-09-19',version:'ORIGINAL',statuses:['Compagnon'],cayennes:['Paris'],active:true,modalites:'Standard'};
+ const a=app('Admin.html',{getDashboardData:()=>({...structuredClone(dashboard),calendar:[event]}),updateEvent:()=>({ok:true,message:'Mis à jour'})});
+ a.login();a.doc.querySelector('[data-edit-calendar]').click();
+ assert.equal(a.doc.getElementById('eventDate').value,'2026-09-19');assert.equal(a.doc.getElementById('templateSelect').disabled,true);
+ assert.equal(a.doc.querySelector('[data-audience="statuses"][value="Compagnon"]').checked,true);
+ a.fill('eventDate','2027-02-04');a.fill('eventTitle','Réunion reportée');a.submit('eventForm');a.flush();
+ const call=a.calls.find(c=>c.method==='updateEvent');assert.equal(call.args[0].id,'evt-1');assert.equal(call.args[0].version,'ORIGINAL');assert.equal(call.args[0].date,'2027-02-04');assert.equal(call.args[0].statuses[0],'Compagnon');
+ assert.equal(a.calls.filter(c=>c.method==='createEventFromTemplate').length,0);
+ a.doc.querySelector('[data-toggle-calendar]').click();a.flush();assert.equal(a.calls.filter(c=>c.method==='updateEvent').at(-1).args[0].active,false);
+ a.dom.window.close();
+});
+
+test('bureau corrects email without replacing code and discards private mail/reason displays on logout',()=>{
+ const a=app('Admin.html',{
+   updateMemberProfile:()=>({ok:true,message:'Adresse corrigée'}),
+   listMailDeliveries:()=>[{id:'CONF1',name:'Camille Exemple',title:'Réunion des jeunes',email:'PRIVATE_EMAIL',type:'CONFIRMATION',state:'SANS_EMAIL',detail:'Adresse à corriger'}],
+   getEventConfidentialDetails:()=>[{name:'Camille Exemple',response:'Absent excusé',causes:'PRIVATE_REASON',precision:'PRIVATE_DETAIL',comment:'PRIVATE_COMMENT'}]
+ });
+ a.login();a.doc.querySelector('[data-email-member]').click();a.fill('memberEmailValue','nouvelle@example.test');a.submit('memberEmailForm');a.flush();
+ const call=a.calls.find(c=>c.method==='updateMemberProfile');assert.equal(call.args[0].previousEmail,'camille@example.test');assert.equal(call.args[0].email,'nouvelle@example.test');assert.equal(call.args[1],'BUREAU_SESSION');
+ assert.equal(a.calls.filter(c=>c.method==='manageMemberCode').length,0);
+ a.doc.getElementById('loadMailLog').click();a.flush();assert.match(a.doc.getElementById('mailDeliveries').textContent,/Réunion des jeunes.*Confirmation.*Adresse à corriger/);
+ a.fill('mailSearch','introuvable');assert.doesNotMatch(a.doc.getElementById('mailDeliveries').textContent,/PRIVATE_EMAIL/);
+ a.doc.querySelector('[data-confidential-event]').click();a.flush();assert.match(a.doc.getElementById('confidentialDetails').textContent,/PRIVATE_REASON/);
+ a.doc.getElementById('lockSession').click();a.flush();assert.doesNotMatch(a.doc.body.textContent,/PRIVATE_EMAIL|PRIVATE_REASON|PRIVATE_DETAIL|PRIVATE_COMMENT/);assert.equal(a.doc.getElementById('memberEmailForm').hidden,true);
+ a.dom.window.close();
+});
+
+test('a late confidential response is discarded after closing the panel or locking the bureau',()=>{
+ const a=app('Admin.html',{getEventConfidentialDetails:()=>[{name:'Personne',precision:'PRIVATE_LATE'}]});a.login();
+ a.doc.querySelector('[data-confidential-event]').click();a.doc.getElementById('closeConfidential').click();a.flush();
+ assert.equal(a.doc.getElementById('confidentialPanel').hidden,true);assert.doesNotMatch(a.doc.body.textContent,/PRIVATE_LATE/);
+ a.doc.querySelector('[data-confidential-event]').click();a.doc.getElementById('lockSession').click();a.flush();assert.doesNotMatch(a.doc.body.textContent,/PRIVATE_LATE/);a.dom.window.close();
+});
 
 test('either general save button records every changed choice, including the youth meeting hidden by a filter',()=>{
  for(const buttonId of ['saveAllTop','submitBtn']){
