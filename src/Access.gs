@@ -178,13 +178,17 @@ function sendMemberAccessEmail_(issued) {
   const body = [
     'Bonjour ' + (clean_(profile.prenom) || ''),
     '',
-    'Le bureau de la Cayenne de Paris vient de créer ou de renouveler votre accès personnel.',
+    'Le bureau de la Cayenne de Paris vient de créer un espace en ligne afin de faciliter la gestion des présences aux différents rendez-vous de la Cayenne : réunions, cours, agapes et autres événements.',
     '',
-    'À quoi sert cet espace ?',
-    'Cet espace membre permet de répondre aux rendez-vous de la Cayenne et d’indiquer simplement si vous serez présent, absent ou absent excusé.',
-    'Selon les événements, vous pourrez également préciser votre participation au repas, vos créneaux ou votre disponibilité pour aider.',
-    'Ces réponses permettent au bureau d’organiser plus facilement les réunions, les repas, les équipes d’aide et le suivi des présences.',
-    'Vous pourrez revenir plus tard dans votre espace pour modifier une réponse déjà enregistrée.',
+    'Depuis cet espace, vous pourrez indiquer pour chaque rendez-vous si vous serez présent, absent ou absent excusé.',
+    'Selon l’événement, vous pourrez également préciser votre participation au repas, vos créneaux ou votre disponibilité pour aider.',
+    '',
+    'Important : les excuses seront désormais uniquement prises en compte lorsqu’elles auront été enregistrées via ce formulaire.',
+    'Il ne sera donc plus nécessaire de transmettre votre excuse séparément au bureau.',
+    '',
+    'Vos réponses restent modifiables : vous pourrez revenir dans votre espace à tout moment pour corriger ou compléter une réponse déjà enregistrée.',
+    '',
+    'Ces informations permettent au bureau d’organiser plus facilement les réunions, les cours, les agapes, les repas, les équipes d’aide et le suivi des présences.',
     '',
     'Votre code personnel : ' + issued.code,
     '',
@@ -199,7 +203,7 @@ function sendMemberAccessEmail_(issued) {
     'Cayenne de Paris — Union Compagnonnique'
   ].join('\n');
   try {
-    MailApp.sendEmail({to:address, subject:'Votre code d’accès — Cayenne de Paris', body:body, name:'Cayenne de Paris'});
+    MailApp.sendEmail({to:address, subject:'Votre accès à l’espace présences — Cayenne de Paris', body:body, name:'Cayenne de Paris'});
     return {state:'sent', address:address};
   } catch (error) {
     return {state:'error', address:address, detail:clean_(error && error.message).slice(0,250)};
