@@ -10,6 +10,44 @@ function resetEventEdit(){
   document.getElementById('createEvent').textContent='Ajouter au calendrier';
   document.getElementById('eventForm').reset();applySelectedTemplate();renderAudience();
 }
+
+function agendaPdfToWindow(payload,popup){
+  try{
+    const binary=atob(payload.data||''),bytes=new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+    const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+    if(popup)popup.location.href=url;else{const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();}
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(error){if(popup)try{popup.close();}catch(_){}Ui.notice('adminNotice','Impossible d’ouvrir le PDF.');}
+}
+function openAgendaWindow(){
+  try{const popup=window.open('about:blank','_blank');if(popup&&popup.document)popup.document.body.textContent='Chargement de l’ordre du jour…';return popup;}catch(_){return null;}
+}
+function pickAgendaPdf(id){
+  if(!state.token||state.agendaBusy)return;state.agendaEventId=id;const input=document.getElementById('agendaFileInput');input.value='';input.click();
+}
+function uploadAgendaPdf(file){
+  const id=state.agendaEventId;if(!id||!file||state.agendaBusy)return;
+  if(file.type!=='application/pdf'||!/\.pdf$/i.test(file.name)){Ui.notice('adminNotice','Choisissez un fichier PDF.');return;}
+  if(file.size>4*1024*1024){Ui.notice('adminNotice','Le PDF est trop volumineux. Limite : 4 Mo.');return;}
+  const session=state.session,reader=new FileReader();state.agendaBusy=true;renderCalendar();
+  reader.onerror=()=>{state.agendaBusy=false;renderCalendar();Ui.notice('adminNotice','Impossible de lire ce fichier PDF.');};
+  reader.onload=()=>{
+    const data=String(reader.result||'').replace(/^data:application\/pdf;base64,/i,'');
+    google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;state.agendaBusy=false;state.agendaEventId='';Ui.notice('adminNotice',result.message,'ok');loadDashboard();}).withFailureHandler(error=>{if(session!==state.session)return;state.agendaBusy=false;renderCalendar();Ui.notice('adminNotice',error.message||error);}).saveAgendaPdf(id,{name:file.name,mimeType:file.type,data:data},pin());
+  };
+  reader.readAsDataURL(file);
+}
+function openAgendaPdfAdmin(id){
+  if(!state.token)return;const session=state.session,popup=openAgendaWindow();
+  google.script.run.withSuccessHandler(payload=>{if(session!==state.session){if(popup)popup.close();return;}agendaPdfToWindow(payload,popup);}).withFailureHandler(error=>{if(popup)try{popup.close();}catch(_){}if(session===state.session)Ui.notice('adminNotice',error.message||error);}).getAgendaPdfAdmin(id,pin());
+}
+function removeAgendaPdf(id){
+  if(!state.token||state.agendaBusy||!confirm('Supprimer l’ordre du jour PDF de cette réunion ?'))return;
+  const session=state.session;state.agendaBusy=true;renderCalendar();
+  google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;state.agendaBusy=false;Ui.notice('adminNotice',result.message,'ok');loadDashboard();}).withFailureHandler(error=>{if(session!==state.session)return;state.agendaBusy=false;renderCalendar();Ui.notice('adminNotice',error.message||error);}).deleteAgendaPdf(id,pin());
+}
+
 function editCalendarEvent(id){
   if(!state.token||state.eventBusy)return;const e=calendarEvent(id);if(!e)return;
   state.editingEvent=e;document.getElementById('eventFormTitle').textContent='Modifier le rendez-vous';
@@ -27,7 +65,7 @@ function toggleCalendarEvent(id){
 }
 function deleteCalendarEvent(id){
   if(!state.token||state.eventBusy)return;const e=calendarEvent(id);if(!e)return;
-  if(!confirm('Supprimer définitivement « '+e.title+' » ? Toutes les réponses, les pointages et le journal de mails liés à cet événement seront également supprimés. Cette action est irréversible.'))return;
+  if(!confirm('Supprimer définitivement « '+e.title+' » ? Toutes les réponses, les pointages, le journal de mails et l’ordre du jour PDF liés à cet événement seront également supprimés. Cette action est irréversible.'))return;
   const session=state.session;state.eventBusy=true;
   google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;state.eventBusy=false;Ui.notice('adminNotice',result.message,'ok');resetEventEdit();loadDashboard();}).withFailureHandler(error=>{if(session!==state.session)return;state.eventBusy=false;Ui.notice('adminNotice',error.message||error);}).deleteEvent(id,pin());
 }
@@ -65,14 +103,15 @@ function loadConfidential(id){
   }).withFailureHandler(error=>{if(session!==state.session||request!==state.confidentialRequest)return;document.getElementById('confidentialDetails').textContent=error.message||error;}).getEventConfidentialDetails(id,pin());
 }
 function clearAuditPanels(){
-  state.mailRows=[];state.eventBusy=false;closeMemberEmail();closeConfidential();renderBackgroundStatus(null);
+  state.mailRows=[];state.eventBusy=false;state.agendaBusy=false;state.agendaEventId='';document.getElementById('agendaFileInput').value='';closeMemberEmail();closeConfidential();renderBackgroundStatus(null);
   document.getElementById('mailDeliveries').textContent='';document.getElementById('mailSearch').value='';Ui.loading('loadMailLog',false);
   resetEventEdit();
 }
 document.getElementById('eventsRoot').addEventListener('click',event=>{
-  const edit=event.target.closest('[data-edit-calendar]'),toggle=event.target.closest('[data-toggle-calendar]'),remove=event.target.closest('[data-delete-calendar]');
-  if(edit)editCalendarEvent(edit.dataset.editCalendar);if(toggle)toggleCalendarEvent(toggle.dataset.toggleCalendar);if(remove)deleteCalendarEvent(remove.dataset.deleteCalendar);
+  const edit=event.target.closest('[data-edit-calendar]'),toggle=event.target.closest('[data-toggle-calendar]'),remove=event.target.closest('[data-delete-calendar]'),upload=event.target.closest('[data-agenda-upload]'),open=event.target.closest('[data-agenda-open]'),agendaDelete=event.target.closest('[data-agenda-delete]');
+  if(edit)editCalendarEvent(edit.dataset.editCalendar);if(toggle)toggleCalendarEvent(toggle.dataset.toggleCalendar);if(remove)deleteCalendarEvent(remove.dataset.deleteCalendar);if(upload)pickAgendaPdf(upload.dataset.agendaUpload);if(open)openAgendaPdfAdmin(open.dataset.agendaOpen);if(agendaDelete)removeAgendaPdf(agendaDelete.dataset.agendaDelete);
 });
+document.getElementById('agendaFileInput').addEventListener('change',event=>uploadAgendaPdf(event.target.files&&event.target.files[0]));
 document.getElementById('cancelEventEdit').addEventListener('click',()=>{if(!state.eventBusy)resetEventEdit();});
 document.getElementById('memberAccessList').addEventListener('click',event=>{const button=event.target.closest('[data-email-member]');if(button)editMemberEmail(button.dataset.emailMember);});
 document.getElementById('cancelMemberEmail').addEventListener('click',closeMemberEmail);

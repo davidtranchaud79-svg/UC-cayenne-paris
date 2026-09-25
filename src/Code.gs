@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.25.1',
+  version: '2026.09.25.2',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -169,7 +169,7 @@ function getPublicConfig(token, requestedYear) {
     responseTypes: ['Présent', 'Absent', 'Absent excusé'],
     causes: Array.from(new Set(getOptionList_('G', UC_APP.defaults.causes).concat(['Autres']))),
     eventTypes: getOptionList_('H', UC_APP.defaults.eventTypes),
-    events: getEventsForYear_(year).filter(function(e) { return eventForMember_(e, member); }).map(formatEventForClient_)
+    events: getEventsForYear_(year).filter(function(e) { return eventForMember_(e, member); }).map(function(e) { return formatEventForClient_(e, member); })
   };
 }
 
@@ -384,7 +384,7 @@ function getDashboardData(year, adminPin) {
   data.notifications = notificationStatus_();
   data.background = backgroundStatus_();
   data.version = UC_APP.version;
-  data.calendar = calendarRows_().filter(function(e) { return eventYear_(e) === data.year; }).sort(function(a,b) { return asDate_(a.Date) - asDate_(b.Date); }).map(formatEventForClient_);
+  data.calendar = calendarRows_().filter(function(e) { return eventYear_(e) === data.year; }).sort(function(a,b) { return asDate_(a.Date) - asDate_(b.Date); }).map(function(e) { return Object.assign(formatEventForClient_(e), {agenda: agendaAdminInfo_(e)}); });
   return data;
 }
 
@@ -823,7 +823,7 @@ function getEventsForYear_(year) {
     .sort(function(a, b) { return asDate_(a.Date) - asDate_(b.Date); });
 }
 
-function formatEventForClient_(event) {
+function formatEventForClient_(event, member) {
   return {
     id: event.ID_Evenement,
     year: eventYear_(event),
@@ -839,7 +839,8 @@ function formatEventForClient_(event) {
     place: event.Lieu,
     cayenne: event.Cayenne,
     comment: clean_(event.Commentaire),
-    modalites: clean_(event.Modalites || 'Standard')
+    modalites: clean_(event.Modalites || 'Standard'),
+    agenda: member ? agendaClientInfo_(event, member) : null
   };
 }
 

@@ -97,6 +97,118 @@ function writeRecord_(sheetName, rowNumber, record) {
   });
   range.setValues([values]);
 }
+
+function agendaPropertyKey_(eventId) { return 'uc.agenda.' + accessHash_(clean_(eventId)); }
+function agendaMeetingType_(event) {
+  const type = clean_(event && event.Type_Evenement);
+  return type === 'Réunion compagnon' || type === 'Réunion des jeunes' ? type : '';
+}
+function agendaMeta_(eventId) {
+  const raw = PropertiesService.getScriptProperties().getProperty(agendaPropertyKey_(eventId));
+  if (!raw) return null;
+  try {
+    const meta = JSON.parse(raw);
+    return meta && clean_(meta.fileId) ? meta : null;
+  } catch (_) { return null; }
+}
+function agendaAdminInfo_(event) {
+  const meta = agendaMeta_(event.ID_Evenement);
+  const type = agendaMeetingType_(event);
+  return {
+    eligible: !!type,
+    available: !!meta,
+    name: meta ? clean_(meta.name) : '',
+    updatedAt: meta ? clean_(meta.updatedAt) : '',
+    restrictedToCompanions: !!(meta && meta.visibility === 'companions') || type === 'Réunion compagnon'
+  };
+}
+function canMemberReadAgenda_(event, member, meta) {
+  if (!agendaMeetingType_(event) || !eventForMember_(event, member)) return false;
+  const companionOnly = clean_(event.Type_Evenement) === 'Réunion compagnon' || (meta && meta.visibility === 'companions');
+  return !companionOnly || clean_(member.Statut) === 'Compagnon';
+}
+function agendaClientInfo_(event, member) {
+  const meta = agendaMeta_(event.ID_Evenement);
+  if (!meta || !canMemberReadAgenda_(event, member, meta)) return null;
+  return {available:true, name:clean_(meta.name), updatedAt:clean_(meta.updatedAt)};
+}
+function agendaFolder_() {
+  const props = PropertiesService.getScriptProperties(), slot = 'uc.agenda.folder';
+  const id = props.getProperty(slot);
+  if (id) {
+    try { return DriveApp.getFolderById(id); } catch (_) { props.deleteProperty(slot); }
+  }
+  const folder = DriveApp.createFolder('UC Cayenne de Paris - Ordres du jour');
+  props.setProperty(slot, folder.getId());
+  return folder;
+}
+function agendaPdfPayload_(meta) {
+  let file;
+  try { file = DriveApp.getFileById(meta.fileId); } catch (_) { throw new Error('Ordre du jour indisponible. Le bureau doit remettre le PDF.'); }
+  const blob = file.getBlob(), bytes = blob.getBytes();
+  return {name:clean_(meta.name) || file.getName() || 'ordre-du-jour.pdf', mimeType:'application/pdf', data:Utilities.base64Encode(bytes)};
+}
+function saveAgendaPdf(eventId, payload, token) {
+  assertAdmin_(token); setupSystemIfMissing_();
+  const id = clean_(eventId), event = calendarRows_().find(function(e) { return clean_(e.ID_Evenement) === id; });
+  if (!event) throw new Error('Événement introuvable.');
+  const type = agendaMeetingType_(event);
+  if (!type) throw new Error('Un ordre du jour PDF peut être ajouté uniquement à une réunion des jeunes ou une réunion compagnon.');
+  payload = payload || {};
+  const originalName = clean_(payload.name);
+  if (!/\.pdf$/i.test(originalName) || clean_(payload.mimeType) !== 'application/pdf') throw new Error('Choisissez un fichier PDF.');
+  const encoded = clean_(payload.data).replace(/^data:application\/pdf;base64,/i, '');
+  if (!encoded || encoded.length > 6 * 1024 * 1024) throw new Error('Le PDF est trop volumineux. Limite : 4 Mo.');
+  let bytes;
+  try { bytes = Utilities.base64Decode(encoded); } catch (_) { throw new Error('Le fichier PDF est illisible.'); }
+  if (!bytes || !bytes.length || bytes.length > 4 * 1024 * 1024) throw new Error('Le PDF est trop volumineux. Limite : 4 Mo.');
+  const signature = bytes.slice(0, 5).map(function(b) { return String.fromCharCode((Number(b) + 256) % 256); }).join('');
+  if (signature !== '%PDF-') throw new Error('Le fichier sélectionné n’est pas un PDF valide.');
+  const safeName = ('ODJ_' + formatDate_(event.Date) + '_' + slug_(event.Titre).slice(0, 60) + '.pdf').replace(/_+/g, '_');
+  const blob = Utilities.newBlob(bytes, 'application/pdf', safeName);
+  const file = agendaFolder_().createFile(blob);
+  try { file.setDescription('Ordre du jour — ' + clean_(event.Titre) + ' — ' + formatDate_(event.Date)); } catch (_) {}
+  const old = agendaMeta_(id);
+  const meta = {fileId:file.getId(), name:safeName, updatedAt:new Date().toISOString(), visibility:type === 'Réunion compagnon' ? 'companions' : 'members'};
+  PropertiesService.getScriptProperties().setProperty(agendaPropertyKey_(id), JSON.stringify(meta));
+  if (old && old.fileId && old.fileId !== meta.fileId) {
+    try { DriveApp.getFileById(old.fileId).setTrashed(true); } catch (_) {}
+  }
+  return {ok:true, agenda:agendaAdminInfo_(event), message:type === 'Réunion compagnon' ? 'Ordre du jour enregistré. Il est accessible uniquement aux Compagnons.' : 'Ordre du jour enregistré. Il est accessible aux membres concernés par cette réunion.'};
+}
+function getAgendaPdf(eventId, token) {
+  const member = assertMember_(token), id = clean_(eventId);
+  const event = calendarRows_().find(function(e) { return clean_(e.ID_Evenement) === id && isActive_(e.Actif); });
+  if (!event || !eventForMember_(event, member)) throw new Error('Ordre du jour indisponible pour votre profil.');
+  const meta = agendaMeta_(id);
+  if (!meta) throw new Error('Aucun ordre du jour PDF n’a encore été ajouté.');
+  if (!canMemberReadAgenda_(event, member, meta)) throw new Error('Cet ordre du jour est réservé aux Compagnons.');
+  return agendaPdfPayload_(meta);
+}
+function getAgendaPdfAdmin(eventId, token) {
+  assertAdmin_(token);
+  const id = clean_(eventId), event = calendarRows_().find(function(e) { return clean_(e.ID_Evenement) === id; });
+  if (!event) throw new Error('Événement introuvable.');
+  const meta = agendaMeta_(id);
+  if (!meta) throw new Error('Aucun ordre du jour PDF n’a encore été ajouté.');
+  return agendaPdfPayload_(meta);
+}
+function deleteAgendaForEvent_(eventId) {
+  const props = PropertiesService.getScriptProperties(), key = agendaPropertyKey_(eventId), meta = agendaMeta_(eventId);
+  props.deleteProperty(key);
+  if (meta && meta.fileId) {
+    try { DriveApp.getFileById(meta.fileId).setTrashed(true); } catch (_) {}
+  }
+  return !!meta;
+}
+function deleteAgendaPdf(eventId, token) {
+  assertAdmin_(token);
+  const id = clean_(eventId);
+  if (!calendarRows_().some(function(e) { return clean_(e.ID_Evenement) === id; })) throw new Error('Événement introuvable.');
+  const deleted = deleteAgendaForEvent_(id);
+  return {ok:true, deleted:deleted, message:deleted ? 'Ordre du jour supprimé.' : 'Aucun ordre du jour n’était enregistré.'};
+}
+
 function updateEvent(payload, token) {
   assertAdmin_(token); setupSystemIfMissing_();
   return accessLocked_(function() {
@@ -117,7 +229,8 @@ function updateEvent(payload, token) {
     if (changes.Commentaire.length > 2000 || changes.Lieu.length > 300) throw new Error('Texte trop long.');
     queueFollowup_([current.ID_Evenement]);
     writeRecord_(UC_APP.sheets.calendrier, table.rowNumbers[matches[0].i], changes);
-    return {ok:true,message:changes.Actif === 'Non' ? 'Événement annulé. Les réponses sont conservées.' : 'Événement mis à jour. Les réponses restent rattachées à ce rendez-vous.'};
+    const agendaRemoved = clean_(current.Type_Evenement) !== changes.Type_Evenement && !!agendaMeta_(current.ID_Evenement) ? deleteAgendaForEvent_(current.ID_Evenement) : false;
+    return {ok:true,message:(changes.Actif === 'Non' ? 'Événement annulé. Les réponses sont conservées.' : 'Événement mis à jour. Les réponses restent rattachées à ce rendez-vous.') + (agendaRemoved ? ' L’ordre du jour a été supprimé car le type de réunion a changé.' : '')};
   });
 }
 function updateOwnEmail(email, token) {
@@ -148,11 +261,12 @@ function deleteEvent(eventId, token) {
     const deletedResponses = deleteEventRows_(UC_APP.sheets.reponses, id);
     const deletedAttendance = deleteEventRows_(UC_APP.sheets.pointages, id);
     const deletedMails = deleteEventRows_(UC_APP.sheets.mails, id);
+    const deletedAgenda = deleteAgendaForEvent_(id);
     getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier).deleteRow(table.rowNumbers[matches[0].i]);
     PropertiesService.getScriptProperties().deleteProperty('uc.job.event.' + accessHash_(id));
     queueFollowup_([]);
-    return {ok:true,deletedResponses:deletedResponses,deletedAttendance:deletedAttendance,deletedMails:deletedMails,
-      message:'Événement supprimé définitivement avec ' + deletedResponses + ' réponse(s) associée(s).'};
+    return {ok:true,deletedResponses:deletedResponses,deletedAttendance:deletedAttendance,deletedMails:deletedMails,deletedAgenda:deletedAgenda,
+      message:'Événement supprimé définitivement avec ' + deletedResponses + ' réponse(s) associée(s).' + (deletedAgenda ? ' L’ordre du jour PDF a également été supprimé.' : '')};
   });
 }
 function updateMemberProfile(payload, token) {

@@ -45,6 +45,9 @@ function app(file, overrides={}) {
         else if(method==='createEventFromTemplate')success({ok:true,message:'Événement créé.'});
         else if(method==='generateEventSheet')success({sheetName:'CR_JEP',sheetUrl:'https://docs.google.com/spreadsheets/d/demo/edit#gid=1'});
         else if(method==='generateAllEventSheets')success([{sheetName:'CR_JEP',sheetUrl:'https://docs.google.com/spreadsheets/d/demo/edit#gid=1'}]);
+        else if(method==='saveAgendaPdf')success({ok:true,message:'Ordre du jour enregistré.'});
+        else if(method==='deleteAgendaPdf')success({ok:true,message:'Ordre du jour supprimé.'});
+        else if(method==='getAgendaPdf'||method==='getAgendaPdfAdmin')success({name:'odj.pdf',mimeType:'application/pdf',data:'JVBERi0xLjQ='});
         else throw Error('Unexpected method '+method);
       }catch(error){failure(error);}});};
     }});return runner;}}};
@@ -318,4 +321,13 @@ test('refreshing does not strand an in-flight report and locking ignores its lat
   assert.equal(a.doc.querySelector('.report-links a'),null);
   assert.equal(a.doc.getElementById('generateAll').disabled,true);
   a.dom.window.close();
+});
+
+
+test('agenda controls appear only when the server exposes an agenda, and bureau cards label companion confidentiality',()=>{
+  const companionEvent={...events[0],type:'Réunion compagnon',agenda:{eligible:true,available:true,name:'ODJ.pdf',restrictedToCompanions:true}};
+  const admin=app('Admin.html',{getDashboardData:()=>({...structuredClone(dashboard),calendar:[companionEvent]})});admin.login();
+  assert.ok(admin.doc.querySelector('[data-agenda-upload="evt-1"]'));assert.ok(admin.doc.querySelector('[data-agenda-open="evt-1"]'));assert.match(admin.doc.getElementById('eventsRoot').textContent,/Compagnons uniquement/);admin.dom.window.close();
+  const member=app('Public.html',{getPublicConfig:()=>({...structuredClone(config),events:[{...events[0],agenda:{available:true,name:'ODJ.pdf'}}]})});
+  assert.ok(member.doc.querySelector('[data-agenda-open="evt-1"]'));member.dom.window.close();
 });

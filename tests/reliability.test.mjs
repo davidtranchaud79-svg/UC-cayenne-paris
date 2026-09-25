@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import {randomUUID,createHash} from 'node:crypto';
 
 function fixture(){
-  const props=new Map([['uc.participation.schema','2']]),cache=new Map(),sheets=new Map(),writes=[],sent=[];
+  const props=new Map([['uc.participation.schema','2']]),cache=new Map(),sheets=new Map(),writes=[],sent=[],driveFiles=new Map();let driveSeq=0;
   let locked=false,failWrite=null;
   function makeSheet(name,grid=[]){
     const sheet={grid,getName:()=>name,getSheetId:()=>Array.from(sheets.keys()).indexOf(name)+1,
@@ -35,10 +35,15 @@ function fixture(){
     PropertiesService:{getScriptProperties:()=>({getProperties:()=>Object.fromEntries(props),getProperty:k=>props.get(k)||null,setProperty:(k,v)=>props.set(k,v),deleteProperty:k=>props.delete(k)})},
     CacheService:{getScriptCache:()=>({get:k=>cache.get(k)||null,put:(k,v)=>cache.set(k,v),remove:k=>cache.delete(k)})},
     LockService:{getScriptLock:()=>({waitLock(){assert.equal(locked,false);locked=true;},releaseLock(){locked=false;}})},
-    Utilities:{getUuid:randomUUID,computeDigest:(_,s)=>Array.from(createHash('sha256').update(s).digest()),DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},formatDate:(d,z,p)=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:z,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d).map(p=>[p.type,p.value]));return p.replace(/yyyy|MM|dd|HH|mm/g,k=>parts[{yyyy:'year',MM:'month',dd:'day',HH:'hour',mm:'minute'}[k]]);}},
+    Utilities:{getUuid:randomUUID,computeDigest:(_,s)=>Array.from(createHash('sha256').update(s).digest()),DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},formatDate:(d,z,p)=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:z,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d).map(p=>[p.type,p.value]));return p.replace(/yyyy|MM|dd|HH|mm/g,k=>parts[{yyyy:'year',MM:'month',dd:'day',HH:'hour',mm:'minute'}[k]]);},base64Decode:s=>Array.from(Buffer.from(s,'base64')),base64Encode:b=>Buffer.from(Array.from(b)).toString('base64'),newBlob:(bytes,type,name)=>({getBytes:()=>Array.from(bytes),getContentType:()=>type,getName:()=>name})},
     Session:{getScriptTimeZone:()=> 'Europe/Paris'},SpreadsheetApp:{flush(){}},
     ScriptApp:{getService:()=>({getUrl:()=> 'https://script.google.com/macros/s/TEST/exec'}),getProjectTriggers:()=>[],newTrigger:()=>({timeBased(){return this;},everyMinutes(){return this;},create(){}})},
-    MailApp:{getRemainingDailyQuota:()=>100,sendEmail:m=>{assert.equal(locked,false);sent.push(m);}}
+    MailApp:{getRemainingDailyQuota:()=>100,sendEmail:m=>{assert.equal(locked,false);sent.push(m);}},
+    DriveApp:{
+      createFolder:()=>({getId:()=> 'AGENDA_FOLDER',createFile:blob=>{const id='AGENDA-'+(++driveSeq),file={trashed:false,getId:()=>id,getName:()=>blob.getName(),getBlob:()=>blob,setDescription(){return file;},setTrashed(v){file.trashed=v;return file;}};driveFiles.set(id,file);return file;}}),
+      getFolderById:()=>({getId:()=> 'AGENDA_FOLDER',createFile:blob=>{const id='AGENDA-'+(++driveSeq),file={trashed:false,getId:()=>id,getName:()=>blob.getName(),getBlob:()=>blob,setDescription(){return file;},setTrashed(v){file.trashed=v;return file;}};driveFiles.set(id,file);return file;}}),
+      getFileById:id=>{const file=driveFiles.get(id);if(!file||file.trashed)throw Error('File not found');return file;}
+    }
   });
   vm.runInContext(['Code.gs','Access.gs','Notifications.gs','Reliability.gs','Background.gs'].map(f=>readFileSync(new URL('../src/'+f,import.meta.url),'utf8')).join('\n'),c);
   const headers=vm.runInContext('UC_APP.headers',c),names=vm.runInContext('UC_APP.sheets',c);
@@ -54,7 +59,7 @@ function fixture(){
   appendResponse();
   c.getSpreadsheet_=()=>ss;c.getSettings_=()=>({admin_pin:'bureau-test-code',annee_active:2026});c.getOptionList_=(_,fallback)=>fallback;
   const bureau=c.loginBureau('bureau-test-code').token;
-  return {c,props,cache,sheets,members,calendar,responses,headers,writes,sent,bureau,appendResponse,makeSheet,failWrite:fn=>failWrite=fn,locked:()=>locked};
+  return {c,props,cache,sheets,members,calendar,responses,headers,writes,sent,driveFiles,bureau,appendResponse,makeSheet,failWrite:fn=>failWrite=fn,locked:()=>locked};
 }
 
 test('additive migration keeps row-three validation headers, original cells and history; interrupted ID assignment is recoverable',()=>{
@@ -171,4 +176,26 @@ test('shareable report excludes private reasons and comments; confidential detai
   assert.notEqual(f.c.makeCrSheetName_({...f.c.calendarRows_()[0],ID_Evenement:'SECOND'}),result.sheetName,'same date/type never shares a report');
   const legacy=f.makeSheet('CR_OLD',[...Array.from({length:9},()=>[]),['Nom','Prénom','Cause','Précision','Commentaire'],['Exemple','Camille','PRIVATE_CAUSE','PRIVATE_DETAIL','PRIVATE_COMMENT']]);
   f.c.redactLegacyReports_();assert.doesNotMatch(JSON.stringify(legacy.grid),/PRIVATE_/);assert.equal(f.c.getEventConfidentialDetails('EVT-1',f.bureau)[0].precision,'PRIVATE_DETAIL');
+});
+
+
+test('agenda PDFs stay private: companion meetings are readable only by Compagnons while youth agendas follow event audience',()=>{
+  const f=fixture();f.c.ensureAuditSchema_();const members=f.c.getRowsAsObjects_('MEMBRES');
+  const companion=members.find(m=>m.Statut==='Compagnon'),aspirant=members.find(m=>m.Statut==='Aspirant');
+  const companionCode=f.c.manageMemberCode(companion.ID_Membre,'issue',f.bureau).code;
+  const aspirantCode=f.c.manageMemberCode(aspirant.ID_Membre,'issue',f.bureau).code;
+  const companionToken=f.c.loginMember(companionCode).token,aspirantToken=f.c.loginMember(aspirantCode).token;
+  const pdf=Buffer.from('%PDF-1.4\nAGENDA');
+  const saved=f.c.saveAgendaPdf('EVT-1',{name:'odj.pdf',mimeType:'application/pdf',data:pdf.toString('base64')},f.bureau);
+  assert.equal(saved.agenda.restrictedToCompanions,true);
+  assert.equal(f.c.getPublicConfig(companionToken,2026).events[0].agenda.available,true);
+  assert.equal(f.c.getPublicConfig(aspirantToken,2026).events[0].agenda,null);
+  assert.throws(()=>f.c.getAgendaPdf('EVT-1',aspirantToken),/réservé aux Compagnons/);
+  assert.equal(Buffer.from(f.c.getAgendaPdf('EVT-1',companionToken).data,'base64').toString(),pdf.toString());
+  f.calendar.grid[3][4]='Réunion des jeunes';
+  assert.equal(f.c.getPublicConfig(aspirantToken,2026).events[0].agenda,null,'changing the meeting type cannot widen access to a formerly companion-only PDF');
+  f.c.deleteAgendaPdf('EVT-1',f.bureau);
+  f.c.saveAgendaPdf('EVT-1',{name:'jeunes.pdf',mimeType:'application/pdf',data:pdf.toString('base64')},f.bureau);
+  assert.equal(f.c.getPublicConfig(aspirantToken,2026).events[0].agenda.available,true);
+  assert.equal(Buffer.from(f.c.getAgendaPdf('EVT-1',aspirantToken).data,'base64').toString(),pdf.toString());
 });
