@@ -141,7 +141,8 @@ test('creating or replacing a member code emails the code and direct member link
   assert.match(sent[0].body,/présent, absent ou absent excusé/);
   assert.match(sent[0].body,/excuses seront désormais uniquement prises en compte/);
   assert.match(sent[0].body,/réponses restent modifiables/);
-  assert.match(sent[0].subject,/espace présences/);
+  assert.match(sent[0].body,/Cher membre de la Cayenne de Paris/);
+  assert.equal(sent[0].subject,'important : excuse et présence');
   const replacement=c.manageMemberCode('camille@example.test','reset',bureau);
   assert.equal(replacement.delivery.state,'sent');assert.equal(sent.length,2);
 });
