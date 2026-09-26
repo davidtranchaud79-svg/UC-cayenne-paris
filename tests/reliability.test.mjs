@@ -199,3 +199,16 @@ test('agenda PDFs stay private: companion meetings are readable only by Compagno
   assert.equal(f.c.getPublicConfig(aspirantToken,2026).events[0].agenda.available,true);
   assert.equal(Buffer.from(f.c.getAgendaPdf('EVT-1',aspirantToken).data,'base64').toString(),pdf.toString());
 });
+
+test('bureau can edit, deactivate and permanently delete a member with linked records',()=>{
+  const f=fixture();f.c.ensureAuditSchema_();const member=f.c.getRowsAsObjects_('MEMBRES')[0],key=member.ID_Membre;
+  const issued=f.c.manageMemberCode(key,'issue',f.bureau);assert.ok(issued.code);
+  const updated=f.c.updateMemberProfile({key,previousEmail:'camille@example.test',prenom:'Camille',nom:'Exemple',statut:'Compagnon',cayenne:'Paris',email:'new@example.test',telephone:'0600000000',active:false},f.bureau);
+  assert.match(updated.message,/accès a été révoqué/);assert.equal(f.c.getRowsAsObjects_('MEMBRES')[0].Email,'new@example.test');assert.equal(f.c.getRowsAsObjects_('REPONSES').length,1);
+  assert.throws(()=>f.c.loginMember(issued.code),/incorrect|désactivé/);
+  f.c.updateMemberProfile({key,previousEmail:'new@example.test',prenom:'Camille',nom:'Exemple',statut:'Compagnon',cayenne:'Paris',email:'new@example.test',telephone:'0600000000',active:true},f.bureau);
+  f.sheets.get('POINTAGES').grid.push(['P1',new Date(),'EVT-1',key,'Présent']);
+  f.sheets.get('JOURNAL_MAILS').grid.push(['N1','CONFIRMATION','EVT-1','',key,'new@example.test','ENVOYE',new Date(),new Date(),'']);
+  const result=f.c.deleteMember(key,f.bureau);assert.equal(result.deletedResponses,1);assert.equal(result.deletedAttendance,1);assert.equal(result.deletedMails,1);
+  assert.equal(f.c.getRowsAsObjects_('MEMBRES').some(m=>m.ID_Membre===key),false);
+});
