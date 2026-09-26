@@ -289,8 +289,12 @@ function updateMemberProfile(payload, token) {
     if ([changes.Nom,changes.Prenom,changes.Email,changes.Telephone].some(function(v) { return v.length > 200 || /^[=+@]/.test(v); })) throw new Error('Un champ est invalide ou trop long.');
     queueFollowup_(calendarRows_().map(function(e) { return e.ID_Evenement; }));
     writeRecord_(UC_APP.sheets.membres, table.rowNumbers[index], changes);
-    if (changes.Actif === 'Non') memberAliases_(m).forEach(function(alias) { pruneRememberedSessions_(alias, true); });
-    return {ok:true,message:changes.Actif === 'Non' ? 'Membre mis à jour et désactivé. Son historique est conservé.' : 'Membre mis à jour. Son historique et son accès sont conservés.'};
+    if (changes.Actif === 'Non') {
+      const props = PropertiesService.getScriptProperties(), old = memberCodeHash_(m);
+      memberAliases_(m).forEach(function(alias) { props.deleteProperty(memberAccessKey_(alias)); props.deleteProperty(memberCredentialKindKey_(alias)); pruneRememberedSessions_(alias, true); });
+      if (old) props.deleteProperty('uc.code.' + old);
+    }
+    return {ok:true,message:changes.Actif === 'Non' ? 'Membre mis à jour et désactivé. Son historique est conservé et son accès a été révoqué.' : 'Membre mis à jour. Son historique et son accès sont conservés.'};
   });
 }
 function deleteMemberRows_(sheetName, keys) {
