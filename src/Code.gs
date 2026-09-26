@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.25.2',
+  version: '2026.09.26.1',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -161,6 +161,7 @@ function getPublicConfig(token, requestedYear) {
     version: UC_APP.version,
     today: formatDate_(new Date()),
     profile: memberProfile_(member),
+    mustChoosePassword: memberCredentialKind_(member) !== 'password',
     notifications: {enabled: PropertiesService.getScriptProperties().getProperty('uc.mail.enabled') === 'true'},
     responses: memberResponses_(member, year),
     urls: { publicUrl: urls.publicUrl },
