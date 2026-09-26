@@ -139,7 +139,13 @@ test('creating or replacing a member code emails the code and direct member link
   assert.match(sent[0].body,/gestionnaire de mots de passe/);
   assert.match(sent[0].body,/réunions, cours, agapes/);
   assert.match(sent[0].body,/présent, absent ou absent excusé/);
-  assert.match(sent[0].body,/excuses seront désormais uniquement prises en compte/);
+  assert.match(sent[0].body,/jeunes et compagnons inclus/);
+  assert.match(sent[0].body,/message oral transmis par un autre compagnon ou membre/);
+  assert.match(sent[0].body,/Gmail de l’UC/);
+  assert.match(sent[0].body,/SMS/);
+  assert.match(sent[0].body,/WhatsApp/);
+  assert.match(sent[0].body,/80 ans et plus/);
+  assert.match(sent[0].body,/seul l’enregistrement dans le formulaire fera foi/);
   assert.match(sent[0].body,/réponses restent modifiables/);
   assert.match(sent[0].body,/Cher membre de la Cayenne de Paris/);
   assert.equal(sent[0].subject,'important : excuse et présence');
