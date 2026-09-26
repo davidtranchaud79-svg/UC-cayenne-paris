@@ -74,7 +74,15 @@
               <button class="btn" id="newMemberBtn" type="submit" data-protected>Créer le membre et son code</button>
             </form>
           </details>
-          <form id="memberEmailForm" class="panel panel-pad" hidden><h3 id="memberEmailTitle">Modifier l’email</h3><div class="field"><label for="memberEmailValue">Adresse email</label><input id="memberEmailValue" type="email" maxlength="200"></div><button id="saveMemberEmail" class="btn" type="submit">Enregistrer l’adresse</button><button id="cancelMemberEmail" class="text-button" type="button">Annuler</button></form>
+          <form id="memberEmailForm" class="panel panel-pad" hidden><h3 id="memberEmailTitle">Modifier le membre</h3><div class="fields">
+              <div class="field"><label for="memberEditPrenom">Prénom</label><input id="memberEditPrenom" maxlength="200" required></div>
+              <div class="field"><label for="memberEditNom">Nom</label><input id="memberEditNom" maxlength="200" required></div>
+              <div class="field"><label for="memberEditStatut">Statut</label><select id="memberEditStatut"><option>Sociétaire</option><option>Aspirant</option><option>Compagnon</option></select></div>
+              <div class="field"><label for="memberEditCayenne">Cayenne</label><select id="memberEditCayenne"><option>Paris</option><option>Autre</option></select></div>
+              <div class="field"><label for="memberEmailValue">Adresse email</label><input id="memberEmailValue" type="email" maxlength="200"></div>
+              <div class="field"><label for="memberEditTelephone">Téléphone</label><input id="memberEditTelephone" maxlength="200"></div>
+            </div><label class="remember-choice"><input id="memberEditActive" type="checkbox"><span>Membre actif<small>Décochez pour suspendre son accès sans supprimer son historique.</small></span></label>
+            <div class="access-actions"><button id="saveMemberEmail" class="btn" type="submit">Enregistrer les modifications</button><button id="cancelMemberEmail" class="text-button" type="button">Annuler</button><button id="deleteMemberBtn" class="text-button danger" type="button">Supprimer définitivement le membre</button></div></form>
           <div id="issuedCodePanel" class="issued-code" hidden>
             <label for="issuedCode" id="issuedCodeLabel">Code personnel à transmettre</label><input id="issuedCode" readonly autocomplete="off">
             <p>Le code est affiché une seule fois. Un code perdu peut être remplacé ici.</p>
@@ -183,7 +191,7 @@
   document.getElementById('memberAccessList').addEventListener('click',event=>{
     const button=event.target.closest('[data-access-action]');if(!button||state.accessBusy)return;
     const action=button.dataset.accessAction,key=button.dataset.memberKey;
-    if(action!=='issue'&&!confirm(action==='reset'?'Remplacer ce code ? Le code actuel et les sessions du membre seront désactivés.':'Désactiver cet accès et les sessions du membre ?'))return;
+    if(action!=='issue'&&!confirm(action==='reset'?'Réinitialiser cet accès ? Le mot de passe ou code actuel et toutes les sessions du membre seront désactivés. Un nouveau code temporaire sera créé.':'Révoquer cet accès et toutes les sessions du membre ?'))return;
     accessAction(runner=>runner.manageMemberCode(key,action,pin()));
   });
   document.getElementById('dismissMemberCode').addEventListener('click',hideIssuedCode);
@@ -205,7 +213,7 @@
     google.script.run.withSuccessHandler(members=>{if(session!==state.session)return;state.accessMembers=members;document.getElementById('memberAccessPanel').hidden=false;renderMemberAccess();}).withFailureHandler(error=>{if(session!==state.session)return;Ui.notice('adminNotice',error.message || error);}).listMemberAccess(pin());
   }
   function renderMemberAccess(){
-    document.getElementById('memberAccessList').innerHTML=state.accessMembers.length?state.accessMembers.map(m=>'<div class="history-row"><div><strong>'+Ui.escape(m.prenom+' '+m.nom)+'</strong><p>'+Ui.escape(m.statut+' · '+m.cayenne)+' · '+(!m.active?'Membre inactif':m.hasCode?'Accès créé':'Sans code')+'</p></div><div class="access-actions"><button class="text-button" type="button" data-email-member="'+Ui.escape(m.key)+'">Modifier l’email</button>'+ (m.active?'<button class="btn secondary" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="'+(m.hasCode?'reset':'issue')+'">'+(m.hasCode?(m.email?'Remplacer et envoyer':'Remplacer le code'):(m.email?'Créer et envoyer':'Créer le code'))+'</button>':'')+(m.hasCode?'<button class="text-button" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="revoke">Désactiver</button>':'')+'</div></div>').join(''):Ui.empty('Aucun membre','Ajoutez le premier membre pour créer son accès.','users');
+    document.getElementById('memberAccessList').innerHTML=state.accessMembers.length?state.accessMembers.map(m=>{const access=!m.hasCode?'Sans accès':m.hasPassword?'Mot de passe choisi':'Code temporaire à remplacer';return '<div class="history-row"><div><strong>'+Ui.escape(m.prenom+' '+m.nom)+'</strong><p>'+Ui.escape(m.statut+' · '+m.cayenne+' · '+(!m.active?'Membre inactif':access))+'</p></div><div class="access-actions"><button class="text-button" type="button" data-email-member="'+Ui.escape(m.key)+'">Modifier le membre</button>'+ (m.active?'<button class="btn secondary" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="'+(m.hasCode?'reset':'issue')+'">'+(m.hasCode?'Réinitialiser l’accès':(m.email?'Créer et envoyer l’accès':'Créer l’accès'))+'</button>':'')+(m.hasCode?'<button class="text-button" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="revoke">Révoquer l’accès</button>':'')+'</div></div>';}).join(''):Ui.empty('Aucun membre','Ajoutez le premier membre pour créer son accès.','users');
     document.querySelectorAll('[data-access-action]').forEach(button=>button.disabled=state.accessBusy);
   }
   function accessAction(invoke,created){
