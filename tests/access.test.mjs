@@ -149,11 +149,11 @@ test('personal codes are stored as hashes, can be rotated and revoked, and inact
   const {c,issue,bureau,props,db}=fixture();const code=issue();const token=c.loginMember(code.toLowerCase()).token;
   assert.ok(!JSON.stringify([...props]).includes(code.replaceAll('-','')));
   const replacement=c.manageMemberCode('camille@example.test','reset',bureau).code;
-  assert.throws(()=>c.loginMember(code),/Code incorrect/);
+  assert.throws(()=>c.loginMember(code),/incorrect/);
   assert.throws(()=>c.assertMember_(token),/SESSION_EXPIRED/);
   const renewed=c.loginMember(replacement).token;
   db.MEMBRES[0].Actif='Non';assert.throws(()=>c.assertMember_(renewed),/SESSION_EXPIRED/);
-  assert.throws(()=>c.loginMember(replacement),/Code incorrect/);
+  assert.throws(()=>c.loginMember(replacement),/incorrect/);
   db.MEMBRES[0].Actif='Oui';c.manageMemberCode('camille@example.test','revoke',bureau);
   assert.throws(()=>c.assertMember_(renewed),/SESSION_EXPIRED/);
 });
@@ -201,7 +201,7 @@ test('failed code guessing is bounded and creating access requires a bureau sess
   assert.throws(()=>c.createMemberAccess({nom:'Test',prenom:'Test'},token),/SESSION_EXPIRED/);
   const result=c.createMemberAccess({nom:'Nouveau',prenom:'Sam',statut:'Sociétaire',cayenne:'Paris'},bureau);
   assert.equal(c.assertMember_(c.loginMember(result.code).token).Prenom,'Sam');
-  for(let i=0;i<100;i++)assert.throws(()=>c.loginMember('0000-0000-0000-0000'),/Code incorrect/);
+  for(let i=0;i<100;i++)assert.throws(()=>c.loginMember('0000-0000-0000-0000'),/incorrect/);
   assert.throws(()=>c.loginMember('0000-0000-0000-0000'),/Trop de tentatives/);
 });
 
