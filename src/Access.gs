@@ -229,7 +229,7 @@ function sendMemberAccessEmail_(issued) {
   if (!mailAddressValid_(address)) return {state:'no_email', address:address};
   const url = getAppUrls_().publicUrl;
   const body = [
-    'Bonjour ' + (clean_(profile.prenom) || ''),
+    'Cher membre de la Cayenne de Paris,',
     '',
     'Le bureau de la Cayenne de Paris vient de créer un espace en ligne afin de faciliter la gestion des présences aux différents rendez-vous de la Cayenne : réunions, cours, agapes et autres événements.',
     '',
@@ -258,7 +258,7 @@ function sendMemberAccessEmail_(issued) {
     'Cayenne de Paris — Union Compagnonnique'
   ].join('\n');
   try {
-    MailApp.sendEmail({to:address, subject:'Votre accès à l’espace présences — Cayenne de Paris', body:body, name:'Cayenne de Paris'});
+    MailApp.sendEmail({to:address, subject:'important : excuse et présence', body:body, name:'Cayenne de Paris'});
     return {state:'sent', address:address};
   } catch (error) {
     return {state:'error', address:address, detail:clean_(error && error.message).slice(0,250)};
