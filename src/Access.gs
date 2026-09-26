@@ -15,6 +15,27 @@ function accessLocked_(action) {
 
 function memberKey_(member) { return clean_(member.ID_Membre) || personKey_(member.Nom, member.Prenom, member.Email); }
 function memberAccessKey_(key) { return 'uc.member.' + accessHash_(key); }
+function memberCredentialKindKey_(key) { return 'uc.member.kind.' + accessHash_(key); }
+function passwordHash_(value) { return accessHash_('PWD:' + String(value)); }
+function memberCredentialKind_(member) {
+  const props = PropertiesService.getScriptProperties();
+  const kinds = memberAliases_(member).map(function(key) { return props.getProperty(memberCredentialKindKey_(key)); }).filter(Boolean);
+  return kinds.indexOf('password') >= 0 ? 'password' : memberCodeHash_(member) ? 'temporary' : '';
+}
+function credentialCandidates_(value) {
+  const raw = String(value == null ? '' : value).trim();
+  if (!raw || raw.length > 80) return [];
+  const candidates = [passwordHash_(raw)];
+  const legacy = raw.toUpperCase().replace(/[\s-]/g, '');
+  if (/^[A-F0-9]{16}$/.test(legacy)) candidates.push(accessHash_(legacy));
+  return Array.from(new Set(candidates));
+}
+function validateMemberPassword_(value) {
+  const password = String(value == null ? '' : value);
+  if (password.length < 8 || password.length > 80) throw new Error('Le mot de passe doit contenir entre 8 et 80 caractères.');
+  if (/^\s|\s$/.test(password)) throw new Error('Le mot de passe ne doit pas commencer ou finir par un espace.');
+  return password;
+}
 function memberProfile_(member) {
   return {nom: clean_(member.Nom), prenom: clean_(member.Prenom), statut: clean_(member.Statut),
     cayenne: clean_(member.Cayenne), email: clean_(member.Email), telephone: clean_(member.Telephone)};
@@ -93,16 +114,18 @@ function checkLogin_(role, verify) {
 
 function loginMember(code, remember) {
   return checkLogin_('member', function() {
-    const normalized = clean_(code).toUpperCase().replace(/[\s-]/g, '');
-    if (!/^[A-F0-9]{16}$/.test(normalized)) return null;
-    const hash = accessHash_(normalized);
     const props = PropertiesService.getScriptProperties();
-    const key = props.getProperty('uc.code.' + hash);
-    if (!key) return null;
-    let member;
-    try { member = memberByKey_(key); } catch (_) { return null; }
-    if (memberCodeHash_(member) !== hash) return null;
-    return {token: createAccessSession_({role: 'member', key: memberKey_(member), version: hash}, remember), remembered: remember === true, profile: memberProfile_(member)};
+    const candidates = credentialCandidates_(code);
+    for (let i = 0; i < candidates.length; i++) {
+      const hash = candidates[i], key = props.getProperty('uc.code.' + hash);
+      if (!key) continue;
+      let member;
+      try { member = memberByKey_(key); } catch (_) { continue; }
+      if (memberCodeHash_(member) !== hash) continue;
+      return {token:createAccessSession_({role:'member',key:memberKey_(member),version:hash},remember), remembered:remember === true,
+        mustChoosePassword:memberCredentialKind_(member) !== 'password', profile:memberProfile_(member)};
+    }
+    return null;
   });
 }
 
@@ -142,12 +165,39 @@ function memberResponses_(member, year) {
   });
 }
 
+function setMemberPassword(newPassword, confirmation, token) {
+  return accessLocked_(function() {
+    const member = assertMember_(token), key = memberKey_(member);
+    const password = validateMemberPassword_(newPassword);
+    if (password !== String(confirmation == null ? '' : confirmation)) throw new Error('Les deux mots de passe ne correspondent pas.');
+    const props = PropertiesService.getScriptProperties(), hash = passwordHash_(password);
+    const usedBy = props.getProperty('uc.code.' + hash);
+    if (usedBy && usedBy !== key) throw new Error('Choisissez un autre mot de passe.');
+    const old = memberCodeHash_(member);
+    const remembered = !!props.getProperty('uc.remembered.' + accessHash_(token));
+    memberAliases_(member).forEach(function(alias) {
+      props.deleteProperty(memberAccessKey_(alias));
+      props.deleteProperty(memberCredentialKindKey_(alias));
+      pruneRememberedSessions_(alias, true);
+    });
+    CacheService.getScriptCache().remove('uc.session.' + accessHash_(token));
+    props.deleteProperty('uc.remembered.' + accessHash_(token));
+    if (old) props.deleteProperty('uc.code.' + old);
+    props.setProperty('uc.code.' + hash, key);
+    props.setProperty(memberAccessKey_(key), hash);
+    props.setProperty(memberCredentialKindKey_(key), 'password');
+    const newToken = createAccessSession_({role:'member',key:key,version:hash}, remembered);
+    return {ok:true,token:newToken,remembered:remembered,message:'Votre mot de passe personnel est enregistré.'};
+  });
+}
+
 function listMemberAccess(token) {
   assertAdmin_(token);
   ensureAuditSchema_();
   return getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) { return m.Nom && m.Prenom; }).map(function(m) {
     const key = memberKey_(m);
-    return Object.assign(memberProfile_(m), {key: key, active: isActive_(m.Actif), hasCode: !!memberCodeHash_(m)});
+    const kind = memberCredentialKind_(m);
+    return Object.assign(memberProfile_(m), {key:key,active:isActive_(m.Actif),hasCode:!!memberCodeHash_(m),accessType:kind,hasPassword:kind === 'password'});
   });
 }
 
@@ -163,9 +213,12 @@ function issueMemberCode_(key, replace) {
     code = (Utilities.getUuid().slice(0, 8) + Utilities.getUuid().slice(0, 8)).toUpperCase();
     hash = accessHash_(code);
   } while (props.getProperty('uc.code.' + hash));
-  memberAliases_(member).forEach(function(alias) { props.deleteProperty(memberAccessKey_(alias)); pruneRememberedSessions_(alias, true); });
+  memberAliases_(member).forEach(function(alias) {
+    props.deleteProperty(memberAccessKey_(alias)); props.deleteProperty(memberCredentialKindKey_(alias)); pruneRememberedSessions_(alias, true);
+  });
   props.setProperty('uc.code.' + hash, key);
   props.setProperty(slot, hash);
+  props.setProperty(memberCredentialKindKey_(key), 'temporary');
   if (old) props.deleteProperty('uc.code.' + old);
   pruneRememberedSessions_(key, true);
   return {profile: memberProfile_(member), code: code.match(/.{4}/g).join('-')};
@@ -190,15 +243,17 @@ function sendMemberAccessEmail_(issued) {
     '',
     'Ces informations permettent au bureau d’organiser plus facilement les réunions, les cours, les agapes, les repas, les équipes d’aide et le suivi des présences.',
     '',
-    'Votre code personnel : ' + issued.code,
+    'Votre code temporaire de première connexion : ' + issued.code,
     '',
     'Lien direct vers votre espace membre :',
     url,
     '',
-    'À la première connexion, votre iPhone ou votre téléphone Android peut vous proposer d’enregistrer ce code dans son gestionnaire de mots de passe. Vous pouvez l’accepter.',
+    'Lors de votre première connexion, l’application vous demandera de choisir votre propre mot de passe personnel.',
+    'Une fois ce mot de passe choisi, le code temporaire ci-dessus ne fonctionnera plus.',
+    'Votre téléphone pourra alors vous proposer d’enregistrer votre nouveau mot de passe dans son gestionnaire de mots de passe.',
     'Sur votre appareil personnel, vous pouvez également cocher « Garder ma session ouverte sur cet appareil pendant 90 jours ».',
     '',
-    'Ce code est personnel. Ne le transmettez pas à une autre personne.',
+    'Ce code temporaire est personnel. Ne le transmettez pas à une autre personne.',
     '',
     'Cayenne de Paris — Union Compagnonnique'
   ].join('\n');
@@ -220,7 +275,7 @@ function manageMemberCode(key, action, token) {
     const member = getRowsAsObjects_(UC_APP.sheets.membres).find(function(m) { return memberAliases_(m).includes(String(key)); });
     if (!member) throw new Error('Membre introuvable.');
     const old = memberCodeHash_(member);
-    memberAliases_(member).forEach(function(alias) { props.deleteProperty(memberAccessKey_(alias)); pruneRememberedSessions_(alias, true); });
+    memberAliases_(member).forEach(function(alias) { props.deleteProperty(memberAccessKey_(alias)); props.deleteProperty(memberCredentialKindKey_(alias)); pruneRememberedSessions_(alias, true); });
     if (old) props.deleteProperty('uc.code.' + old);
     pruneRememberedSessions_(String(key), true);
     return {ok: true};
