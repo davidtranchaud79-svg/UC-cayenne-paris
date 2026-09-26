@@ -272,14 +272,52 @@ function deleteEvent(eventId, token) {
 function updateMemberProfile(payload, token) {
   assertAdmin_(token); ensureAuditSchema_();
   return accessLocked_(function() {
-    const table = getTableData_(UC_APP.sheets.membres), index = table.rows.findIndex(function(m) { return memberKey_(m) === payload.key; });
+    payload = payload || {};
+    const table = getTableData_(UC_APP.sheets.membres), index = table.rows.findIndex(function(m) { return memberKey_(m) === clean_(payload.key); });
     if (index < 0) throw new Error('Membre introuvable.');
     const m = table.rows[index];
-    if (payload.previousEmail !== clean_(m.Email)) throw new Error('Le profil a changé. Actualisez la liste.');
-    const email = clean_(payload.email);
-    if (email && !mailAddressValid_(email)) throw new Error('Adresse email invalide.');
+    if (payload.previousEmail != null && clean_(payload.previousEmail) !== clean_(m.Email)) throw new Error('Le profil a changé. Actualisez la liste.');
+    const changes = {
+      Nom:clean_(payload.nom == null ? m.Nom : payload.nom), Prenom:clean_(payload.prenom == null ? m.Prenom : payload.prenom),
+      Statut:clean_(payload.statut == null ? m.Statut : payload.statut), Cayenne:clean_(payload.cayenne == null ? m.Cayenne : payload.cayenne),
+      Email:clean_(payload.email == null ? m.Email : payload.email), Telephone:clean_(payload.telephone == null ? m.Telephone : payload.telephone),
+      Actif:payload.active === false ? 'Non' : 'Oui'
+    };
+    if (!changes.Nom || !changes.Prenom) throw new Error('Nom et prénom obligatoires.');
+    if (!getOptionList_('D', UC_APP.defaults.statuses).includes(changes.Statut) || !getOptionList_('E', UC_APP.defaults.cayennes).includes(changes.Cayenne)) throw new Error('Statut ou Cayenne invalide.');
+    if (changes.Email && !mailAddressValid_(changes.Email)) throw new Error('Adresse email invalide.');
+    if ([changes.Nom,changes.Prenom,changes.Email,changes.Telephone].some(function(v) { return v.length > 200 || /^[=+@]/.test(v); })) throw new Error('Un champ est invalide ou trop long.');
     queueFollowup_(calendarRows_().map(function(e) { return e.ID_Evenement; }));
-    writeRecord_(UC_APP.sheets.membres, table.rowNumbers[index], {Email:email});
-    return {ok:true,message:'Adresse modifiée. Le code et l’historique du membre sont conservés.'};
+    writeRecord_(UC_APP.sheets.membres, table.rowNumbers[index], changes);
+    if (changes.Actif === 'Non') memberAliases_(m).forEach(function(alias) { pruneRememberedSessions_(alias, true); });
+    return {ok:true,message:changes.Actif === 'Non' ? 'Membre mis à jour et désactivé. Son historique est conservé.' : 'Membre mis à jour. Son historique et son accès sont conservés.'};
+  });
+}
+function deleteMemberRows_(sheetName, keys) {
+  const table = getTableData_(sheetName), sheet = getSpreadsheet_().getSheetByName(sheetName);
+  const rows = table.rows.map(function(row,i) { return {row:row,number:table.rowNumbers[i]}; })
+    .filter(function(item) { return keys.indexOf(clean_(item.row.Cle_Personne)) >= 0; })
+    .map(function(item) { return item.number; }).sort(function(a,b) { return b-a; });
+  rows.forEach(function(rowNumber) { sheet.deleteRow(rowNumber); });
+  return rows.length;
+}
+function deleteMember(key, token) {
+  assertAdmin_(token); ensureAuditSchema_();
+  return accessLocked_(function() {
+    const table = getTableData_(UC_APP.sheets.membres);
+    const index = table.rows.findIndex(function(m) { return memberAliases_(m).includes(clean_(key)); });
+    if (index < 0) throw new Error('Membre introuvable.');
+    const member = table.rows[index], aliases = memberAliases_(member), currentKey = memberKey_(member);
+    if (aliases.indexOf(currentKey) < 0) aliases.push(currentKey);
+    const responses = deleteMemberRows_(UC_APP.sheets.reponses, aliases);
+    const attendance = deleteMemberRows_(UC_APP.sheets.pointages, aliases);
+    const mails = deleteMemberRows_(UC_APP.sheets.mails, aliases);
+    const props = PropertiesService.getScriptProperties(), old = memberCodeHash_(member);
+    aliases.forEach(function(alias) { props.deleteProperty(memberAccessKey_(alias)); props.deleteProperty(memberCredentialKindKey_(alias)); pruneRememberedSessions_(alias, true); });
+    if (old) props.deleteProperty('uc.code.' + old);
+    getSpreadsheet_().getSheetByName(UC_APP.sheets.membres).deleteRow(table.rowNumbers[index]);
+    queueFollowup_(calendarRows_().map(function(e) { return e.ID_Evenement; }));
+    return {ok:true,deletedResponses:responses,deletedAttendance:attendance,deletedMails:mails,
+      message:'Membre supprimé définitivement avec ' + responses + ' réponse(s) associée(s).'};
   });
 }
