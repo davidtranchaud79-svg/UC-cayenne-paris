@@ -272,3 +272,15 @@ test('schema extension finds row-three headers and never rewrites M3 or response
  c.getSpreadsheet_=()=>({getSheetByName:n=>sheets[n]});c.setListValidation_=(range,values)=>validations.push(values);
  c.ensureParticipationSchema_();c.ensureParticipationSchema_();assert.equal(writes.length,3);assert.equal(writes[0].row,3);assert.equal(writes[0].col,26);assert.equal(sheets.REPONSES.grid[2][12],'Statut');assert.equal(sheets.REPONSES.grid[3][0],'existing-id');assert.ok(validations[0].includes('Je ne sais pas encore'));assert.equal(props.get('uc.participation.schema'),'2');
 });
+
+test('member can replace a temporary code with a personal password while legacy codes stay compatible',()=>{
+  const {c,issue}=fixture();const temporary=issue();
+  const first=c.loginMember(temporary,false);assert.equal(first.mustChoosePassword,true);
+  const changed=c.setMemberPassword('MonMotDePasse2026','MonMotDePasse2026',first.token);
+  assert.equal(changed.ok,true);
+  assert.throws(()=>c.loginMember(temporary),/incorrect|désactivé/);
+  const login=c.loginMember('MonMotDePasse2026',false);assert.equal(login.mustChoosePassword,false);
+  assert.equal(c.assertMember_(login.token).Prenom,'Camille');
+  assert.throws(()=>c.setMemberPassword('court','court',login.token),/entre 8 et 80/);
+  assert.throws(()=>c.setMemberPassword('AutreMotDePasse','different',login.token),/correspondent pas/);
+});
