@@ -39,7 +39,9 @@ function app(file, overrides={}) {
         else if(method==='manageMemberCode'||method==='createMemberAccess')success({profile:config.profile,code:'1234-5678-90AB-CDEF'});
         else if(method==='changeBureauCode')success({ok:true});
         else if(method==='updateOwnEmail')success({ok:true,email:args[0],message:'Adresse email mise à jour.'});
+        else if(method==='setMemberPassword')success({ok:true,token:'MEMBER_SESSION_2',remembered:false,message:'Votre mot de passe personnel est enregistré.'});
         else if(method==='deleteEvent')success({ok:true,deletedResponses:2,message:'Événement supprimé définitivement avec 2 réponse(s) associée(s).'});
+        else if(method==='deleteMember')success({ok:true,deletedResponses:2,message:'Membre supprimé définitivement avec 2 réponse(s) associée(s).'});
         else if(method==='getDashboardData')success(structuredClone(dashboard));
         else if(method==='submitResponses')success({ok:true,saved:args[0].answers.length});
         else if(method==='createEventFromTemplate')success({ok:true,message:'Événement créé.'});
@@ -330,4 +332,19 @@ test('agenda controls appear only when the server exposes an agenda, and bureau 
   assert.ok(admin.doc.querySelector('[data-agenda-upload="evt-1"]'));assert.ok(admin.doc.querySelector('[data-agenda-open="evt-1"]'));assert.match(admin.doc.getElementById('eventsRoot').textContent,/Compagnons uniquement/);admin.dom.window.close();
   const member=app('Public.html',{getPublicConfig:()=>({...structuredClone(config),events:[{...events[0],agenda:{available:true,name:'ODJ.pdf'}}]})});
   assert.ok(member.doc.querySelector('[data-agenda-open="evt-1"]'));member.dom.window.close();
+});
+
+test('bureau can edit the complete member profile and permanently delete a member',()=>{
+ const a=app('Admin.html',{updateMemberProfile:()=>({ok:true,message:'Membre mis à jour.'})});a.login();
+ a.doc.querySelector('[data-email-member]').click();assert.equal(a.doc.getElementById('memberEditPrenom').value,'Camille');
+ a.fill('memberEditStatut','Compagnon','change');a.fill('memberEditTelephone','0612345678');a.submit('memberEmailForm');a.flush();
+ const edit=a.calls.find(c=>c.method==='updateMemberProfile');assert.equal(edit.args[0].statut,'Compagnon');assert.equal(edit.args[0].telephone,'0612345678');
+ a.doc.querySelector('[data-email-member]').click();a.doc.getElementById('deleteMemberBtn').click();a.flush();
+ assert.equal(a.calls.find(c=>c.method==='deleteMember').args[0],'camille@example.test');a.dom.window.close();
+});
+test('first access requires choosing a personal password before event responses are shown',()=>{
+ const data={...structuredClone(config),mustChoosePassword:true};const a=app('Public.html',{getPublicConfig:()=>data});
+ assert.equal(a.doc.getElementById('formContent').hidden,true);
+ a.fill('memberNewPassword','MonMotDePasse2026');a.fill('memberNewPasswordConfirm','MonMotDePasse2026');a.submit('memberPasswordForm');a.flush();
+ assert.ok(a.calls.find(c=>c.method==='setMemberPassword'));a.dom.window.close();
 });
