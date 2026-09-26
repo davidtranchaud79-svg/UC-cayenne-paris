@@ -72,10 +72,17 @@ function deleteCalendarEvent(id){
 function editMemberEmail(key){
   const member=state.accessMembers.find(m=>m.key===key);if(!member||state.accessBusy)return;
   state.emailMember=member;document.getElementById('memberEmailForm').hidden=false;
-  document.getElementById('memberEmailTitle').textContent='Adresse de '+member.prenom+' '+member.nom;
-  document.getElementById('memberEmailValue').value=member.email||'';document.getElementById('memberEmailValue').focus();
+  document.getElementById('memberEmailTitle').textContent='Modifier '+member.prenom+' '+member.nom;
+  document.getElementById('memberEditPrenom').value=member.prenom||'';
+  document.getElementById('memberEditNom').value=member.nom||'';
+  document.getElementById('memberEditStatut').value=member.statut||'Sociétaire';
+  document.getElementById('memberEditCayenne').value=member.cayenne||'Paris';
+  document.getElementById('memberEmailValue').value=member.email||'';
+  document.getElementById('memberEditTelephone').value=member.telephone||'';
+  document.getElementById('memberEditActive').checked=member.active!==false;
+  document.getElementById('memberEditPrenom').focus();
 }
-function closeMemberEmail(){state.emailMember=null;document.getElementById('memberEmailForm').reset();document.getElementById('memberEmailForm').hidden=true;document.getElementById('memberEmailTitle').textContent='Modifier l’email';Ui.loading('saveMemberEmail',false);}
+function closeMemberEmail(){state.emailMember=null;document.getElementById('memberEmailForm').reset();document.getElementById('memberEmailForm').hidden=true;document.getElementById('memberEmailTitle').textContent='Modifier le membre';Ui.loading('saveMemberEmail',false);Ui.loading('deleteMemberBtn',false);}
 function renderBackgroundStatus(data){
   document.getElementById('backgroundStatus').textContent=!data?'Connectez-vous pour consulter les traitements.':[
     data.ready?'Actualisation automatique active.':'Activation des traitements nécessaire par le propriétaire.',
@@ -118,7 +125,14 @@ document.getElementById('cancelMemberEmail').addEventListener('click',closeMembe
 document.getElementById('memberEmailForm').addEventListener('submit',event=>{
   event.preventDefault();if(!state.emailMember||!state.token||document.getElementById('saveMemberEmail').disabled)return;
   const session=state.session,member=state.emailMember;Ui.loading('saveMemberEmail',true,'Enregistrement…');
-  google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;closeMemberEmail();Ui.notice('accessNotice',result.message,'ok');loadMemberAccess();}).withFailureHandler(error=>{if(session!==state.session)return;Ui.loading('saveMemberEmail',false);Ui.notice('accessNotice',error.message||error);}).updateMemberProfile({key:member.key,previousEmail:member.email||'',email:document.getElementById('memberEmailValue').value},pin());
+  const payload={key:member.key,previousEmail:member.email||'',prenom:document.getElementById('memberEditPrenom').value,nom:document.getElementById('memberEditNom').value,statut:document.getElementById('memberEditStatut').value,cayenne:document.getElementById('memberEditCayenne').value,email:document.getElementById('memberEmailValue').value,telephone:document.getElementById('memberEditTelephone').value,active:document.getElementById('memberEditActive').checked};
+  google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;closeMemberEmail();Ui.notice('accessNotice',result.message,'ok');loadMemberAccess();loadDashboard();}).withFailureHandler(error=>{if(session!==state.session)return;Ui.loading('saveMemberEmail',false);Ui.notice('accessNotice',error.message||error);}).updateMemberProfile(payload,pin());
+});
+document.getElementById('deleteMemberBtn').addEventListener('click',()=>{
+  const member=state.emailMember;if(!member||!state.token||state.accessBusy)return;
+  if(!confirm('Supprimer définitivement '+member.prenom+' '+member.nom+' ? Ses réponses, pointages, traces de mails et son accès seront supprimés. Cette action est irréversible.'))return;
+  const session=state.session;state.accessBusy=true;Ui.loading('deleteMemberBtn',true,'Suppression…');
+  google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;state.accessBusy=false;Ui.loading('deleteMemberBtn',false);closeMemberEmail();Ui.notice('accessNotice',result.message,'ok');loadMemberAccess();loadDashboard();}).withFailureHandler(error=>{if(session!==state.session)return;state.accessBusy=false;Ui.loading('deleteMemberBtn',false);Ui.notice('accessNotice',error.message||error);}).deleteMember(member.key,pin());
 });
 document.getElementById('loadMailLog').addEventListener('click',loadMailLog);
 document.getElementById('mailSearch').addEventListener('input',renderMailLog);
