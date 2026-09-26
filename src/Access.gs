@@ -106,7 +106,7 @@ function checkLogin_(role, verify) {
     if (!result) {
       budget.failures++;
       props.setProperty(slot, JSON.stringify(budget));
-      throw new Error('Code incorrect ou accès désactivé. Contactez le bureau si nécessaire.');
+      throw new Error('Mot de passe ou code temporaire incorrect, ou accès désactivé. Contactez le bureau si nécessaire.');
     }
     return result;
   });
