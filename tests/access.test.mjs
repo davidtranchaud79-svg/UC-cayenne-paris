@@ -292,7 +292,7 @@ test('member can replace a temporary code with a personal password while legacy 
   assert.throws(()=>c.setMemberPassword('AutreMotDePasse','different',login.token),/correspondent pas/);
 });
 
-test('Youth Bureau has a separate session and can access only Sociétaires and Aspirants',()=>{
+test('Youth Bureau has a separate session, sees only youth profiles and cannot manage member access',()=>{
   const {c,db,bureau}=fixture();
   db.MEMBRES.push({Nom:'Jeune',Prenom:'Zoé',Email:'zoe@example.test',Statut:'Sociétaire',Cayenne:'Paris',Actif:'Oui'});
   const youth=c.loginYouthBureau('jeunes-test-code').token;
@@ -301,8 +301,13 @@ test('Youth Bureau has a separate session and can access only Sociétaires and A
   const rows=c.listYouthMemberAccess(youth);
   assert.deepEqual(rows.map(r=>r.statut),['Aspirant','Sociétaire']);
   assert.equal(rows.some(r=>r.statut==='Compagnon'),false);
-  assert.throws(()=>c.manageYouthMemberCode('camille@example.test','issue',youth),/indisponible/);
-  const issued=c.manageYouthMemberCode('alex@example.test','issue',youth);
-  assert.ok(issued.code);assert.equal(issued.profile.statut,'Aspirant');
-  assert.throws(()=>c.createYouthMemberAccess({nom:'Test',prenom:'Comp',statut:'Compagnon',cayenne:'Paris'},youth),/uniquement/);
+  assert.ok(rows.every(r=>!('hasCode' in r)&&!('hasPassword' in r)&&!('accessType' in r)));
+  assert.throws(()=>c.manageYouthMemberCode('alex@example.test','issue',youth),/réservée au bureau principal/);
+  assert.throws(()=>c.manageYouthMemberCode('alex@example.test','reset',youth),/réservée au bureau principal/);
+  assert.throws(()=>c.manageYouthMemberCode('alex@example.test','revoke',youth),/réservée au bureau principal/);
+  assert.throws(()=>c.createYouthMemberAccess({nom:'Test',prenom:'Alex',statut:'Aspirant',cayenne:'Paris'},youth),/réservée au bureau principal/);
+  const created=c.createYouthMemberProfile({nom:'Jeune2',prenom:'Lina',statut:'Sociétaire',cayenne:'Paris',email:'lina@example.test'},youth);
+  assert.equal(created.profile.statut,'Sociétaire');
+  assert.equal(db.MEMBRES.find(m=>m.Email==='lina@example.test').Statut,'Sociétaire');
+  assert.throws(()=>c.createYouthMemberProfile({nom:'Test',prenom:'Comp',statut:'Compagnon',cayenne:'Paris'},youth),/uniquement/);
 });
