@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.26.3',
+  version: '2026.09.28.1',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -101,17 +101,18 @@ function onOpen() {
 
 function doGet(e) {
   const page = String(e && e.parameter && e.parameter.page || 'public').toLowerCase();
-  const templateName = page === 'admin' ? 'Admin' : 'Public';
+  const templateName = page === 'admin' ? 'Admin' : page === 'jeunes' ? 'Youth' : 'Public';
   const template = HtmlService.createTemplateFromFile(templateName);
   const urls = getAppUrls_();
   template.publicUrl = urls.publicUrl;
   template.adminUrl = urls.adminUrl;
+  template.youthUrl = urls.youthUrl;
   template.appVersion = UC_APP.version;
 
   return template
     .evaluate()
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-    .setTitle(page === 'admin' ? 'Dashboard admin - Présences Cayenne de Paris' : 'Présences Cayenne de Paris')
+    .setTitle(page === 'admin' ? 'Dashboard admin - Présences Cayenne de Paris' : page === 'jeunes' ? 'Bureau des jeunes - Cayenne de Paris' : 'Présences Cayenne de Paris')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -141,6 +142,8 @@ function setupSystem_() {
   refreshDashboardSheet_();
   setupModeleCr_(ss.getSheetByName(UC_APP.sheets.modeleCr));
   applyValidations_();
+  sortMembersByRank_();
+  try { ensureMemberSortTrigger_(); } catch (_) {}
   const eventSheets = generateAllEventSheets_(getSettings_().annee_active);
 
   return {
@@ -622,10 +625,11 @@ function setupParametres_(sheet) {
   sheet.setHiddenGridlines(true);
   sheet.getRange('A1:C1').setValues([['Paramètre', 'Valeur', 'Description']]);
   sheet.getRange('A1:C1').setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#7A1F2B');
-  sheet.getRange('A2:C8').setValues([
+  sheet.getRange('A2:C9').setValues([
     ['annee_active', existingSettings.annee_active || UC_APP.defaults.activeYear, 'Année suivie par défaut'],
     ['cayenne_principale', existingSettings.cayenne_principale || 'Paris', 'Cayenne proposée en premier'],
     ['admin_pin', existingSettings.admin_pin || UC_APP.defaults.adminPin, 'Code d’accès au dashboard admin'],
+    ['jeunes_pin', existingSettings.jeunes_pin || '', 'Code séparé du Bureau des jeunes'],
     ['nom_application', existingSettings.nom_application || 'Présences Cayenne de Paris', 'Titre affiché dans le formulaire'],
     ['derniere_generation', '', 'Renseigné automatiquement si besoin'],
     ['web_app_url', publicUrl, 'Lien public du formulaire Apps Script déployé'],
@@ -783,10 +787,11 @@ function getAppUrls_(settings) {
   } catch (error) {
     // The configured public URL remains available outside a web app context.
   }
-  const adminUrl = makeAdminUrl_(publicUrl);
+  const adminUrl = makeAdminUrl_(publicUrl), youthUrl = makeYouthUrl_(publicUrl);
   return {
     publicUrl: publicUrl,
-    adminUrl: adminUrl
+    adminUrl: adminUrl,
+    youthUrl: youthUrl
   };
 }
 
@@ -795,6 +800,12 @@ function makeAdminUrl_(publicUrl) {
   if (!url) return '';
   if (url.indexOf('page=admin') !== -1) return url;
   return url + (url.indexOf('?') === -1 ? '?' : '&') + 'page=admin';
+}
+function makeYouthUrl_(publicUrl) {
+  const url = clean_(publicUrl || UC_APP.defaults.webAppUrl);
+  if (!url) return '';
+  if (url.indexOf('page=jeunes') !== -1) return url;
+  return url + (url.indexOf('?') === -1 ? '?' : '&') + 'page=jeunes';
 }
 
 function setLinkedText_(range, text, url) {
@@ -1236,11 +1247,52 @@ function getRowsAsObjects_(sheetName) {
   return getTableData_(sheetName).rows;
 }
 
+function memberRankOrder_(status) {
+  return ({Compagnon:1,Aspirant:2,Sociétaire:3})[clean_(status)] || 9;
+}
+function memberSortText_(value) {
+  return clean_(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+}
+function sortMemberObjects_(rows) {
+  return rows.slice().sort(function(a,b) {
+    return memberRankOrder_(a.Statut)-memberRankOrder_(b.Statut) ||
+      memberSortText_(a.Nom).localeCompare(memberSortText_(b.Nom),'fr') ||
+      memberSortText_(a.Prenom).localeCompare(memberSortText_(b.Prenom),'fr');
+  });
+}
+function sortMembersByRank_() {
+  const sheet=getSpreadsheet_().getSheetByName(UC_APP.sheets.membres),table=getTableData_(UC_APP.sheets.membres);
+  if(!sheet||table.rows.length<2)return;
+  const headers=sheet.getRange(table.headerRow,1,1,sheet.getLastColumn()).getValues()[0].map(clean_);
+  const statusCol=headers.indexOf('Statut'),nomCol=headers.indexOf('Nom'),prenomCol=headers.indexOf('Prenom');
+  if(statusCol<0||nomCol<0||prenomCol<0)return;
+  const entries=table.rowNumbers.map(function(row){return {row:row,values:sheet.getRange(row,1,1,headers.length).getValues()[0]};});
+  entries.sort(function(a,b){
+    return memberRankOrder_(a.values[statusCol])-memberRankOrder_(b.values[statusCol]) ||
+      memberSortText_(a.values[nomCol]).localeCompare(memberSortText_(b.values[nomCol]),'fr') ||
+      memberSortText_(a.values[prenomCol]).localeCompare(memberSortText_(b.values[prenomCol]),'fr');
+  });
+  const destinations=table.rowNumbers.slice().sort(function(a,b){return a-b;});
+  entries.forEach(function(entry,i){sheet.getRange(destinations[i],1,1,headers.length).setValues([entry.values]);});
+}
+function ensureMemberSortTrigger_(){
+  const exists=ScriptApp.getProjectTriggers().some(function(t){return t.getHandlerFunction&&t.getHandlerFunction()==='onMemberSheetEdit_';});
+  if(!exists)ScriptApp.newTrigger('onMemberSheetEdit_').forSpreadsheet(getSpreadsheet_()).onEdit().create();
+}
+function onMemberSheetEdit_(e){
+  try{
+    const range=e&&e.range,sheet=range&&range.getSheet();if(!sheet||sheet.getName()!==UC_APP.sheets.membres)return;
+    const table=getTableData_(UC_APP.sheets.membres),headers=sheet.getRange(table.headerRow,1,1,sheet.getLastColumn()).getValues()[0].map(clean_);
+    const watched=['Nom','Prenom','Statut'].map(function(h){return headers.indexOf(h)+1;}).filter(Boolean);
+    const first=range.getColumn(),last=range.getLastColumn();if(watched.some(function(c){return c>=first&&c<=last;}))sortMembersByRank_();
+  }catch(_){}
+}
 function upsertMember_(member) {
   const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.membres);
   const table = getTableData_(UC_APP.sheets.membres);
   const index = table.rows.findIndex(function(m) { return memberKey_(m) === memberKey_(member); });
   writeRecord_(UC_APP.sheets.membres, index < 0 ? sheet.getLastRow() + 1 : table.rowNumbers[index], member);
+  sortMembersByRank_();
 }
 
 function markResponseReportSheet_(eventId, sheetName) {
