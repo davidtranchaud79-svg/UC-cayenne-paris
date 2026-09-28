@@ -11,10 +11,12 @@ const events = [
 ];
 const config = {activeYear:2026,statuses:['Sociétaire','Aspirant','Compagnon'],cayennes:['Paris','Autre'],responseTypes:['Présent','Absent','Absent excusé'],causes:['Travail','Familiale'],events,eventTypes:['JEP','Fête de novembre'],eventTemplates:[{id:'tpl-1',name:'JEP',defaultTitle:'Journées du patrimoine',type:'JEP',cayenne:'Paris',start:'09:00',end:'18:00',place:'Paris'}],urls:{publicUrl,adminUrl:publicUrl+'?page=admin',youthUrl:publicUrl+'?page=jeunes'}};
 const dashboard = {year:2026,kpis:{events:2,members:1,presents:1,excused:0,noResponse:1,aids:1},events:events.map(e=>({...e,presents:1,excused:0,noResponse:0,aids:1})),members:[{nom:'Exemple',prenom:'Camille',statut:'Sociétaire',cayenne:'Paris',presents:1,excused:0,noResponse:1,aids:1,presenceRate:0.5}],causes:[]};
-const youthDashboard = {year:2026,kpis:{events:2,members:2,presents:2,excused:1,noResponse:1,aids:1},eventTypes:['Réunion des jeunes','JEP','Fête de novembre','Autre'],cayennes:['Paris','Autre'],events:[
+const youthMeeting={id:'evt-youth',date:'07/10/2026',title:'Réunion des jeunes',type:'Réunion des jeunes',start:'19:00',end:'21:00',place:'Cayenne de Paris',sheetName:'CR_YOUTH',version:'YVY',cayenne:'Paris',modalites:'Standard',comment:'',agenda:{eligible:true,available:false},report:{eligible:true,available:false}};
+const youthDashboard = {year:2026,kpis:{events:3,members:2,presents:2,excused:1,noResponse:1,aids:1},eventTypes:['Réunion des jeunes','JEP','Fête de novembre','Autre'],cayennes:['Paris','Autre'],events:[
   {...events[0],presents:2,excused:0,absent:0,noResponse:0,aids:1,missingMembers:[]},
-  {...events[1],presents:0,excused:1,absent:0,noResponse:1,aids:0,missingMembers:[{nom:'Autre',prenom:'Alex',statut:'Sociétaire',cayenne:'Paris'}]}
-],calendar:events.map((e,i)=>({...e,version:'YV'+i,cayenne:'Paris',modalites:'Standard',comment:'',agenda:{eligible:true,available:false},report:{eligible:true,available:false}})),followUps:[{eventId:'evt-2',title:'Fête de novembre',date:'21/11/2026',noResponse:1,missingMembers:[{nom:'Autre',prenom:'Alex'}]}],members:[],causes:[]};
+  {...events[1],presents:0,excused:1,absent:0,noResponse:1,aids:0,missingMembers:[{nom:'Autre',prenom:'Alex',statut:'Sociétaire',cayenne:'Paris'}]},
+  {...youthMeeting,presents:0,excused:0,absent:0,noResponse:0,aids:0,missingMembers:[]}
+],calendar:[...events.map((e,i)=>({...e,version:'YV'+i,cayenne:'Paris',modalites:'Standard',comment:'',agenda:{eligible:false,available:false},report:{eligible:false,available:false}})),youthMeeting],followUps:[{eventId:'evt-2',title:'Fête de novembre',date:'21/11/2026',noResponse:1,missingMembers:[{nom:'Autre',prenom:'Alex'}]}],members:[],causes:[]};
 function render(file) {
   return readFileSync(new URL(file,src),'utf8').replace(/<\?!= include\('([A-Za-z]+)'\); \?>/g,(_,name)=>readFileSync(new URL(name+'.html',src),'utf8')).replaceAll('<?= appVersion ?>','2026.09.23.2').replaceAll('<?= publicUrl ?>',publicUrl).replaceAll('<?= adminUrl ?>',publicUrl+'?page=admin').replaceAll('<?= youthUrl ?>',publicUrl+'?page=jeunes');
 }
@@ -378,8 +380,10 @@ test('Youth Bureau has overview, editable non-companion events, documents and yo
  assert.match(a.doc.getElementById('youthEvents').textContent,/Journées du patrimoine/);
  assert.match(a.doc.getElementById('youthEvents').textContent,/Fête de novembre/);
  assert.ok(a.doc.querySelector('[data-youth-event-edit="evt-1"]'));
- assert.ok(a.doc.querySelector('[data-youth-doc-upload="agenda"][data-event-id="evt-1"]'));
- assert.ok(a.doc.querySelector('[data-youth-doc-upload="report"][data-event-id="evt-1"]'));
+ assert.equal(a.doc.querySelector('[data-youth-doc-upload="agenda"][data-event-id="evt-1"]'),null);
+ assert.equal(a.doc.querySelector('[data-youth-doc-upload="report"][data-event-id="evt-1"]'),null);
+ assert.ok(a.doc.querySelector('[data-youth-doc-upload="agenda"][data-event-id="evt-youth"]'));
+ assert.ok(a.doc.querySelector('[data-youth-doc-upload="report"][data-event-id="evt-youth"]'));
  assert.doesNotMatch(a.doc.getElementById('youthEvents').textContent,/Supprimer l’événement/);
  a.doc.getElementById('newYouthEvent').click();
  a.fill('youthEventDate','2026-10-07','change');a.fill('youthEventTitle','Réunion jeunes');
