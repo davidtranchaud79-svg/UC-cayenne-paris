@@ -57,9 +57,9 @@ function fixture(){
     responses.grid.push(headers.reponses.map(h=>r[h]??''));return r;
   }
   appendResponse();
-  c.getSpreadsheet_=()=>ss;c.getSettings_=()=>({admin_pin:'bureau-test-code',annee_active:2026});c.getOptionList_=(_,fallback)=>fallback;
-  const bureau=c.loginBureau('bureau-test-code').token;
-  return {c,props,cache,sheets,members,calendar,responses,headers,writes,sent,driveFiles,bureau,appendResponse,makeSheet,failWrite:fn=>failWrite=fn,locked:()=>locked};
+  c.getSpreadsheet_=()=>ss;c.getSettings_=()=>({admin_pin:'bureau-test-code',jeunes_pin:'jeunes-test-code',annee_active:2026});c.getOptionList_=(_,fallback)=>fallback;
+  const bureau=c.loginBureau('bureau-test-code').token,youth=c.loginYouthBureau('jeunes-test-code').token;
+  return {c,props,cache,sheets,members,calendar,responses,headers,writes,sent,driveFiles,bureau,youth,appendResponse,makeSheet,failWrite:fn=>failWrite=fn,locked:()=>locked};
 }
 
 test('additive migration keeps row-three validation headers, original cells and history; interrupted ID assignment is recoverable',()=>{
@@ -211,4 +211,19 @@ test('bureau can edit, deactivate and permanently delete a member with linked re
   f.sheets.get('JOURNAL_MAILS').grid.push(['N1','CONFIRMATION','EVT-1','',key,'new@example.test','ENVOYE',new Date(),new Date(),'']);
   const result=f.c.deleteMember(key,f.bureau);assert.equal(result.deletedResponses,1);assert.equal(result.deletedAttendance,1);assert.equal(result.deletedMails,1);
   assert.equal(f.c.getRowsAsObjects_('MEMBRES').some(m=>m.ID_Membre===key),false);
+});
+
+test('member rows automatically follow rank then alphabetical order after a promotion',()=>{
+  const f=fixture();
+  f.members.grid.push(['Aardvark','Zoé','Sociétaire','Paris','zoe@example.test','','Oui','']);
+  f.c.ensureAuditSchema_();f.c.sortMembersByRank_();
+  let rows=f.c.getRowsAsObjects_('MEMBRES');
+  assert.deepEqual(rows.map(m=>m.Statut),['Compagnon','Aspirant','Sociétaire']);
+  const zoe=rows.find(m=>m.Email==='zoe@example.test');
+  assert.throws(()=>f.c.updateYouthMemberProfile({key:rows.find(m=>m.Statut==='Compagnon').ID_Membre,statut:'Aspirant'},f.youth),/pas accessible/);
+  assert.throws(()=>f.c.updateYouthMemberProfile({key:rows.find(m=>m.Statut==='Aspirant').ID_Membre,statut:'Compagnon'},f.youth),/Sociétaires et Aspirants/);
+  f.c.updateMemberProfile({key:zoe.ID_Membre,previousEmail:'zoe@example.test',nom:'Aardvark',prenom:'Zoé',statut:'Aspirant',cayenne:'Paris',email:'zoe@example.test',telephone:'',active:true},f.bureau);
+  rows=f.c.getRowsAsObjects_('MEMBRES');
+  assert.deepEqual(rows.map(m=>m.Statut),['Compagnon','Aspirant','Aspirant']);
+  assert.deepEqual(rows.filter(m=>m.Statut==='Aspirant').map(m=>m.Nom),['Aardvark','Autre']);
 });
