@@ -61,6 +61,7 @@ function ensureAuditSchema_() {
       props.setProperty('uc.audit.schema', '1');
     }
     try { ensureBackgroundTrigger_(); } catch (_) { props.setProperty('uc.worker.error', 'Activation Google nécessaire : exécuter activerTraitements dans Apps Script.'); }
+    try { ensureMemberSortTrigger_(); } catch (_) {}
     ucAuditReady_ = true;
   });
 }
