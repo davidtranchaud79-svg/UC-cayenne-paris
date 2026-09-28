@@ -328,6 +328,32 @@ function updateEvent(payload, token) {
     return {ok:true,message:(changes.Actif === 'Non' ? 'Événement annulé. Les réponses sont conservées.' : 'Événement mis à jour. Les réponses restent rattachées à ce rendez-vous.') + (agendaRemoved ? ' L’ordre du jour a été supprimé car le type de réunion a changé.' : '')};
   });
 }
+function updateYouthEvent(payload, token) {
+  assertYouthAdmin_(token);setupSystemIfMissing_();
+  return accessLocked_(function(){
+    payload=payload||{};const table=getTableData_(UC_APP.sheets.calendrier);
+    const index=table.rows.findIndex(function(e){return clean_(e.ID_Evenement)===clean_(payload.id);});
+    if(index<0)throw new Error('Événement introuvable.');
+    const current=table.rows[index];youthEventForManagement_(current.ID_Evenement);
+    if(payload.version!==eventVersion_(current))throw new Error('Cet événement a été modifié. Actualisez avant de réessayer.');
+    const date=parseInputDate_(payload.date),title=clean_(payload.title),type=clean_(payload.type);
+    if(!date||!title||title.length>200)throw new Error('Date et titre valides obligatoires.');
+    if(type==='Réunion compagnon')throw new Error('Le Bureau des jeunes ne peut ni créer ni modifier une Réunion compagnon.');
+    if(!getOptionList_('H',UC_APP.defaults.eventTypes).includes(type))throw new Error('Type d’événement invalide.');
+    const changes={Date:date,Annee:date.getFullYear(),Titre:title,Type_Evenement:type,Heure_Debut:clean_(payload.start),Heure_Fin:clean_(payload.end),
+      Lieu:clean_(payload.place),Cayenne:clean_(payload.cayenne),Commentaire:clean_(payload.comment),Modalites:clean_(payload.modalites||'Standard'),
+      Actif:current.Actif,Public_Statuts:current.Public_Statuts,Public_Cayennes:current.Public_Cayennes,Categorie_CR:current.Categorie_CR,
+      Version:Utilities.getUuid(),Modifie_Le:new Date()};
+    if(!getOptionList_('E',UC_APP.defaults.cayennes).includes(changes.Cayenne))throw new Error('Cayenne invalide.');
+    if(!['Standard','Repas et aide','Réception'].includes(changes.Modalites))throw new Error('Modalités invalides.');
+    ['Heure_Debut','Heure_Fin'].forEach(function(k){if(changes[k]&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(changes[k]))throw new Error('Horaire invalide.');});
+    if(changes.Commentaire.length>2000||changes.Lieu.length>300)throw new Error('Texte trop long.');
+    queueFollowup_([current.ID_Evenement]);writeRecord_(UC_APP.sheets.calendrier,table.rowNumbers[index],changes);
+    const agendaRemoved=clean_(current.Type_Evenement)!==type&&!!agendaMeta_(current.ID_Evenement)?deleteAgendaForEvent_(current.ID_Evenement):false;
+    return {ok:true,message:'Événement mis à jour.'+(agendaRemoved?' L’ordre du jour a été supprimé car le type d’événement a changé.':'')};
+  });
+}
+
 function updateOwnEmail(email, token) {
   ensureAuditSchema_();
   const member = assertMember_(token), key = memberKey_(member), value = clean_(email);
@@ -357,11 +383,12 @@ function deleteEvent(eventId, token) {
     const deletedAttendance = deleteEventRows_(UC_APP.sheets.pointages, id);
     const deletedMails = deleteEventRows_(UC_APP.sheets.mails, id);
     const deletedAgenda = deleteAgendaForEvent_(id);
+    const deletedReport = deleteReportForEvent_(id);
     getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier).deleteRow(table.rowNumbers[matches[0].i]);
     PropertiesService.getScriptProperties().deleteProperty('uc.job.event.' + accessHash_(id));
     queueFollowup_([]);
-    return {ok:true,deletedResponses:deletedResponses,deletedAttendance:deletedAttendance,deletedMails:deletedMails,deletedAgenda:deletedAgenda,
-      message:'Événement supprimé définitivement avec ' + deletedResponses + ' réponse(s) associée(s).' + (deletedAgenda ? ' L’ordre du jour PDF a également été supprimé.' : '')};
+    return {ok:true,deletedResponses:deletedResponses,deletedAttendance:deletedAttendance,deletedMails:deletedMails,deletedAgenda:deletedAgenda,deletedReport:deletedReport,
+      message:'Événement supprimé définitivement avec ' + deletedResponses + ' réponse(s) associée(s).' + (deletedAgenda ? ' L’ordre du jour PDF a également été supprimé.' : '') + (deletedReport ? ' Le compte rendu PDF a également été supprimé.' : '')};
   });
 }
 function updateMemberProfile(payload, token) {
