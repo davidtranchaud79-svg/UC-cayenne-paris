@@ -11,7 +11,7 @@ function fixture(){
   const db={MEMBRES:[{Nom:'Exemple',Prenom:'Camille',Email:'camille@example.test',Statut:'Compagnon',Cayenne:'Paris',Actif:'Oui'},
     {Nom:'Autre',Prenom:'Alex',Email:'alex@example.test',Statut:'Aspirant',Cayenne:'Paris',Actif:'Oui'}],
     REPONSES:[], CALENDRIER:[{ID_Evenement:'evt1',Annee:2026,Date:new Date('2026-09-19'),Titre:'JEP',Type_Evenement:'JEP',Actif:'Oui'}]};
-  const settings={admin_pin:'bureau-test-code',annee_active:2026};
+  const settings={admin_pin:'bureau-test-code',jeunes_pin:'jeunes-test-code',annee_active:2026};
   const context=vm.createContext({console,Date,Set,JSON,
     PropertiesService:{getScriptProperties:()=>({getProperties:()=>Object.fromEntries(props),getProperty:k=>props.get(k)||null,setProperty:(k,v)=>props.set(k,v),deleteProperty:k=>props.delete(k)})},
     CacheService:{getScriptCache:()=>({get:k=>cache.get(k)||null,put:(k,v)=>cache.set(k,v),remove:k=>cache.delete(k)})},
@@ -290,4 +290,19 @@ test('member can replace a temporary code with a personal password while legacy 
   assert.equal(c.assertMember_(login.token).Prenom,'Camille');
   assert.throws(()=>c.setMemberPassword('court','court',login.token),/entre 8 et 80/);
   assert.throws(()=>c.setMemberPassword('AutreMotDePasse','different',login.token),/correspondent pas/);
+});
+
+test('Youth Bureau has a separate session and can access only Sociétaires and Aspirants',()=>{
+  const {c,db,bureau}=fixture();
+  db.MEMBRES.push({Nom:'Jeune',Prenom:'Zoé',Email:'zoe@example.test',Statut:'Sociétaire',Cayenne:'Paris',Actif:'Oui'});
+  const youth=c.loginYouthBureau('jeunes-test-code').token;
+  assert.throws(()=>c.assertAdmin_(youth),/SESSION_EXPIRED/);
+  assert.throws(()=>c.assertYouthAdmin_(bureau),/SESSION_EXPIRED/);
+  const rows=c.listYouthMemberAccess(youth);
+  assert.deepEqual(rows.map(r=>r.statut),['Aspirant','Sociétaire']);
+  assert.equal(rows.some(r=>r.statut==='Compagnon'),false);
+  assert.throws(()=>c.manageYouthMemberCode('camille@example.test','issue',youth),/indisponible/);
+  const issued=c.manageYouthMemberCode('alex@example.test','issue',youth);
+  assert.ok(issued.code);assert.equal(issued.profile.statut,'Aspirant');
+  assert.throws(()=>c.createYouthMemberAccess({nom:'Test',prenom:'Comp',statut:'Compagnon',cayenne:'Paris'},youth),/uniquement/);
 });
