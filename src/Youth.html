@@ -101,7 +101,7 @@
               <label class="sr-only" for="youthStatus">Filtrer par statut</label><select id="youthStatus"><option value="">Tous les statuts</option><option>Aspirant</option><option>Sociétaire</option></select>
             </div>
             <div class="result-count" id="youthMemberCount"></div>
-            <div id="youthMembers" class="member-table-wrap"></div>
+            <div id="youthMembers"></div>
           </div>
 
           <details id="youthNewMemberDetails" class="panel panel-pad" style="margin-top:22px"><summary><strong>Ajouter un Sociétaire ou Aspirant</strong></summary>
@@ -177,12 +177,20 @@ function renderEvents(){
 }
 function renderMembers(){
   const q=Ui.normalize(document.getElementById('youthSearch').value),status=document.getElementById('youthStatus').value;
-  const rows=youth.members.filter(m=>(!status||m.statut===status)&&Ui.normalize(m.prenom+' '+m.nom+' '+m.email).includes(q));
-  const aspirants=youth.members.filter(m=>m.statut==='Aspirant').length,societaires=youth.members.filter(m=>m.statut==='Sociétaire').length;
-  const specs=[['Aspirants',aspirants,'users','blue','En parcours'],['Sociétaires',societaires,'users','','Membres sociétaires'],['Total jeunes',youth.members.length,'check-circle','green','Suivis dans cet espace']];
+  const accessByKey={};youth.members.forEach(m=>accessByKey[m.key]=m);
+  const stats=(youth.dashboard&&youth.dashboard.members||[]).map(m=>Object.assign({},m,accessByKey[m.key]||{}));
+  const rows=stats.filter(m=>(!status||m.statut===status)&&Ui.normalize([m.nom,m.prenom,m.cayenne,m.email].join(' ')).includes(q));
+  const aspirants=stats.filter(m=>m.statut==='Aspirant').length,societaires=stats.filter(m=>m.statut==='Sociétaire').length;
+  const specs=[['Aspirants',aspirants,'users','blue','En parcours'],['Sociétaires',societaires,'users','','Membres sociétaires'],['Total jeunes',stats.length,'check-circle','green','Suivis dans cet espace']];
   document.getElementById('youthMemberKpis').innerHTML=specs.map(([label,value,icon,color,note])=>'<div class="kpi '+color+'"><div class="kpi-top"><span>'+esc(label)+'</span><span class="kpi-icon">'+Ui.icon(icon)+'</span></div><strong>'+Ui.count(value)+'</strong><small>'+esc(note)+'</small></div>').join('');
-  document.getElementById('youthMemberCount').textContent=rows.length+' membre'+(rows.length>1?'s':'')+' affiché'+(rows.length>1?'s':'');
-  document.getElementById('youthMembers').innerHTML=rows.length?'<table class="member-table"><thead><tr><th>Membre</th><th>Statut</th><th>Cayenne</th><th>Email</th><th></th></tr></thead><tbody>'+rows.map(m=>'<tr><td><div class="member-cell"><span class="avatar">'+esc((m.prenom||'?').charAt(0)+(m.nom||'?').charAt(0))+'</span><div><strong>'+esc(m.prenom+' '+m.nom)+'</strong><small>'+esc(m.telephone||'')+'</small></div></div></td><td><span class="pill">'+esc(m.statut)+'</span></td><td>'+esc(m.cayenne||'')+'</td><td>'+esc(m.email||'—')+'</td><td><button class="text-button" type="button" data-youth-edit="'+esc(m.key)+'">Modifier</button></td></tr>').join('')+'</tbody></table>':Ui.empty('Aucun membre','Aucun Sociétaire ou Aspirant ne correspond au filtre.','users');
+  document.getElementById('youthMemberCount').textContent=rows.length+' membre'+(rows.length>1?'s':'');
+  if(!rows.length){document.getElementById('youthMembers').innerHTML=Ui.empty('Aucun membre à afficher',q||status?'Modifiez votre recherche ou votre filtre.':'Les Sociétaires et Aspirants apparaîtront ici.','users');return;}
+  function identity(m){return '<div class="member-cell"><span class="avatar">'+esc((m.prenom||'').slice(0,1)+(m.nom||'').slice(0,1))+'</span><span><strong>'+esc(m.prenom)+' '+esc(m.nom)+'</strong><small>'+esc(m.cayenne||'')+'</small></span></div>';}
+  function rate(m){const p=Math.round(Math.max(0,Math.min(1,Number(m.presenceRate)||0))*100);return '<div class="rate"><div class="progress-track" aria-hidden="true"><span style="width:'+p+'%"></span></div><span>'+p+' %</span></div>';}
+  function counts(m){return '<div class="count-line"><span><i class="dot green"></i><b>'+Ui.count(m.presents)+'</b> présents</span><span><i class="dot amber"></i><b>'+Ui.count(m.excused)+'</b> excusés</span><span><b>'+Ui.count(m.absent)+'</b> absents</span><span><b>'+Ui.count(m.undecided)+'</b> indécis</span><span><b>'+Ui.count(m.noResponse)+'</b> sans réponse</span><span><b>'+Ui.count(m.aids)+'</b> aides</span></div>';}
+  const tableRows=rows.map(m=>'<tr><td>'+identity(m)+'</td><td><span class="pill neutral">'+esc(m.statut)+'</span></td><td>'+Ui.count(m.presents)+'</td><td>'+Ui.count(m.excused)+'</td><td>'+Ui.count(m.absent)+'</td><td>'+Ui.count(m.undecided)+'</td><td>'+Ui.count(m.noResponse)+'</td><td>'+Ui.count(m.aids)+'</td><td>'+rate(m)+'</td><td><button class="text-button" type="button" data-youth-edit="'+esc(m.key)+'">Modifier</button></td></tr>').join('');
+  const cards=rows.map(m=>'<article class="member-card"><div class="section-head" style="margin-bottom:0">'+identity(m)+'<span class="pill neutral">'+esc(m.statut)+'</span></div>'+counts(m)+rate(m)+'<button class="text-button" type="button" data-youth-edit="'+esc(m.key)+'">Modifier la fiche</button></article>').join('');
+  document.getElementById('youthMembers').innerHTML='<div class="member-table-wrap"><table class="member-table"><caption class="sr-only">Présences des Sociétaires et Aspirants en '+esc(youth.year)+'</caption><thead><tr><th scope="col">Membre</th><th scope="col">Statut</th><th scope="col">Présences annoncées</th><th scope="col">Excuses</th><th scope="col">Absents</th><th scope="col">Indécis</th><th scope="col">Sans réponse</th><th scope="col">Aides</th><th scope="col">Taux</th><th scope="col"></th></tr></thead><tbody>'+tableRows+'</tbody></table></div><div class="mobile-members">'+cards+'</div>';
 }
 function finishAction(){youth.busy=false;Ui.loading('youthNewBtn',false);Ui.loading('youthEditSave',false);Ui.loading('saveYouthEvent',false);}
 function isoDate(value){const p=String(value||'').split('/');return p.length===3?p[2]+'-'+p[1]+'-'+p[0]:String(value||'');}
