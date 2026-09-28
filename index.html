@@ -31,16 +31,16 @@
     main{width:min(100%,1080px);margin:0 auto;padding:34px 24px 44px;flex:1}
     .intro{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:18px}
     .intro h2{font-size:25px;font-weight:750}.intro p{color:var(--muted);font-size:14px;margin-top:5px}
-    .spaces{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+    .spaces{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
     .space{min-width:0;display:flex;flex-direction:column;padding:24px;background:#fff;border:1px solid var(--line);border-radius:8px}
     .badge{width:54px;height:54px;border-radius:14px;display:grid;place-items:center;background:#f7e9ed;color:var(--wine);font-weight:850;margin-bottom:18px}
-    .bureau .badge{background:#e8f2ee;color:var(--green)}
+    .bureau .badge{background:#e8f2ee;color:var(--green)}.youth .badge{background:#ecf2f7;color:#3f647c}
     .space h2{font-size:24px;font-weight:750}
     .access-type{font-size:13px;color:var(--muted);margin-top:5px}
     .description{color:var(--muted);margin:18px 0 26px;max-width:38ch}
     .action{min-height:54px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;margin-top:auto;border-radius:7px;background:var(--wine);color:white;font-weight:750;text-decoration:none}
     .action:hover{background:var(--wine-dark)}
-    .bureau .action{background:var(--green)}.bureau .action:hover{background:var(--green-dark)}
+    .bureau .action{background:var(--green)}.bureau .action:hover{background:var(--green-dark)}.youth .action{background:#3f647c}.youth .action:hover{background:#2f4d61}
     .action svg{flex:none}
     .install{margin-top:20px;padding:17px 20px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--muted);font-size:14px}
     .install strong{color:var(--ink)}
@@ -89,6 +89,13 @@
         <p class="access-type">Code reserve au bureau</p>
         <p class="description">Creez les evenements, suivez les presences, les excuses, les mails et les syntheses mensuelles.</p>
         <a class="action" href="https://script.google.com/macros/s/AKfycbzIr2LcGT2_IIR2Vj8h9E8yjxBUGZa7EUoUgwPLZTFt9f4S1bTTiZ9XimqcezTQHNixgg/exec?page=admin">Ouvrir bureau <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a>
+      </section>
+      <section class="space youth" aria-labelledby="youth-title">
+        <div class="badge" aria-hidden="true">J</div>
+        <h2 id="youth-title">Bureau des jeunes</h2>
+        <p class="access-type">Code spécifique au Bureau des jeunes</p>
+        <p class="description">Gérez uniquement les Sociétaires et Aspirants, sans accès aux Compagnons ni aux réglages généraux.</p>
+        <a class="action" href="https://script.google.com/macros/s/AKfycbzIr2LcGT2_IIR2Vj8h9E8yjxBUGZa7EUoUgwPLZTFt9f4S1bTTiZ9XimqcezTQHNixgg/exec?page=jeunes">Ouvrir Bureau des jeunes <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a>
       </section>
     </nav>
 
