@@ -178,7 +178,8 @@ function renderEvents(){
 function renderMembers(){
   const q=Ui.normalize(document.getElementById('youthSearch').value),status=document.getElementById('youthStatus').value;
   const accessByKey={};youth.members.forEach(m=>accessByKey[m.key]=m);
-  const stats=(youth.dashboard&&youth.dashboard.members||[]).map(m=>Object.assign({},m,accessByKey[m.key]||{}));
+  const dashboardMembers=(youth.dashboard&&youth.dashboard.members)||[];
+  const stats=(dashboardMembers.length?dashboardMembers:youth.members.map(m=>({key:m.key,nom:m.nom,prenom:m.prenom,statut:m.statut,cayenne:m.cayenne,presents:0,excused:0,absent:0,undecided:0,noResponse:0,aids:0,presenceRate:0}))).map(m=>Object.assign({},m,accessByKey[m.key]||{}));
   const rows=stats.filter(m=>(!status||m.statut===status)&&Ui.normalize([m.nom,m.prenom,m.cayenne,m.email].join(' ')).includes(q));
   const aspirants=stats.filter(m=>m.statut==='Aspirant').length,societaires=stats.filter(m=>m.statut==='Sociétaire').length;
   const specs=[['Aspirants',aspirants,'users','blue','En parcours'],['Sociétaires',societaires,'users','','Membres sociétaires'],['Total jeunes',stats.length,'check-circle','green','Suivis dans cet espace']];
