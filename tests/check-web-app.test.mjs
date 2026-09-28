@@ -25,9 +25,9 @@ test('confirms both separate entry forms and rejects a broken bureau page', asyn
       visited.push(url);
       return {ok: true, status: 200, text: async () => url.endsWith('?page=admin')
         ? bureauAvailable ? '<form id="accessForm">' : 'Erreur'
-        : '<form id="memberLoginForm">'};
+        : url.endsWith('?page=jeunes') ? '<form id="youthAccessForm">' : '<form id="memberLoginForm">'};
     });
     assert.equal(result.ok, bureauAvailable);
-    assert.equal(visited.length, 2);
+    assert.equal(visited.length, 3);
   }
 });
