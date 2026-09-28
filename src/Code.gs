@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.28.3',
+  version: '2026.09.28.4',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -389,6 +389,25 @@ function getDashboardData(year, adminPin) {
   data.background = backgroundStatus_();
   data.version = UC_APP.version;
   data.calendar = calendarRows_().filter(function(e) { return eventYear_(e) === data.year; }).sort(function(a,b) { return asDate_(a.Date) - asDate_(b.Date); }).map(function(e) { return Object.assign(formatEventForClient_(e), {agenda: agendaAdminInfo_(e)}); });
+  return data;
+}
+
+function getYouthDashboardData(year, token) {
+  assertYouthAdmin_(token);
+  setupSystemIfMissing_();
+  const targetYear = Number(year || getSettings_().annee_active || UC_APP.defaults.activeYear);
+  if (!Number.isInteger(targetYear) || targetYear < 2020 || targetYear > 2100) throw new Error('Année invalide.');
+  const data = computeDashboard_(targetYear, youthMemberAllowed_);
+  const youthMembers = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(member) {
+    return member.Nom && member.Prenom && isActive_(member.Actif) && youthMemberAllowed_(member);
+  });
+  data.version = UC_APP.version;
+  data.calendar = calendarRows_()
+    .filter(function(e) {
+      return eventYear_(e) === data.year && youthMembers.some(function(member) { return eventForMember_(e, member); });
+    })
+    .sort(function(a,b) { return asDate_(a.Date) - asDate_(b.Date); })
+    .map(function(e) { return formatEventForClient_(e); });
   return data;
 }
 
@@ -921,10 +940,10 @@ function makeEventId_(date, title) {
   return base + '-' + suffix;
 }
 
-function computeDashboard_(year) {
+function computeDashboard_(year, memberFilter) {
   const events = getEventsForYear_(year);
   const members = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(member) {
-    return member.Nom && member.Prenom && isActive_(member.Actif);
+    return member.Nom && member.Prenom && isActive_(member.Actif) && (!memberFilter || memberFilter(member));
   });
   const responses = responseRows_().filter(function(row) {
     const event = events.find(function(e) { return e.ID_Evenement === row.ID_Evenement; });
