@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.28.2',
+  version: '2026.09.28.3',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -595,8 +595,19 @@ function exportActiveSheetPdf_() {
 function setupSystemIfMissing_() {
   const ss = getSpreadsheet_();
   if (!ss.getSheetByName(UC_APP.sheets.reponses) || !ss.getSheetByName(UC_APP.sheets.eventBase)) setupSystem_();
+  ensureYouthSetting_();
   ensureParticipationSchema_();
   ensureAuditSchema_();
+}
+
+function ensureYouthSetting_() {
+  const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.parametres);
+  if (!sheet) return;
+  const rows = sheet.getRange(2, 1, 49, 1).getValues();
+  if (rows.some(function(row) { return clean_(row[0]) === 'jeunes_pin'; })) return;
+  const blank = rows.findIndex(function(row) { return !clean_(row[0]); });
+  const targetRow = blank >= 0 ? blank + 2 : Math.min(sheet.getLastRow() + 1, 50);
+  sheet.getRange(targetRow, 1, 1, 3).setValues([['jeunes_pin', '', 'Code séparé du Bureau des jeunes']]);
 }
 
 function ensureSheet_(ss, name) {
