@@ -60,9 +60,10 @@
       </section>
       <section id="screen-members" class="screen" aria-label="Suivi des membres">
         <div class="access-management" id="memberAccessPanel" hidden>
-          <h2>Accès personnels</h2>
-          <p class="small muted">Lorsqu’un code est créé ou remplacé, il est envoyé automatiquement au membre si son adresse email est valide. Le message contient le lien d’accès et les explications pour enregistrer le code sur son téléphone.</p>
+          <div class="section-head"><div><h2>Accès personnels</h2><p>Créez, envoyez et suivez les accès des membres.</p></div><button id="sendAllAccessCodes" class="btn" type="button" data-protected disabled><span data-icon="mail"></span>Envoyer tous les codes d’accès</button></div>
+          <p class="small muted">Lorsqu’un code est créé ou remplacé, il est envoyé automatiquement au membre si son adresse email est valide. L’envoi global remplace uniquement les codes temporaires ; les mots de passe personnels déjà choisis sont conservés.</p>
           <div id="accessNotice" class="notice" role="status" hidden></div>
+          <div id="bulkAccessSummary" class="notice" role="status" hidden></div>
           <details><summary>Ajouter un membre</summary>
             <form id="newMemberForm" class="fields">
               <div class="field"><label for="newPrenom">Prénom</label><input id="newPrenom" name="prenom" maxlength="200" required></div>
@@ -122,7 +123,7 @@
   </div>
   <?!= include('AdminTools'); ?>
   <script>
-  const state={config:null,dashboard:null,currentScreen:'dashboard',request:0,session:0,token:'',accessMembers:[],accessBusy:false,reportUrls:new Map(),pending:new Set(),editingEvent:null,eventBusy:false,emailMember:null,mailRows:[],confidentialRequest:0,agendaBusy:false,agendaEventId:''};
+  const state={config:null,dashboard:null,currentScreen:'dashboard',request:0,session:0,token:'',accessMembers:[],accessBusy:false,bulkAccessSummary:null,reportUrls:new Map(),pending:new Set(),editingEvent:null,eventBusy:false,emailMember:null,mailRows:[],confidentialRequest:0,agendaBusy:false,agendaEventId:''};
   const titles={dashboard:['Vue d’ensemble','La vie de votre Cayenne, en un regard.'],events:['Les rendez-vous','Préparez les événements et suivez les réponses.'],members:['Les membres','Un suivi lisible, personne par personne.'],reports:['Comptes rendus','Les présences réunies, prêtes à être partagées.'],settings:['Les réglages','Vos liens et vos outils, au même endroit.']};
   Ui.mountIcons();
   let attendanceRoster=null, attendanceRequest=0;
@@ -189,6 +190,16 @@
     const payload=Object.fromEntries(new FormData(event.target));
     accessAction(runner=>runner.createMemberAccess(payload,pin()),true);
   });
+  document.getElementById('sendAllAccessCodes').addEventListener('click',()=>{
+    if(state.accessBusy||!state.token)return;
+    if(!confirm('Envoyer les accès à tous les membres actifs ? Les codes temporaires existants seront remplacés. Les mots de passe personnels déjà choisis ne seront pas modifiés. Les membres sans adresse email valide ne recevront rien.'))return;
+    const session=state.session;state.accessBusy=true;state.bulkAccessSummary=null;hideIssuedCode();renderMemberAccess();Ui.loading('sendAllAccessCodes',true,'Envoi en cours…');
+    google.script.run.withSuccessHandler(result=>{
+      if(session!==state.session)return;state.accessBusy=false;state.bulkAccessSummary=result.summary||null;Ui.loading('sendAllAccessCodes',false);Ui.notice('accessNotice',result.message||'Envoi terminé.','ok');loadMemberAccess();
+    }).withFailureHandler(error=>{
+      if(session!==state.session)return;state.accessBusy=false;Ui.loading('sendAllAccessCodes',false);renderMemberAccess();Ui.notice('accessNotice',error.message||error);
+    }).sendAllMemberAccessCodes(pin());
+  });
   document.getElementById('memberAccessList').addEventListener('click',event=>{
     const button=event.target.closest('[data-access-action]');if(!button||state.accessBusy)return;
     const action=button.dataset.accessAction,key=button.dataset.memberKey;
@@ -215,16 +226,35 @@
     google.script.run.withSuccessHandler(()=>{if(session!==state.session)return;Ui.loading('changeYouthCodeBtn',false);document.getElementById('youthCodeForm').reset();Ui.notice('adminNotice','Code du Bureau des jeunes enregistré.','ok');}).withFailureHandler(error=>{if(session!==state.session)return;Ui.loading('changeYouthCodeBtn',false);Ui.notice('adminNotice',error.message || error);}).changeYouthBureauCode(code,pin());
   });
   function hideIssuedCode(){document.getElementById('issuedCodePanel').hidden=true;document.getElementById('issuedCode').value='';document.getElementById('issuedCodeLabel').textContent='Code personnel à transmettre';}
-  function clearMemberAccess(){clearAuditPanels();state.accessMembers=[];state.accessBusy=false;document.getElementById('memberAccessPanel').hidden=true;document.getElementById('memberAccessList').textContent='';document.getElementById('accessNotice').hidden=true;hideIssuedCode();document.getElementById('newMemberForm').reset();document.getElementById('bureauCodeForm').reset();document.getElementById('youthCodeForm').reset();['newMemberBtn','changeBureauCodeBtn','changeYouthCodeBtn'].forEach(id=>Ui.loading(id,false));}
+  function clearMemberAccess(){clearAuditPanels();state.accessMembers=[];state.accessBusy=false;state.bulkAccessSummary=null;document.getElementById('memberAccessPanel').hidden=true;document.getElementById('memberAccessList').textContent='';document.getElementById('accessNotice').hidden=true;document.getElementById('bulkAccessSummary').hidden=true;hideIssuedCode();document.getElementById('newMemberForm').reset();document.getElementById('bureauCodeForm').reset();document.getElementById('youthCodeForm').reset();['newMemberBtn','changeBureauCodeBtn','changeYouthCodeBtn','sendAllAccessCodes'].forEach(id=>Ui.loading(id,false));}
   function loadMemberAccess(){
     if(!state.token)return;const session=state.session;
     google.script.run.withSuccessHandler(members=>{if(session!==state.session)return;state.accessMembers=members;document.getElementById('memberAccessPanel').hidden=false;renderMemberAccess();}).withFailureHandler(error=>{if(session!==state.session)return;Ui.notice('adminNotice',error.message || error);}).listMemberAccess(pin());
   }
-  function renderMemberAccess(){
-    document.getElementById('memberAccessList').innerHTML=state.accessMembers.length?state.accessMembers.map(m=>{const access=!m.hasCode?'Sans accès':m.hasPassword?'Mot de passe choisi':'Code temporaire à remplacer';return '<div class="history-row"><div><strong>'+Ui.escape(m.prenom+' '+m.nom)+'</strong><p>'+Ui.escape(m.statut+' · '+m.cayenne+' · '+(!m.active?'Membre inactif':access))+'</p></div><div class="access-actions"><button class="text-button" type="button" data-email-member="'+Ui.escape(m.key)+'">Modifier le membre</button>'+ (m.active?'<button class="btn secondary" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="'+(m.hasCode?'reset':'issue')+'">'+(m.hasCode?'Réinitialiser l’accès':(m.email?'Créer et envoyer l’accès':'Créer l’accès'))+'</button>':'')+(m.hasCode?'<button class="text-button" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="revoke">Révoquer l’accès</button>':'')+'</div></div>';}).join(''):Ui.empty('Aucun membre','Ajoutez le premier membre pour créer son accès.','users');
-    document.querySelectorAll('[data-access-action]').forEach(button=>button.disabled=state.accessBusy);
+  function renderAccessDelivery_(m){
+    const d=m.delivery||{},stateName=d.state||'';
+    if(!stateName)return '<span class="pill neutral">Pas encore envoyé</span>';
+    const when=d.at?new Date(d.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+    if(stateName==='sent')return '<span class="pill green">Envoyé'+(when?' · '+Ui.escape(when):'')+'</span>';
+    if(stateName==='password')return '<span class="pill blue">Mot de passe actif · non renvoyé</span>';
+    if(stateName==='no_email')return '<span class="pill amber">Non envoyé · email manquant</span>';
+    if(stateName==='inactive')return '<span class="pill neutral">Non envoyé · membre inactif</span>';
+    if(stateName==='revoked')return '<span class="pill neutral">Accès révoqué</span>';
+    return '<span class="pill amber">Échec d’envoi'+(when?' · '+Ui.escape(when):'')+'</span>';
   }
-  function accessAction(invoke,created){
+  function renderBulkAccessSummary_(){
+    const box=document.getElementById('bulkAccessSummary'),s=state.bulkAccessSummary;
+    if(!s){box.hidden=true;box.innerHTML='';return;}
+    box.hidden=false;box.className='notice '+(s.error?'error':'ok');
+    box.innerHTML='<div><strong>Envoi global terminé.</strong><div class="button-row" style="margin-top:8px"><span class="pill green">'+Ui.count(s.sent)+' envoyé'+(s.sent>1?'s':'')+'</span><span class="pill blue">'+Ui.count(s.password)+' mot'+(s.password>1?'s':'')+' de passe actif'+(s.password>1?'s':'')+'</span><span class="pill amber">'+Ui.count(s.no_email)+' sans email</span><span class="pill amber">'+Ui.count(s.error)+' erreur'+(s.error>1?'s':'')+'</span><span class="pill neutral">'+Ui.count(s.inactive)+' inactif'+(s.inactive>1?'s':'')+'</span></div></div>';
+  }
+  function renderMemberAccess(){
+    document.getElementById('memberAccessList').innerHTML=state.accessMembers.length?state.accessMembers.map(m=>{const access=!m.hasCode?'Sans accès':m.hasPassword?'Mot de passe choisi':'Code temporaire actif';return '<div class="history-row"><div><strong>'+Ui.escape(m.prenom+' '+m.nom)+'</strong><p>'+Ui.escape(m.statut+' · '+m.cayenne+' · '+(!m.active?'Membre inactif':access))+'</p><div style="margin-top:7px">'+renderAccessDelivery_(m)+'</div></div><div class="access-actions"><button class="text-button" type="button" data-email-member="'+Ui.escape(m.key)+'">Modifier le membre</button>'+ (m.active?'<button class="btn secondary" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="'+(m.hasCode?'reset':'issue')+'">'+(m.hasCode?'Réinitialiser l’accès':(m.email?'Créer et envoyer l’accès':'Créer l’accès'))+'</button>':'')+(m.hasCode?'<button class="text-button" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="revoke">Révoquer l’accès</button>':'')+'</div></div>';}).join(''):Ui.empty('Aucun membre','Ajoutez le premier membre pour créer son accès.','users');
+    document.querySelectorAll('[data-access-action]').forEach(button=>button.disabled=state.accessBusy);
+    document.getElementById('sendAllAccessCodes').disabled=state.accessBusy||!state.token;
+    renderBulkAccessSummary_();
+  }
+    function accessAction(invoke,created){
     if(!state.token)return;const session=state.session;state.accessBusy=true;hideIssuedCode();renderMemberAccess();Ui.loading('newMemberBtn',true,'Enregistrement…');
     const finish=()=>{state.accessBusy=false;Ui.loading('newMemberBtn',false);renderMemberAccess();};
     const runner=google.script.run.withSuccessHandler(result=>{
