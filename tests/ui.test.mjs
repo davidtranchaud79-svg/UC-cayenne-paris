@@ -9,10 +9,10 @@ const events = [
   {id:'evt-1',date:'19/09/2026',title:'Journées du patrimoine',type:'JEP',start:'09:00',end:'18:00',place:'Paris',sheetName:'CR_JEP'},
   {id:'evt-2',date:'21/11/2026',title:'Fête de novembre',type:'Fête de novembre',start:'19:00',end:'23:00',place:'Paris',sheetName:'CR_FETE'}
 ];
-const config = {activeYear:2026,statuses:['Sociétaire','Aspirant','Compagnon'],cayennes:['Paris','Autre'],responseTypes:['Présent','Absent','Absent excusé'],causes:['Travail','Familiale'],events,eventTypes:['JEP','Fête de novembre'],eventTemplates:[{id:'tpl-1',name:'JEP',defaultTitle:'Journées du patrimoine',type:'JEP',cayenne:'Paris',start:'09:00',end:'18:00',place:'Paris'}],urls:{publicUrl,adminUrl:publicUrl+'?page=admin'}};
+const config = {activeYear:2026,statuses:['Sociétaire','Aspirant','Compagnon'],cayennes:['Paris','Autre'],responseTypes:['Présent','Absent','Absent excusé'],causes:['Travail','Familiale'],events,eventTypes:['JEP','Fête de novembre'],eventTemplates:[{id:'tpl-1',name:'JEP',defaultTitle:'Journées du patrimoine',type:'JEP',cayenne:'Paris',start:'09:00',end:'18:00',place:'Paris'}],urls:{publicUrl,adminUrl:publicUrl+'?page=admin',youthUrl:publicUrl+'?page=jeunes'}};
 const dashboard = {year:2026,kpis:{events:2,members:1,presents:1,excused:0,noResponse:1,aids:1},events:events.map(e=>({...e,presents:1,excused:0,noResponse:0,aids:1})),members:[{nom:'Exemple',prenom:'Camille',statut:'Sociétaire',cayenne:'Paris',presents:1,excused:0,noResponse:1,aids:1,presenceRate:0.5}],causes:[]};
 function render(file) {
-  return readFileSync(new URL(file,src),'utf8').replace(/<\?!= include\('([A-Za-z]+)'\); \?>/g,(_,name)=>readFileSync(new URL(name+'.html',src),'utf8')).replaceAll('<?= appVersion ?>','2026.09.23.2').replaceAll('<?= publicUrl ?>',publicUrl).replaceAll('<?= adminUrl ?>',publicUrl+'?page=admin');
+  return readFileSync(new URL(file,src),'utf8').replace(/<\?!= include\('([A-Za-z]+)'\); \?>/g,(_,name)=>readFileSync(new URL(name+'.html',src),'utf8')).replaceAll('<?= appVersion ?>','2026.09.23.2').replaceAll('<?= publicUrl ?>',publicUrl).replaceAll('<?= adminUrl ?>',publicUrl+'?page=admin').replaceAll('<?= youthUrl ?>',publicUrl+'?page=jeunes');
 }
 function app(file, overrides={}) {
   config.profile={nom:'Exemple',prenom:'Camille',statut:'Sociétaire',cayenne:'Paris',email:'camille@example.test',telephone:''};
@@ -34,11 +34,15 @@ function app(file, overrides={}) {
         else if(method==='getPublicConfig'||method==='getBootstrapConfig')success(structuredClone(config));
         else if(method==='loginMember')success({token:'MEMBER_SESSION',remembered:args[1]===true});
         else if(method==='loginBureau')success({token:'BUREAU_SESSION'});
+        else if(method==='loginYouthBureau')success({token:'YOUTH_SESSION'});
         else if(method==='logoutAccess')success({ok:true});
         else if(method==='listMemberAccess')success([{...config.profile,key:config.profile.email,active:true,hasCode:false}]);
+        else if(method==='listYouthMemberAccess')success([{nom:'Aardvark',prenom:'Zoé',statut:'Aspirant',cayenne:'Paris',email:'zoe@example.test',telephone:'',key:'MEM-ZOE',active:true,hasCode:false},{nom:'Autre',prenom:'Alex',statut:'Sociétaire',cayenne:'Paris',email:'alex@example.test',telephone:'',key:'MEM-ALEX',active:true,hasCode:true,hasPassword:true}]);
         else if(method==='manageMemberCode'||method==='createMemberAccess')success({profile:config.profile,code:'1234-5678-90AB-CDEF'});
-        else if(method==='changeBureauCode')success({ok:true});
+        else if(method==='manageYouthMemberCode'||method==='createYouthMemberAccess')success({profile:{nom:'Autre',prenom:'Alex',statut:'Sociétaire',cayenne:'Paris',email:'alex@example.test'},code:'1234-5678-90AB-CDEF'});
+        else if(method==='changeBureauCode'||method==='changeYouthBureauCode')success({ok:true});
         else if(method==='updateOwnEmail')success({ok:true,email:args[0],message:'Adresse email mise à jour.'});
+        else if(method==='updateYouthMemberProfile')success({ok:true,message:'Membre mis à jour dans l’espace Bureau des jeunes.'});
         else if(method==='setMemberPassword')success({ok:true,token:'MEMBER_SESSION_2',remembered:false,message:'Votre mot de passe personnel est enregistré.'});
         else if(method==='deleteEvent')success({ok:true,deletedResponses:2,message:'Événement supprimé définitivement avec 2 réponse(s) associée(s).'});
         else if(method==='deleteMember')success({ok:true,deletedResponses:2,message:'Membre supprimé définitivement avec 2 réponse(s) associée(s).'});
@@ -347,4 +351,16 @@ test('first access requires choosing a personal password before event responses 
  assert.equal(a.doc.getElementById('formContent').hidden,true);
  a.fill('memberNewPassword','MonMotDePasse2026');a.fill('memberNewPasswordConfirm','MonMotDePasse2026');a.submit('memberPasswordForm');a.flush();
  assert.ok(a.calls.find(c=>c.method==='setMemberPassword'));a.dom.window.close();
+});
+
+test('Youth Bureau has its own login, shows only youth-member management and no general settings',()=>{
+ const a=app('Youth.html',{});
+ a.fill('youthPin','JEUNES-TEST');a.submit('youthAccessForm');a.flush();
+ assert.ok(a.calls.find(c=>c.method==='loginYouthBureau'));assert.ok(a.calls.find(c=>c.method==='listYouthMemberAccess'));
+ assert.equal(a.doc.getElementById('youthSpace').hidden,false);
+ assert.match(a.doc.getElementById('youthMembers').textContent,/Zoé Aardvark/);
+ assert.match(a.doc.getElementById('youthMembers').textContent,/Alex Autre/);
+ assert.doesNotMatch(a.doc.body.textContent,/Code commun du bureau|Bibliothèque d’événements|Réglages/);
+ assert.doesNotMatch(a.doc.getElementById('youthMembers').textContent,/Compagnon/);
+ a.dom.window.close();
 });
