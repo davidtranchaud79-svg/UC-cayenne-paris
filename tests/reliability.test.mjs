@@ -227,3 +227,21 @@ test('member rows automatically follow rank then alphabetical order after a prom
   assert.equal(Array.from(rows,m=>m.Statut).join('|'),'Compagnon|Aspirant|Aspirant');
   assert.equal(Array.from(rows.filter(m=>m.Statut==='Aspirant'),m=>m.Nom).join('|'),'Aardvark|Autre');
 });
+
+test('Youth Bureau overview and events contain only Sociétaires/Aspirants and exclude companion meetings',()=>{
+  const f=fixture();
+  f.calendar.grid.push(['EVT-YOUTH',2026,new Date('2026-10-07T12:00:00Z'),'Réunion des jeunes','Réunion des jeunes','19:00','22:00','Cayenne de Paris','Paris','Réunion','Oui','','Standard']);
+  f.appendResponse({ID_Evenement:'EVT-YOUTH',Cle_Personne:'alex@example.test',Nom:'Autre',Prenom:'Alex',Email:'alex@example.test',Reponse:'Présent'});
+  f.c.ensureAuditSchema_();
+  const d=f.c.getYouthDashboardData(2026,f.youth);
+  assert.equal(d.kpis.members,1);
+  assert.equal(d.kpis.events,1);
+  assert.equal(d.kpis.presents,1);
+  assert.equal(d.calendar.length,1);
+  assert.equal(d.calendar[0].id,'EVT-YOUTH');
+  assert.equal(d.events.length,1);
+  assert.equal(d.events[0].id,'EVT-YOUTH');
+  assert.equal(d.members.every(m=>m.statut==='Aspirant'||m.statut==='Sociétaire'),true);
+  assert.equal(d.calendar.some(e=>e.type==='Réunion compagnon'),false);
+  assert.throws(()=>f.c.getYouthDashboardData(2026,f.bureau),/SESSION_EXPIRED/);
+});
