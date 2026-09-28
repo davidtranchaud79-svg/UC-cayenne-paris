@@ -425,7 +425,7 @@ function createYouthEvent(payload, token) {
       ID_Evenement:makeEventId_(date,title), Annee:date.getFullYear(), Date:date, Titre:title, Type_Evenement:type,
       Heure_Debut:clean_(payload.start), Heure_Fin:clean_(payload.end), Lieu:clean_(payload.place || 'Cayenne de Paris'),
       Cayenne:clean_(payload.cayenne || 'Paris'), Categorie_CR:'Événement', Actif:'Oui', Commentaire:clean_(payload.comment),
-      Modalites:clean_(payload.modalites || 'Standard'), Public_Statuts:'Sociétaire;Aspirant', Public_Cayennes:'',
+      Modalites:clean_(payload.modalites || 'Standard'), Public_Statuts:'Sociétaire ; Aspirant', Public_Cayennes:'',
       Version:Utilities.getUuid(), Modifie_Le:new Date()
     };
     if (!getOptionList_('E', UC_APP.defaults.cayennes).includes(event.Cayenne)) throw new Error('Cayenne invalide.');
