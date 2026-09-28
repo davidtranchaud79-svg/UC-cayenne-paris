@@ -39,7 +39,8 @@ function app(file, overrides={}) {
         else if(method==='listMemberAccess')success([{...config.profile,key:config.profile.email,active:true,hasCode:false}]);
         else if(method==='listYouthMemberAccess')success([{nom:'Aardvark',prenom:'Zoé',statut:'Aspirant',cayenne:'Paris',email:'zoe@example.test',telephone:'',key:'MEM-ZOE',active:true,hasCode:false},{nom:'Autre',prenom:'Alex',statut:'Sociétaire',cayenne:'Paris',email:'alex@example.test',telephone:'',key:'MEM-ALEX',active:true,hasCode:true,hasPassword:true}]);
         else if(method==='manageMemberCode'||method==='createMemberAccess')success({profile:config.profile,code:'1234-5678-90AB-CDEF'});
-        else if(method==='manageYouthMemberCode'||method==='createYouthMemberAccess')success({profile:{nom:'Autre',prenom:'Alex',statut:'Sociétaire',cayenne:'Paris',email:'alex@example.test'},code:'1234-5678-90AB-CDEF'});
+        else if(method==='manageYouthMemberCode'||method==='createYouthMemberAccess')throw Error('Youth Bureau must not manage access');
+        else if(method==='createYouthMemberProfile')success({ok:true,profile:{nom:'Autre',prenom:'Alex',statut:'Sociétaire',cayenne:'Paris',email:'alex@example.test'},message:'Membre ajouté. La gestion de son accès reste réservée au bureau principal.'});
         else if(method==='changeBureauCode'||method==='changeYouthBureauCode')success({ok:true});
         else if(method==='updateOwnEmail')success({ok:true,email:args[0],message:'Adresse email mise à jour.'});
         else if(method==='updateYouthMemberProfile')success({ok:true,message:'Membre mis à jour dans l’espace Bureau des jeunes.'});
@@ -362,5 +363,9 @@ test('Youth Bureau has its own login, shows only youth-member management and no 
  assert.match(a.doc.getElementById('youthMembers').textContent,/Alex Autre/);
  assert.doesNotMatch(a.doc.body.textContent,/Code commun du bureau|Bibliothèque d’événements|Réglages/);
  assert.doesNotMatch(a.doc.getElementById('youthMembers').textContent,/Compagnon/);
+ assert.doesNotMatch(a.doc.body.textContent,/Réinitialiser l’accès|Révoquer|Créer l’accès|Code temporaire/);
+ a.fill('youthNewPrenom','Lina');a.fill('youthNewNom','Jeune');a.fill('youthNewEmail','lina@example.test');a.submit('youthNewForm');a.flush();
+ assert.ok(a.calls.find(c=>c.method==='createYouthMemberProfile'));
+ assert.equal(a.calls.some(c=>c.method==='manageYouthMemberCode'||c.method==='createYouthMemberAccess'),false);
  a.dom.window.close();
 });
