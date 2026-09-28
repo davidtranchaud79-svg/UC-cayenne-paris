@@ -11,8 +11,9 @@
     <div class="brand bureau-brand"><?!= include('BrandBureau'); ?><div><div class="brand-name">Bureau des jeunes</div><span class="brand-subtitle">Cayenne de Paris</span></div></div>
     <a class="btn secondary compact" target="_top" href="<?= publicUrl ?>">Espace membres</a>
   </div></header>
+
   <main class="public-main">
-    <div class="welcome"><div><div class="eyebrow">Sociétaires & Aspirants</div><h1 class="serif">Espace Bureau des jeunes</h1><p>Un espace volontairement limité aux Sociétaires et Aspirants. Les Compagnons et les réglages généraux ne sont pas accessibles ici.</p></div></div>
+    <div class="welcome"><div><div class="eyebrow">Sociétaires & Aspirants</div><h1 class="serif">Espace Bureau des jeunes</h1><p>Vue d’ensemble, événements et gestion des fiches Sociétaires/Aspirants. Les Compagnons, les réglages généraux et la gestion des accès restent réservés au bureau principal.</p></div></div>
     <div id="youthNotice" class="notice" role="status" aria-live="polite" hidden></div>
 
     <section id="youthLogin" class="panel access-panel">
@@ -26,72 +27,196 @@
 
     <section id="youthSpace" hidden>
       <div class="session-bar"><span class="dot"></span><strong>Accès limité Sociétaires / Aspirants</strong><button class="text-button" type="button" id="youthLogout"><span data-icon="logout"></span>Se déconnecter</button></div>
-      <div class="kpi-grid" id="youthKpis"></div>
 
-      <div class="panel panel-pad">
-        <div class="section-head"><div><h2>Les jeunes de la Cayenne</h2><p>Classement automatique par rang puis par ordre alphabétique.</p></div><button id="youthRefresh" class="btn secondary compact" type="button"><span data-icon="refresh"></span>Actualiser</button></div>
-        <div class="toolbar">
-          <div class="search-box"><span data-icon="search"></span><label class="sr-only" for="youthSearch">Rechercher un membre</label><input id="youthSearch" type="search" placeholder="Nom ou prénom…"></div>
-          <label class="sr-only" for="youthStatus">Filtrer par statut</label><select id="youthStatus"><option value="">Tous</option><option>Aspirant</option><option>Sociétaire</option></select>
+      <div class="panel panel-pad" style="margin-bottom:22px">
+        <div class="section-head"><div><h2>Navigation</h2><p>Les données affichées ici concernent uniquement les Sociétaires et Aspirants.</p></div><div class="access-actions"><label class="sr-only" for="youthYear">Année</label><select id="youthYear"></select><button id="youthRefresh" class="btn secondary compact" type="button"><span data-icon="refresh"></span>Actualiser</button></div></div>
+        <div class="access-actions" style="margin-top:12px">
+          <button class="btn secondary compact" type="button" data-youth-screen="overview">Vue d’ensemble</button>
+          <button class="btn secondary compact" type="button" data-youth-screen="events">Événements</button>
+          <button class="btn secondary compact" type="button" data-youth-screen="members">Membres</button>
         </div>
-        <div id="youthMembers" style="margin-top:18px"></div>
       </div>
 
-      <details class="panel panel-pad" style="margin-top:22px"><summary><strong>Ajouter un Sociétaire ou Aspirant</strong></summary>
-        <form id="youthNewForm" class="fields" style="margin-top:18px">
-          <div class="field"><label for="youthNewPrenom">Prénom</label><input id="youthNewPrenom" name="prenom" maxlength="200" required></div>
-          <div class="field"><label for="youthNewNom">Nom</label><input id="youthNewNom" name="nom" maxlength="200" required></div>
-          <div class="field"><label for="youthNewStatut">Statut</label><select id="youthNewStatut" name="statut"><option>Sociétaire</option><option>Aspirant</option></select></div>
-          <div class="field"><label for="youthNewCayenne">Cayenne</label><select id="youthNewCayenne" name="cayenne"><option>Paris</option><option>Autre</option></select></div>
-          <div class="field"><label for="youthNewEmail">Email</label><input id="youthNewEmail" type="email" name="email" maxlength="200"></div>
-          <div class="field"><label for="youthNewTelephone">Téléphone</label><input id="youthNewTelephone" name="telephone" maxlength="200"></div>
-          <div class="field full"><button id="youthNewBtn" class="btn" type="submit">Créer le membre</button></div>
-        </form>
-      </details>
-
-      <form id="youthEditForm" class="panel panel-pad" style="margin-top:22px" hidden>
-        <div class="section-head"><div><h2 id="youthEditTitle">Modifier le membre</h2><p>Le statut peut uniquement rester Sociétaire ou Aspirant dans cet espace.</p></div><button id="youthEditCancel" class="text-button" type="button">Fermer</button></div>
-        <div class="fields">
-          <div class="field"><label for="youthEditPrenom">Prénom</label><input id="youthEditPrenom" maxlength="200" required></div>
-          <div class="field"><label for="youthEditNom">Nom</label><input id="youthEditNom" maxlength="200" required></div>
-          <div class="field"><label for="youthEditStatut">Statut</label><select id="youthEditStatut"><option>Sociétaire</option><option>Aspirant</option></select></div>
-          <div class="field"><label for="youthEditCayenne">Cayenne</label><select id="youthEditCayenne"><option>Paris</option><option>Autre</option></select></div>
-          <div class="field"><label for="youthEditEmail">Email</label><input id="youthEditEmail" type="email" maxlength="200"></div>
-          <div class="field"><label for="youthEditTelephone">Téléphone</label><input id="youthEditTelephone" maxlength="200"></div>
+      <section id="youthOverviewScreen" data-youth-panel="overview">
+        <div class="kpi-grid" id="youthOverviewKpis"></div>
+        <div class="panel panel-pad" style="margin-top:22px">
+          <div class="section-head"><div><h2 id="youthOverviewTitle">Vue d’ensemble</h2><p>Statistiques calculées uniquement sur les Sociétaires et Aspirants.</p></div></div>
+          <div id="youthFollowUps"></div>
         </div>
-        <button id="youthEditSave" class="btn" type="submit">Enregistrer les modifications</button>
-      </form>
+      </section>
 
+      <section id="youthEventsScreen" data-youth-panel="events" hidden>
+        <div class="panel panel-pad">
+          <div class="section-head"><div><h2>Événements</h2><p>Consultation uniquement. La création, la modification et la suppression restent réservées au bureau principal.</p></div></div>
+          <div id="youthEvents"></div>
+        </div>
+      </section>
+
+      <section id="youthMembersScreen" data-youth-panel="members" hidden>
+        <div class="kpi-grid" id="youthMemberKpis"></div>
+        <div class="panel panel-pad" style="margin-top:22px">
+          <div class="section-head"><div><h2>Les jeunes de la Cayenne</h2><p>Classement automatique par rang puis par ordre alphabétique.</p></div></div>
+          <div class="toolbar">
+            <div class="search-box"><span data-icon="search"></span><label class="sr-only" for="youthSearch">Rechercher un membre</label><input id="youthSearch" type="search" placeholder="Nom ou prénom…"></div>
+            <label class="sr-only" for="youthStatus">Filtrer par statut</label><select id="youthStatus"><option value="">Tous</option><option>Aspirant</option><option>Sociétaire</option></select>
+          </div>
+          <div id="youthMembers" style="margin-top:18px"></div>
+        </div>
+
+        <details class="panel panel-pad" style="margin-top:22px"><summary><strong>Ajouter un Sociétaire ou Aspirant</strong></summary>
+          <form id="youthNewForm" class="fields" style="margin-top:18px">
+            <div class="field"><label for="youthNewPrenom">Prénom</label><input id="youthNewPrenom" name="prenom" maxlength="200" required></div>
+            <div class="field"><label for="youthNewNom">Nom</label><input id="youthNewNom" name="nom" maxlength="200" required></div>
+            <div class="field"><label for="youthNewStatut">Statut</label><select id="youthNewStatut" name="statut"><option>Sociétaire</option><option>Aspirant</option></select></div>
+            <div class="field"><label for="youthNewCayenne">Cayenne</label><select id="youthNewCayenne" name="cayenne"><option>Paris</option><option>Autre</option></select></div>
+            <div class="field"><label for="youthNewEmail">Email</label><input id="youthNewEmail" type="email" name="email" maxlength="200"></div>
+            <div class="field"><label for="youthNewTelephone">Téléphone</label><input id="youthNewTelephone" name="telephone" maxlength="200"></div>
+            <div class="field full"><button id="youthNewBtn" class="btn" type="submit">Créer le membre</button></div>
+          </form>
+        </details>
+
+        <form id="youthEditForm" class="panel panel-pad" style="margin-top:22px" hidden>
+          <div class="section-head"><div><h2 id="youthEditTitle">Modifier le membre</h2><p>Le statut peut uniquement rester Sociétaire ou Aspirant dans cet espace.</p></div><button id="youthEditCancel" class="text-button" type="button">Fermer</button></div>
+          <div class="fields">
+            <div class="field"><label for="youthEditPrenom">Prénom</label><input id="youthEditPrenom" maxlength="200" required></div>
+            <div class="field"><label for="youthEditNom">Nom</label><input id="youthEditNom" maxlength="200" required></div>
+            <div class="field"><label for="youthEditStatut">Statut</label><select id="youthEditStatut"><option>Sociétaire</option><option>Aspirant</option></select></div>
+            <div class="field"><label for="youthEditCayenne">Cayenne</label><select id="youthEditCayenne"><option>Paris</option><option>Autre</option></select></div>
+            <div class="field"><label for="youthEditEmail">Email</label><input id="youthEditEmail" type="email" maxlength="200"></div>
+            <div class="field"><label for="youthEditTelephone">Téléphone</label><input id="youthEditTelephone" maxlength="200"></div>
+          </div>
+          <button id="youthEditSave" class="btn" type="submit">Enregistrer les modifications</button>
+        </form>
+      </section>
     </section>
+
     <footer class="page-footer"><span>Cayenne de Paris · Bureau des jeunes</span><span>Version <?= appVersion ?></span></footer>
   </main>
+
 <script>
-const youth={token:'',members:[],editing:null,busy:false,epoch:0};
+const youth={token:'',members:[],dashboard:null,editing:null,busy:false,epoch:0,screen:'overview',year:''};
 const esc=Ui.escape;Ui.mountIcons();
+
 function notice(message,type='error'){Ui.notice('youthNotice',message,type);}
-function lockYouth(revoke=true){const token=youth.token;youth.epoch++;youth.token='';youth.members=[];youth.editing=null;document.getElementById('youthSpace').hidden=true;document.getElementById('youthLogin').hidden=false;document.getElementById('youthPin').value='';document.getElementById('youthMembers').textContent='';document.getElementById('youthEditForm').hidden=true;if(revoke&&token)google.script.run.withFailureHandler(()=>{}).logoutAccess(token);}
-function loadYouth(){if(!youth.token)return;const epoch=youth.epoch;Ui.loading('youthRefresh',true,'Actualisation…');google.script.run.withSuccessHandler(rows=>{if(epoch!==youth.epoch)return;youth.members=rows;Ui.loading('youthRefresh',false);document.getElementById('youthLogin').hidden=true;document.getElementById('youthSpace').hidden=false;renderYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;Ui.loading('youthRefresh',false);notice(error.message||error);if(String(error.message||error).includes('SESSION_EXPIRED'))lockYouth(false);}).listYouthMemberAccess(youth.token);}
-function renderYouth(){
+
+function setScreen(name){
+  youth.screen=name;
+  document.querySelectorAll('[data-youth-panel]').forEach(panel=>panel.hidden=panel.dataset.youthPanel!==name);
+  document.querySelectorAll('[data-youth-screen]').forEach(button=>button.disabled=button.dataset.youthScreen===name);
+}
+
+function lockYouth(revoke=true){
+  const token=youth.token;youth.epoch++;youth.token='';youth.members=[];youth.dashboard=null;youth.editing=null;
+  document.getElementById('youthSpace').hidden=true;document.getElementById('youthLogin').hidden=false;document.getElementById('youthPin').value='';
+  document.getElementById('youthMembers').textContent='';document.getElementById('youthEvents').textContent='';document.getElementById('youthFollowUps').textContent='';
+  document.getElementById('youthEditForm').hidden=true;if(revoke&&token)google.script.run.withFailureHandler(()=>{}).logoutAccess(token);
+}
+
+function loadYouth(){
+  if(!youth.token)return;
+  const epoch=youth.epoch;Ui.loading('youthRefresh',true,'Actualisation…');
+  google.script.run.withSuccessHandler(rows=>{
+    if(epoch!==youth.epoch)return;
+    youth.members=rows;
+    loadYouthDashboard();
+  }).withFailureHandler(error=>{
+    if(epoch!==youth.epoch)return;
+    Ui.loading('youthRefresh',false);notice(error.message||error);
+    if(String(error.message||error).includes('SESSION_EXPIRED'))lockYouth(false);
+  }).listYouthMemberAccess(youth.token);
+}
+
+function loadYouthDashboard(){
+  const epoch=youth.epoch;
+  google.script.run.withSuccessHandler(data=>{
+    if(epoch!==youth.epoch)return;
+    youth.dashboard=data;youth.year=String(data.year);renderYearSelector();renderAll();
+    Ui.loading('youthRefresh',false);document.getElementById('youthLogin').hidden=true;document.getElementById('youthSpace').hidden=false;
+  }).withFailureHandler(error=>{
+    if(epoch!==youth.epoch)return;
+    Ui.loading('youthRefresh',false);notice(error.message||error);
+    if(String(error.message||error).includes('SESSION_EXPIRED'))lockYouth(false);
+  }).getYouthDashboardData(youth.year||'',youth.token);
+}
+
+function renderYearSelector(){
+  const select=document.getElementById('youthYear'),year=Number(youth.year||new Date().getFullYear());
+  const years=[year-1,year,year+1];select.innerHTML=years.map(y=>'<option value="'+y+'"'+(y===year?' selected':'')+'>'+y+'</option>').join('');
+}
+
+function renderAll(){renderOverview();renderEvents();renderMembers();setScreen(youth.screen);Ui.mountIcons();}
+
+function renderOverview(){
+  const d=youth.dashboard||{kpis:{},followUps:[]},k=d.kpis||{};
+  document.getElementById('youthOverviewTitle').textContent='Vue d’ensemble '+(d.year||'');
+  document.getElementById('youthOverviewKpis').innerHTML=[
+    ['Membres actifs',k.members||0],['Événements',k.events||0],['Présences',k.presents||0],
+    ['Absents excusés',k.excused||0],['Sans réponse',k.noResponse||0],['Aides proposées',k.aids||0]
+  ].map(x=>'<div class="kpi-card"><span>'+esc(x[0])+'</span><strong>'+x[1]+'</strong></div>').join('');
+  const follow=d.followUps||[];
+  document.getElementById('youthFollowUps').innerHTML=follow.length
+    ? '<h3>Réponses à relancer</h3>'+follow.map(item=>'<div class="history-row"><div><strong>'+esc(item.title)+'</strong><p>'+esc(item.date)+' · '+item.noResponse+' sans réponse</p><small>'+esc((item.missingMembers||[]).map(m=>m.prenom+' '+m.nom).join(', '))+'</small></div></div>').join('')
+    : Ui.empty('Aucune relance','Tous les Sociétaires et Aspirants concernés ont répondu.','check');
+}
+
+function renderEvents(){
+  const d=youth.dashboard||{},stats={};(d.events||[]).forEach(e=>stats[e.id]=e);
+  const rows=d.calendar||[];
+  document.getElementById('youthEvents').innerHTML=rows.length?rows.map(event=>{
+    const st=stats[event.id]||{},time=[event.start,event.end].filter(Boolean).join(' - ');
+    const missing=(st.missingMembers||[]).map(m=>m.prenom+' '+m.nom).join(', ');
+    return '<div class="panel panel-pad" style="margin-top:16px"><div class="section-head"><div><div class="eyebrow">'+esc(event.type||'Événement')+'</div><h3>'+esc(event.title)+'</h3><p>'+esc(event.date+(time?' · '+time:'')+(event.place?' · '+event.place:''))+'</p></div></div>'
+      +'<div class="kpi-grid"><div class="kpi-card"><span>Présents</span><strong>'+(st.presents||0)+'</strong></div><div class="kpi-card"><span>Excusés</span><strong>'+(st.excused||0)+'</strong></div><div class="kpi-card"><span>Absents</span><strong>'+(st.absent||0)+'</strong></div><div class="kpi-card"><span>Sans réponse</span><strong>'+(st.noResponse||0)+'</strong></div></div>'
+      +(missing?'<p style="margin-top:14px"><strong>Sans réponse :</strong> '+esc(missing)+'</p>':'')
+      +(event.comment?'<p style="margin-top:10px">'+esc(event.comment)+'</p>':'')+'</div>';
+  }).join(''):Ui.empty('Aucun événement','Aucun événement ne concerne les Sociétaires ou Aspirants pour cette année.','calendar');
+}
+
+function renderMembers(){
   const q=Ui.normalize(document.getElementById('youthSearch').value),status=document.getElementById('youthStatus').value;
   const rows=youth.members.filter(m=>(!status||m.statut===status)&&Ui.normalize(m.prenom+' '+m.nom+' '+m.email).includes(q));
   const aspirants=youth.members.filter(m=>m.statut==='Aspirant').length,societaires=youth.members.filter(m=>m.statut==='Sociétaire').length;
-  document.getElementById('youthKpis').innerHTML='<div class="kpi-card"><span>Aspirants</span><strong>'+aspirants+'</strong></div><div class="kpi-card"><span>Sociétaires</span><strong>'+societaires+'</strong></div><div class="kpi-card"><span>Total jeunes</span><strong>'+youth.members.length+'</strong></div>';
+  document.getElementById('youthMemberKpis').innerHTML='<div class="kpi-card"><span>Aspirants</span><strong>'+aspirants+'</strong></div><div class="kpi-card"><span>Sociétaires</span><strong>'+societaires+'</strong></div><div class="kpi-card"><span>Total jeunes</span><strong>'+youth.members.length+'</strong></div>';
   document.getElementById('youthMembers').innerHTML=rows.length?rows.map(m=>'<div class="history-row"><div><strong>'+esc(m.prenom+' '+m.nom)+'</strong><p>'+esc(m.statut+' · '+m.cayenne+(m.email?' · '+m.email:''))+'</p></div><div class="access-actions"><button class="text-button" type="button" data-youth-edit="'+esc(m.key)+'">Modifier la fiche</button></div></div>').join(''):Ui.empty('Aucun membre','Aucun Sociétaire ou Aspirant ne correspond au filtre.','users');
 }
+
 function finishAction(){youth.busy=false;Ui.loading('youthNewBtn',false);Ui.loading('youthEditSave',false);}
-document.getElementById('youthAccessForm').addEventListener('submit',e=>{e.preventDefault();const epoch=++youth.epoch;Ui.loading('youthLoginBtn',true,'Connexion…');google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;youth.token=result.token;Ui.loading('youthLoginBtn',false);document.getElementById('youthPin').value='';loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;Ui.loading('youthLoginBtn',false);notice(error.message||error);}).loginYouthBureau(document.getElementById('youthPin').value);});
+
+document.getElementById('youthAccessForm').addEventListener('submit',e=>{
+  e.preventDefault();const epoch=++youth.epoch;Ui.loading('youthLoginBtn',true,'Connexion…');
+  google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;youth.token=result.token;Ui.loading('youthLoginBtn',false);document.getElementById('youthPin').value='';loadYouth();})
+  .withFailureHandler(error=>{if(epoch!==youth.epoch)return;Ui.loading('youthLoginBtn',false);notice(error.message||error);}).loginYouthBureau(document.getElementById('youthPin').value);
+});
+
 document.getElementById('youthLogout').addEventListener('click',()=>lockYouth(true));
 document.getElementById('youthRefresh').addEventListener('click',loadYouth);
-document.getElementById('youthSearch').addEventListener('input',renderYouth);
-document.getElementById('youthStatus').addEventListener('change',renderYouth);
+document.getElementById('youthYear').addEventListener('change',e=>{youth.year=e.target.value;loadYouthDashboard();});
+document.querySelectorAll('[data-youth-screen]').forEach(button=>button.addEventListener('click',()=>setScreen(button.dataset.youthScreen)));
+document.getElementById('youthSearch').addEventListener('input',renderMembers);
+document.getElementById('youthStatus').addEventListener('change',renderMembers);
+
 document.getElementById('youthMembers').addEventListener('click',e=>{
-  const edit=e.target.closest('[data-youth-edit]');
-  if(!edit)return;const m=youth.members.find(x=>x.key===edit.dataset.youthEdit);if(!m)return;youth.editing=m;
+  const edit=e.target.closest('[data-youth-edit]');if(!edit)return;
+  const m=youth.members.find(x=>x.key===edit.dataset.youthEdit);if(!m)return;youth.editing=m;
   document.getElementById('youthEditTitle').textContent='Modifier '+m.prenom+' '+m.nom;document.getElementById('youthEditPrenom').value=m.prenom||'';document.getElementById('youthEditNom').value=m.nom||'';document.getElementById('youthEditStatut').value=m.statut;document.getElementById('youthEditCayenne').value=m.cayenne;document.getElementById('youthEditEmail').value=m.email||'';document.getElementById('youthEditTelephone').value=m.telephone||'';document.getElementById('youthEditForm').hidden=false;document.getElementById('youthEditForm').scrollIntoView({block:'start'});
 });
+
 document.getElementById('youthEditCancel').addEventListener('click',()=>{youth.editing=null;document.getElementById('youthEditForm').hidden=true;});
-document.getElementById('youthEditForm').addEventListener('submit',e=>{e.preventDefault();if(!youth.editing||youth.busy)return;const epoch=youth.epoch,m=youth.editing,payload={key:m.key,prenom:document.getElementById('youthEditPrenom').value,nom:document.getElementById('youthEditNom').value,statut:document.getElementById('youthEditStatut').value,cayenne:document.getElementById('youthEditCayenne').value,email:document.getElementById('youthEditEmail').value,telephone:document.getElementById('youthEditTelephone').value};youth.busy=true;Ui.loading('youthEditSave',true,'Enregistrement…');google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;finishAction();youth.editing=null;document.getElementById('youthEditForm').hidden=true;notice(result.message,'ok');loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;finishAction();notice(error.message||error);}).updateYouthMemberProfile(payload,youth.token);});
-document.getElementById('youthNewForm').addEventListener('submit',e=>{e.preventDefault();if(youth.busy)return;const epoch=youth.epoch,payload=Object.fromEntries(new FormData(e.target));youth.busy=true;Ui.loading('youthNewBtn',true,'Création…');google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;finishAction();e.target.reset();notice(result.message||'Membre créé. La gestion de son accès reste au bureau principal.','ok');loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;finishAction();notice(error.message||error);}).createYouthMemberProfile(payload,youth.token);});
+
+document.getElementById('youthEditForm').addEventListener('submit',e=>{
+  e.preventDefault();if(!youth.editing||youth.busy)return;
+  const epoch=youth.epoch,m=youth.editing,payload={key:m.key,prenom:document.getElementById('youthEditPrenom').value,nom:document.getElementById('youthEditNom').value,statut:document.getElementById('youthEditStatut').value,cayenne:document.getElementById('youthEditCayenne').value,email:document.getElementById('youthEditEmail').value,telephone:document.getElementById('youthEditTelephone').value};
+  youth.busy=true;Ui.loading('youthEditSave',true,'Enregistrement…');
+  google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;finishAction();youth.editing=null;document.getElementById('youthEditForm').hidden=true;notice(result.message,'ok');loadYouth();})
+  .withFailureHandler(error=>{if(epoch!==youth.epoch)return;finishAction();notice(error.message||error);}).updateYouthMemberProfile(payload,youth.token);
+});
+
+document.getElementById('youthNewForm').addEventListener('submit',e=>{
+  e.preventDefault();if(youth.busy)return;
+  const epoch=youth.epoch,payload=Object.fromEntries(new FormData(e.target));youth.busy=true;Ui.loading('youthNewBtn',true,'Création…');
+  google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;finishAction();e.target.reset();notice(result.message||'Membre créé.','ok');loadYouth();})
+  .withFailureHandler(error=>{if(epoch!==youth.epoch)return;finishAction();notice(error.message||error);}).createYouthMemberProfile(payload,youth.token);
+});
 </script>
 </body>
 </html>
