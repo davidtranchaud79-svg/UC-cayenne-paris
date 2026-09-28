@@ -206,7 +206,6 @@ function setMemberPassword(newPassword, confirmation, token) {
 function listMemberAccess(token) {
   assertAdmin_(token);
   ensureAuditSchema_();
-  sortMembersByRank_();
   return sortMemberObjects_(getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) { return m.Nom && m.Prenom; })).map(function(m) {
     const key = memberKey_(m);
     const kind = memberCredentialKind_(m);
@@ -215,7 +214,7 @@ function listMemberAccess(token) {
 }
 
 function listYouthMemberAccess(token) {
-  assertYouthAdmin_(token);ensureAuditSchema_();sortMembersByRank_();
+  assertYouthAdmin_(token);ensureAuditSchema_();
   return sortMemberObjects_(getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m){return m.Nom&&m.Prenom&&youthMemberAllowed_(m);}))
     .map(function(m){const key=memberKey_(m),kind=memberCredentialKind_(m);return Object.assign(memberProfile_(m),{key:key,active:isActive_(m.Actif),hasCode:!!memberCodeHash_(m),accessType:kind,hasPassword:kind==='password'});});
 }
