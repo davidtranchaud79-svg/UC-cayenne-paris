@@ -95,7 +95,7 @@ function logoutAccess(token) {
 }
 
 // Apps Script does not expose a reliable visitor IP. A bounded shared window limits guesses.
-function checkLogin_(role, verify) {
+function checkLogin_(role, verify, invalidMessage) {
   return accessLocked_(function() {
     const props = PropertiesService.getScriptProperties();
     const slot = 'uc.attempts.' + role;
@@ -106,7 +106,7 @@ function checkLogin_(role, verify) {
     if (!result) {
       budget.failures++;
       props.setProperty(slot, JSON.stringify(budget));
-      throw new Error('Mot de passe ou code temporaire incorrect, ou accès désactivé. Contactez le bureau si nécessaire.');
+      throw new Error(invalidMessage || 'Mot de passe ou code temporaire incorrect, ou accès désactivé. Contactez le bureau si nécessaire.');
     }
     return result;
   });
@@ -134,14 +134,15 @@ function loginBureau(code) {
     const expected = clean_(getSettings_().admin_pin);
     if (!expected || accessHash_(clean_(code)) !== accessHash_(expected)) return null;
     return {token: createAccessSession_({role: 'bureau', version: accessHash_(expected)})};
-  });
+  }, 'Code du bureau incorrect.');
 }
 function loginYouthBureau(code) {
+  const expected = clean_(getSettings_().jeunes_pin);
+  if (!expected) throw new Error('Le code du Bureau des jeunes n’est pas encore configuré. Le bureau principal doit le définir dans Administration → Réglages.');
   return checkLogin_('youth', function() {
-    const expected = clean_(getSettings_().jeunes_pin);
-    if (!expected || accessHash_(clean_(code)) !== accessHash_(expected)) return null;
+    if (accessHash_(clean_(code)) !== accessHash_(expected)) return null;
     return {token:createAccessSession_({role:'youth',version:accessHash_(expected)})};
-  });
+  }, 'Code du Bureau des jeunes incorrect.');
 }
 function assertYouthAdmin_(token) {
   const session=accessSession_(token,'youth'),expected=clean_(getSettings_().jeunes_pin);
@@ -353,7 +354,7 @@ function createMemberAccess(payload, token) {
 
 function changeYouthBureauCode(newCode, token) {
   return accessLocked_(function(){
-    assertAdmin_(token);const code=clean_(newCode);
+    assertAdmin_(token);ensureYouthSetting_();const code=clean_(newCode);
     if(code.length<8||code.length>80||/^=/.test(code))throw new Error('Le code du Bureau des jeunes doit contenir entre 8 et 80 caractères.');
     const sheet=getSpreadsheet_().getSheetByName(UC_APP.sheets.parametres),rows=sheet.getRange(1,1,Math.min(sheet.getLastRow(),50),1).getValues();
     const index=rows.findIndex(function(row){return row[0]==='jeunes_pin';});if(index<0)throw new Error('Paramètre jeunes_pin introuvable.');
