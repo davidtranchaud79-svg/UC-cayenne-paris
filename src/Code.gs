@@ -397,14 +397,14 @@ function getYouthDashboardData(year, token) {
   setupSystemIfMissing_();
   const targetYear = Number(year || getSettings_().annee_active || UC_APP.defaults.activeYear);
   if (!Number.isInteger(targetYear) || targetYear < 2020 || targetYear > 2100) throw new Error('Année invalide.');
-  const data = computeDashboard_(targetYear, youthMemberAllowed_);
+  const data = computeDashboard_(targetYear, youthMemberAllowed_, function(event) { return clean_(event.Type_Evenement) !== 'Réunion compagnon'; });
   const youthMembers = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(member) {
     return member.Nom && member.Prenom && isActive_(member.Actif) && youthMemberAllowed_(member);
   });
   data.version = UC_APP.version;
   data.calendar = calendarRows_()
     .filter(function(e) {
-      return eventYear_(e) === data.year && isActive_(e.Actif) && youthMembers.some(function(member) { return eventForMember_(e, member); });
+      return eventYear_(e) === data.year && isActive_(e.Actif) && clean_(e.Type_Evenement) !== 'Réunion compagnon' && youthMembers.some(function(member) { return eventForMember_(e, member); });
     })
     .sort(function(a,b) { return asDate_(a.Date) - asDate_(b.Date); })
     .map(function(e) { return formatEventForClient_(e); });
@@ -940,13 +940,13 @@ function makeEventId_(date, title) {
   return base + '-' + suffix;
 }
 
-function computeDashboard_(year, memberFilter) {
+function computeDashboard_(year, memberFilter, eventFilter) {
   const allEvents = getEventsForYear_(year);
   const members = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(member) {
     return member.Nom && member.Prenom && isActive_(member.Actif) && (!memberFilter || memberFilter(member));
   });
-  const events = memberFilter ? allEvents.filter(function(event) {
-    return members.some(function(member) { return eventForMember_(event, member); });
+  const events = memberFilter || eventFilter ? allEvents.filter(function(event) {
+    return (!eventFilter || eventFilter(event)) && (!memberFilter || members.some(function(member) { return eventForMember_(event, member); }));
   }) : allEvents;
   const responses = responseRows_().filter(function(row) {
     const event = events.find(function(e) { return e.ID_Evenement === row.ID_Evenement; });
