@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <?!= include('Styles'); ?>
+</head>
+<body>
+  <?!= include('Ui'); ?>
+  <header class="public-header"><div class="public-header-inner">
+    <div class="brand bureau-brand"><?!= include('BrandBureau'); ?><div><div class="brand-name">Bureau des jeunes</div><span class="brand-subtitle">Cayenne de Paris</span></div></div>
+    <a class="btn secondary compact" target="_top" href="<?= publicUrl ?>">Espace membres</a>
+  </div></header>
+  <main class="public-main">
+    <div class="welcome"><div><div class="eyebrow">Sociétaires & Aspirants</div><h1 class="serif">Espace Bureau des jeunes</h1><p>Un espace volontairement limité aux Sociétaires et Aspirants. Les Compagnons et les réglages généraux ne sont pas accessibles ici.</p></div></div>
+    <div id="youthNotice" class="notice" role="status" aria-live="polite" hidden></div>
+
+    <section id="youthLogin" class="panel access-panel">
+      <div class="access-copy"><span class="access-icon" data-icon="lock"></span><div><h2>Connexion Bureau des jeunes</h2><p>Utilisez le code spécifique défini par le bureau principal.</p></div></div>
+      <form id="youthAccessForm" class="access-form">
+        <input class="sr-only" type="text" name="username" autocomplete="username" value="bureau-jeunes-cayenne-paris" tabindex="-1" aria-hidden="true">
+        <div class="field"><label for="youthPin">Code Bureau des jeunes</label><input id="youthPin" name="password" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" required></div>
+        <button class="btn" id="youthLoginBtn" type="submit">Ouvrir l’espace</button>
+      </form>
+    </section>
+
+    <section id="youthSpace" hidden>
+      <div class="session-bar"><span class="dot"></span><strong>Accès limité Sociétaires / Aspirants</strong><button class="text-button" type="button" id="youthLogout"><span data-icon="logout"></span>Se déconnecter</button></div>
+      <div class="kpi-grid" id="youthKpis"></div>
+
+      <div class="panel panel-pad">
+        <div class="section-head"><div><h2>Les jeunes de la Cayenne</h2><p>Classement automatique par rang puis par ordre alphabétique.</p></div><button id="youthRefresh" class="btn secondary compact" type="button"><span data-icon="refresh"></span>Actualiser</button></div>
+        <div class="toolbar">
+          <div class="search-box"><span data-icon="search"></span><label class="sr-only" for="youthSearch">Rechercher un membre</label><input id="youthSearch" type="search" placeholder="Nom ou prénom…"></div>
+          <label class="sr-only" for="youthStatus">Filtrer par statut</label><select id="youthStatus"><option value="">Tous</option><option>Aspirant</option><option>Sociétaire</option></select>
+        </div>
+        <div id="youthMembers" style="margin-top:18px"></div>
+      </div>
+
+      <details class="panel panel-pad" style="margin-top:22px"><summary><strong>Ajouter un Sociétaire ou Aspirant</strong></summary>
+        <form id="youthNewForm" class="fields" style="margin-top:18px">
+          <div class="field"><label for="youthNewPrenom">Prénom</label><input id="youthNewPrenom" name="prenom" maxlength="200" required></div>
+          <div class="field"><label for="youthNewNom">Nom</label><input id="youthNewNom" name="nom" maxlength="200" required></div>
+          <div class="field"><label for="youthNewStatut">Statut</label><select id="youthNewStatut" name="statut"><option>Sociétaire</option><option>Aspirant</option></select></div>
+          <div class="field"><label for="youthNewCayenne">Cayenne</label><select id="youthNewCayenne" name="cayenne"><option>Paris</option><option>Autre</option></select></div>
+          <div class="field"><label for="youthNewEmail">Email</label><input id="youthNewEmail" type="email" name="email" maxlength="200"></div>
+          <div class="field"><label for="youthNewTelephone">Téléphone</label><input id="youthNewTelephone" name="telephone" maxlength="200"></div>
+          <div class="field full"><button id="youthNewBtn" class="btn" type="submit">Créer le membre et son accès</button></div>
+        </form>
+      </details>
+
+      <form id="youthEditForm" class="panel panel-pad" style="margin-top:22px" hidden>
+        <div class="section-head"><div><h2 id="youthEditTitle">Modifier le membre</h2><p>Le statut peut uniquement rester Sociétaire ou Aspirant dans cet espace.</p></div><button id="youthEditCancel" class="text-button" type="button">Fermer</button></div>
+        <div class="fields">
+          <div class="field"><label for="youthEditPrenom">Prénom</label><input id="youthEditPrenom" maxlength="200" required></div>
+          <div class="field"><label for="youthEditNom">Nom</label><input id="youthEditNom" maxlength="200" required></div>
+          <div class="field"><label for="youthEditStatut">Statut</label><select id="youthEditStatut"><option>Sociétaire</option><option>Aspirant</option></select></div>
+          <div class="field"><label for="youthEditCayenne">Cayenne</label><select id="youthEditCayenne"><option>Paris</option><option>Autre</option></select></div>
+          <div class="field"><label for="youthEditEmail">Email</label><input id="youthEditEmail" type="email" maxlength="200"></div>
+          <div class="field"><label for="youthEditTelephone">Téléphone</label><input id="youthEditTelephone" maxlength="200"></div>
+        </div>
+        <label class="remember-choice"><input id="youthEditActive" type="checkbox"><span>Membre actif<small>Décochez pour suspendre son accès en conservant son historique.</small></span></label>
+        <button id="youthEditSave" class="btn" type="submit">Enregistrer les modifications</button>
+      </form>
+
+      <div id="youthIssued" class="issued-code" style="margin-top:22px" hidden>
+        <label for="youthIssuedCode" id="youthIssuedLabel">Code temporaire</label><input id="youthIssuedCode" readonly autocomplete="off">
+        <p>Le membre devra choisir son propre mot de passe lors de sa première connexion.</p>
+        <button id="youthCopyCode" class="btn secondary" type="button">Copier le code</button><button id="youthHideCode" class="text-button" type="button">Masquer</button>
+      </div>
+    </section>
+    <footer class="page-footer"><span>Cayenne de Paris · Bureau des jeunes</span><span>Version <?= appVersion ?></span></footer>
+  </main>
+<script>
+const youth={token:'',members:[],editing:null,busy:false,epoch:0};
+const esc=Ui.escape;Ui.mountIcons();
+function notice(message,type='error'){Ui.notice('youthNotice',message,type);}
+function lockYouth(revoke=true){const token=youth.token;youth.epoch++;youth.token='';youth.members=[];youth.editing=null;document.getElementById('youthSpace').hidden=true;document.getElementById('youthLogin').hidden=false;document.getElementById('youthPin').value='';document.getElementById('youthMembers').textContent='';document.getElementById('youthEditForm').hidden=true;hideIssued();if(revoke&&token)google.script.run.withFailureHandler(()=>{}).logoutAccess(token);}
+function loadYouth(){if(!youth.token)return;const epoch=youth.epoch;Ui.loading('youthRefresh',true,'Actualisation…');google.script.run.withSuccessHandler(rows=>{if(epoch!==youth.epoch)return;youth.members=rows;Ui.loading('youthRefresh',false);document.getElementById('youthLogin').hidden=true;document.getElementById('youthSpace').hidden=false;renderYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;Ui.loading('youthRefresh',false);notice(error.message||error);if(String(error.message||error).includes('SESSION_EXPIRED'))lockYouth(false);}).listYouthMemberAccess(youth.token);}
+function renderYouth(){
+  const q=Ui.normalize(document.getElementById('youthSearch').value),status=document.getElementById('youthStatus').value;
+  const rows=youth.members.filter(m=>(!status||m.statut===status)&&Ui.normalize(m.prenom+' '+m.nom+' '+m.email).includes(q));
+  const aspirants=youth.members.filter(m=>m.statut==='Aspirant').length,societaires=youth.members.filter(m=>m.statut==='Sociétaire').length;
+  document.getElementById('youthKpis').innerHTML='<div class="kpi-card"><span>Aspirants</span><strong>'+aspirants+'</strong></div><div class="kpi-card"><span>Sociétaires</span><strong>'+societaires+'</strong></div><div class="kpi-card"><span>Total jeunes</span><strong>'+youth.members.length+'</strong></div>';
+  document.getElementById('youthMembers').innerHTML=rows.length?rows.map(m=>'<div class="history-row"><div><strong>'+esc(m.prenom+' '+m.nom)+'</strong><p>'+esc(m.statut+' · '+m.cayenne+(m.email?' · '+m.email:''))+'</p><span class="pill '+(m.active?'green':'amber')+'">'+(m.active?'Actif':'Inactif')+'</span></div><div class="access-actions"><button class="text-button" type="button" data-youth-edit="'+esc(m.key)+'">Modifier</button>'+(m.active?'<button class="btn secondary" type="button" data-youth-access="'+(m.hasCode?'reset':'issue')+'" data-youth-key="'+esc(m.key)+'">'+(m.hasCode?'Réinitialiser l’accès':'Créer l’accès')+'</button>':'')+(m.hasCode?'<button class="text-button" type="button" data-youth-access="revoke" data-youth-key="'+esc(m.key)+'">Révoquer</button>':'')+'</div></div>').join(''):Ui.empty('Aucun membre','Aucun Sociétaire ou Aspirant ne correspond au filtre.','users');
+}
+function showIssued(result){if(!result||!result.code)return;document.getElementById('youthIssuedCode').value=result.code;document.getElementById('youthIssuedLabel').textContent='Code temporaire de '+result.profile.prenom+' '+result.profile.nom;document.getElementById('youthIssued').hidden=false;}
+function hideIssued(){document.getElementById('youthIssued').hidden=true;document.getElementById('youthIssuedCode').value='';}
+function finishAction(){youth.busy=false;Ui.loading('youthNewBtn',false);Ui.loading('youthEditSave',false);}
+function accessAction(key,action){if(youth.busy)return;if(action!=='issue'&&!confirm(action==='reset'?'Réinitialiser cet accès ? Le mot de passe actuel sera désactivé.':'Révoquer cet accès ?'))return;const epoch=youth.epoch;youth.busy=true;google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;finishAction();showIssued(result);const delivery=result.delivery||{};notice(result.code?(delivery.state==='sent'?'Code temporaire envoyé au membre.':'Code temporaire créé.'): 'Accès révoqué.','ok');loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;finishAction();notice(error.message||error);}).manageYouthMemberCode(key,action,youth.token);}
+document.getElementById('youthAccessForm').addEventListener('submit',e=>{e.preventDefault();const epoch=++youth.epoch;Ui.loading('youthLoginBtn',true,'Connexion…');google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;youth.token=result.token;Ui.loading('youthLoginBtn',false);document.getElementById('youthPin').value='';loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;Ui.loading('youthLoginBtn',false);notice(error.message||error);}).loginYouthBureau(document.getElementById('youthPin').value);});
+document.getElementById('youthLogout').addEventListener('click',()=>lockYouth(true));
+document.getElementById('youthRefresh').addEventListener('click',loadYouth);
+document.getElementById('youthSearch').addEventListener('input',renderYouth);
+document.getElementById('youthStatus').addEventListener('change',renderYouth);
+document.getElementById('youthMembers').addEventListener('click',e=>{
+  const edit=e.target.closest('[data-youth-edit]'),access=e.target.closest('[data-youth-access]');
+  if(access)return accessAction(access.dataset.youthKey,access.dataset.youthAccess);
+  if(!edit)return;const m=youth.members.find(x=>x.key===edit.dataset.youthEdit);if(!m)return;youth.editing=m;
+  document.getElementById('youthEditTitle').textContent='Modifier '+m.prenom+' '+m.nom;document.getElementById('youthEditPrenom').value=m.prenom||'';document.getElementById('youthEditNom').value=m.nom||'';document.getElementById('youthEditStatut').value=m.statut;document.getElementById('youthEditCayenne').value=m.cayenne;document.getElementById('youthEditEmail').value=m.email||'';document.getElementById('youthEditTelephone').value=m.telephone||'';document.getElementById('youthEditActive').checked=m.active!==false;document.getElementById('youthEditForm').hidden=false;document.getElementById('youthEditForm').scrollIntoView({block:'start'});
+});
+document.getElementById('youthEditCancel').addEventListener('click',()=>{youth.editing=null;document.getElementById('youthEditForm').hidden=true;});
+document.getElementById('youthEditForm').addEventListener('submit',e=>{e.preventDefault();if(!youth.editing||youth.busy)return;const epoch=youth.epoch,m=youth.editing,payload={key:m.key,prenom:document.getElementById('youthEditPrenom').value,nom:document.getElementById('youthEditNom').value,statut:document.getElementById('youthEditStatut').value,cayenne:document.getElementById('youthEditCayenne').value,email:document.getElementById('youthEditEmail').value,telephone:document.getElementById('youthEditTelephone').value,active:document.getElementById('youthEditActive').checked};youth.busy=true;Ui.loading('youthEditSave',true,'Enregistrement…');google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;finishAction();youth.editing=null;document.getElementById('youthEditForm').hidden=true;notice(result.message,'ok');loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;finishAction();notice(error.message||error);}).updateYouthMemberProfile(payload,youth.token);});
+document.getElementById('youthNewForm').addEventListener('submit',e=>{e.preventDefault();if(youth.busy)return;const epoch=youth.epoch,payload=Object.fromEntries(new FormData(e.target));youth.busy=true;Ui.loading('youthNewBtn',true,'Création…');google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;finishAction();e.target.reset();showIssued(result);notice(result.delivery&&result.delivery.state==='sent'?'Membre créé et code envoyé.':'Membre créé.','ok');loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;finishAction();notice(error.message||error);}).createYouthMemberAccess(payload,youth.token);});
+document.getElementById('youthCopyCode').addEventListener('click',async()=>{const input=document.getElementById('youthIssuedCode');input.select();try{await navigator.clipboard.writeText(input.value);notice('Code copié.','ok');}catch(_){notice('Code sélectionné : utilisez Copier.','ok');}});
+document.getElementById('youthHideCode').addEventListener('click',hideIssued);
+</script>
+</body>
+</html>
