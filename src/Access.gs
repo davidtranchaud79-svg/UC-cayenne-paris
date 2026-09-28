@@ -22,6 +22,22 @@ function memberCredentialKind_(member) {
   const kinds = memberAliases_(member).map(function(key) { return props.getProperty(memberCredentialKindKey_(key)); }).filter(Boolean);
   return kinds.indexOf('password') >= 0 ? 'password' : memberCodeHash_(member) ? 'temporary' : '';
 }
+
+function accessDeliveryPropertyKey_(key) { return 'uc.access.delivery.' + accessHash_(clean_(key)); }
+function accessDeliveryInfo_(key) {
+  const raw=PropertiesService.getScriptProperties().getProperty(accessDeliveryPropertyKey_(key));
+  if(!raw)return null;
+  try {
+    const info=JSON.parse(raw);
+    return info&&clean_(info.state)?{state:clean_(info.state),at:clean_(info.at),address:clean_(info.address),detail:clean_(info.detail)}:null;
+  } catch (_) { return null; }
+}
+function rememberAccessDelivery_(key, delivery) {
+  delivery=delivery||{};
+  const info={state:clean_(delivery.state)||'unknown',at:new Date().toISOString(),address:clean_(delivery.address),detail:clean_(delivery.detail).slice(0,250)};
+  PropertiesService.getScriptProperties().setProperty(accessDeliveryPropertyKey_(key),JSON.stringify(info));
+  return info;
+}
 function credentialCandidates_(value) {
   const raw = String(value == null ? '' : value).trim();
   if (!raw || raw.length > 80) return [];
@@ -210,7 +226,7 @@ function listMemberAccess(token) {
   return sortMemberObjects_(getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) { return m.Nom && m.Prenom; })).map(function(m) {
     const key = memberKey_(m);
     const kind = memberCredentialKind_(m);
-    return Object.assign(memberProfile_(m), {key:key,active:isActive_(m.Actif),hasCode:!!memberCodeHash_(m),accessType:kind,hasPassword:kind === 'password'});
+    return Object.assign(memberProfile_(m), {key:key,active:isActive_(m.Actif),hasCode:!!memberCodeHash_(m),accessType:kind,hasPassword:kind === 'password',delivery:accessDeliveryInfo_(key)});
   });
 }
 
@@ -240,7 +256,7 @@ function issueMemberCode_(key, replace) {
   props.setProperty(memberCredentialKindKey_(key), 'temporary');
   if (old) props.deleteProperty('uc.code.' + old);
   pruneRememberedSessions_(key, true);
-  return {profile: memberProfile_(member), code: code.match(/.{4}/g).join('-')};
+  return {key:key, profile: memberProfile_(member), code: code.match(/.{4}/g).join('-')};
 }
 
 function sendMemberAccessEmail_(issued) {
@@ -305,10 +321,36 @@ function manageMemberCode(key, action, token) {
     memberAliases_(member).forEach(function(alias) { props.deleteProperty(memberAccessKey_(alias)); props.deleteProperty(memberCredentialKindKey_(alias)); pruneRememberedSessions_(alias, true); });
     if (old) props.deleteProperty('uc.code.' + old);
     pruneRememberedSessions_(String(key), true);
-    return {ok: true};
+    return {ok:true,key:memberKey_(member)};
   });
-  if (result && result.code) result.delivery = sendMemberAccessEmail_(result);
+  if (result && result.code) {
+    result.delivery=sendMemberAccessEmail_(result);
+    rememberAccessDelivery_(result.key,result.delivery);
+  } else if(result&&result.ok&&result.key) {
+    rememberAccessDelivery_(result.key,{state:'revoked'});
+  }
   return result;
+}
+
+function sendAllMemberAccessCodes(token) {
+  const prepared=accessLocked_(function() {
+    assertAdmin_(token);ensureAuditSchema_();
+    return sortMemberObjects_(getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m){return m.Nom&&m.Prenom;})).map(function(member){
+      const key=memberKey_(member),profile=memberProfile_(member),kind=memberCredentialKind_(member);
+      if(!isActive_(member.Actif))return {key:key,profile:profile,state:'inactive'};
+      if(kind==='password')return {key:key,profile:profile,state:'password'};
+      if(!mailAddressValid_(clean_(profile.email)))return {key:key,profile:profile,state:'no_email'};
+      return {key:key,profile:profile,state:'ready',issued:issueMemberCode_(key,!!memberCodeHash_(member))};
+    });
+  });
+  const results=prepared.map(function(item){
+    const delivery=item.state==='ready'?sendMemberAccessEmail_(item.issued):{state:item.state,address:clean_(item.profile.email)};
+    const saved=rememberAccessDelivery_(item.key,delivery);
+    return {key:item.key,nom:item.profile.nom,prenom:item.profile.prenom,state:saved.state,at:saved.at,address:saved.address,detail:saved.detail};
+  });
+  const summary={sent:0,password:0,no_email:0,error:0,inactive:0,total:results.length};
+  results.forEach(function(row){if(Object.prototype.hasOwnProperty.call(summary,row.state))summary[row.state]++;else if(row.state!=='sent')summary.error++;});
+  return {ok:true,results:results,summary:summary,message:summary.sent+' accès envoyé'+(summary.sent>1?'s':'')+'.'};
 }
 
 function createYouthMemberProfile(payload, token) {
@@ -348,7 +390,10 @@ function createMemberAccess(payload, token) {
     upsertMember_(member);
     return issueMemberCode_(key, false);
   });
-  if (result && result.code) result.delivery = sendMemberAccessEmail_(result);
+  if (result && result.code) {
+    result.delivery=sendMemberAccessEmail_(result);
+    rememberAccessDelivery_(result.key,result.delivery);
+  }
   return result;
 }
 
