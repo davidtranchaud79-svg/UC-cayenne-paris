@@ -4,7 +4,7 @@ export async function checkWebApp(deploymentId, request = fetch, expectedVersion
   if (!/^AKfy[A-Za-z0-9_-]+$/.test(deploymentId || '')) throw new Error('Identifiant public invalide.');
   const base = 'https://script.google.com/macros/s/' + deploymentId + '/exec';
   const pages = [];
-  for (const [name, suffix, marker] of [['membre', '', 'memberLoginForm'], ['bureau', '?page=admin', 'accessForm']]) {
+  for (const [name, suffix, marker] of [['membre', '', 'memberLoginForm'], ['bureau', '?page=admin', 'accessForm'], ['bureau jeunes', '?page=jeunes', 'youthAccessForm']]) {
     try {
       const response = await request(base + suffix, { redirect: 'follow', signal: AbortSignal.timeout(30000) });
       const body = await response.text();
