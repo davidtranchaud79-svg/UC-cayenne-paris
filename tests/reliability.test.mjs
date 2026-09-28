@@ -218,12 +218,12 @@ test('member rows automatically follow rank then alphabetical order after a prom
   f.members.grid.push(['Aardvark','Zoé','Sociétaire','Paris','zoe@example.test','','Oui','']);
   f.c.ensureAuditSchema_();f.c.sortMembersByRank_();
   let rows=f.c.getRowsAsObjects_('MEMBRES');
-  assert.deepEqual(rows.map(m=>m.Statut),['Compagnon','Aspirant','Sociétaire']);
+  assert.equal(Array.from(rows,m=>m.Statut).join('|'),'Compagnon|Aspirant|Sociétaire');
   const zoe=rows.find(m=>m.Email==='zoe@example.test');
   assert.throws(()=>f.c.updateYouthMemberProfile({key:rows.find(m=>m.Statut==='Compagnon').ID_Membre,statut:'Aspirant'},f.youth),/pas accessible/);
   assert.throws(()=>f.c.updateYouthMemberProfile({key:rows.find(m=>m.Statut==='Aspirant').ID_Membre,statut:'Compagnon'},f.youth),/Sociétaires et Aspirants/);
   f.c.updateMemberProfile({key:zoe.ID_Membre,previousEmail:'zoe@example.test',nom:'Aardvark',prenom:'Zoé',statut:'Aspirant',cayenne:'Paris',email:'zoe@example.test',telephone:'',active:true},f.bureau);
   rows=f.c.getRowsAsObjects_('MEMBRES');
-  assert.deepEqual(rows.map(m=>m.Statut),['Compagnon','Aspirant','Aspirant']);
-  assert.deepEqual(rows.filter(m=>m.Statut==='Aspirant').map(m=>m.Nom),['Aardvark','Autre']);
+  assert.equal(Array.from(rows,m=>m.Statut).join('|'),'Compagnon|Aspirant|Aspirant');
+  assert.equal(Array.from(rows.filter(m=>m.Statut==='Aspirant'),m=>m.Nom).join('|'),'Aardvark|Autre');
 });
