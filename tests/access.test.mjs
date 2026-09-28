@@ -152,6 +152,24 @@ test('creating or replacing a member code emails the code and direct member link
   const replacement=c.manageMemberCode('camille@example.test','reset',bureau);
   assert.equal(replacement.delivery.state,'sent');assert.equal(sent.length,2);
 });
+test('bulk access delivery sends fresh temporary codes, preserves personal passwords and records visible statuses',()=>{
+  const {c,db,bureau,issue,sent}=fixture();
+  const oldCamille=issue('camille@example.test');
+  const alexTemp=issue('alex@example.test'),alexLogin=c.loginMember(alexTemp).token;
+  c.setMemberPassword('MotDePasseAlex2026','MotDePasseAlex2026',alexLogin);
+  db.MEMBRES.push({Nom:'Sansmail',Prenom:'Bruno',Email:'',Statut:'Sociétaire',Cayenne:'Paris',Actif:'Oui'});
+  db.MEMBRES.push({Nom:'Inactif',Prenom:'Iris',Email:'iris@example.test',Statut:'Compagnon',Cayenne:'Paris',Actif:'Non'});
+  sent.length=0;
+  const result=c.sendAllMemberAccessCodes(bureau);
+  assert.deepEqual({...result.summary},{sent:1,password:1,no_email:1,error:0,inactive:1,total:4});
+  assert.equal(sent.length,1);assert.equal(sent[0].to,'camille@example.test');
+  assert.equal(Object.prototype.hasOwnProperty.call(result.results[0],'code'),false);
+  assert.throws(()=>c.loginMember(oldCamille),/incorrect/);
+  assert.equal(c.loginMember('MotDePasseAlex2026').profile.prenom,'Alex');
+  const statuses=Object.fromEntries(c.listMemberAccess(bureau).map(m=>[m.prenom,m.delivery&&m.delivery.state]));
+  assert.equal(statuses.Camille,'sent');assert.equal(statuses.Alex,'password');assert.equal(statuses.Bruno,'no_email');assert.equal(statuses.Iris,'inactive');
+});
+
 test('personal codes are stored as hashes, can be rotated and revoked, and inactive members cannot sign in',()=>{
   const {c,issue,bureau,props,db}=fixture();const code=issue();const token=c.loginMember(code.toLowerCase()).token;
   assert.ok(!JSON.stringify([...props]).includes(code.replaceAll('-','')));
