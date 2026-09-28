@@ -45,7 +45,7 @@
           <div class="field"><label for="youthNewCayenne">Cayenne</label><select id="youthNewCayenne" name="cayenne"><option>Paris</option><option>Autre</option></select></div>
           <div class="field"><label for="youthNewEmail">Email</label><input id="youthNewEmail" type="email" name="email" maxlength="200"></div>
           <div class="field"><label for="youthNewTelephone">Téléphone</label><input id="youthNewTelephone" name="telephone" maxlength="200"></div>
-          <div class="field full"><button id="youthNewBtn" class="btn" type="submit">Créer le membre et son accès</button></div>
+          <div class="field full"><button id="youthNewBtn" class="btn" type="submit">Créer le membre</button></div>
         </form>
       </details>
 
@@ -59,15 +59,9 @@
           <div class="field"><label for="youthEditEmail">Email</label><input id="youthEditEmail" type="email" maxlength="200"></div>
           <div class="field"><label for="youthEditTelephone">Téléphone</label><input id="youthEditTelephone" maxlength="200"></div>
         </div>
-        <label class="remember-choice"><input id="youthEditActive" type="checkbox"><span>Membre actif<small>Décochez pour suspendre son accès en conservant son historique.</small></span></label>
         <button id="youthEditSave" class="btn" type="submit">Enregistrer les modifications</button>
       </form>
 
-      <div id="youthIssued" class="issued-code" style="margin-top:22px" hidden>
-        <label for="youthIssuedCode" id="youthIssuedLabel">Code temporaire</label><input id="youthIssuedCode" readonly autocomplete="off">
-        <p>Le membre devra choisir son propre mot de passe lors de sa première connexion.</p>
-        <button id="youthCopyCode" class="btn secondary" type="button">Copier le code</button><button id="youthHideCode" class="text-button" type="button">Masquer</button>
-      </div>
     </section>
     <footer class="page-footer"><span>Cayenne de Paris · Bureau des jeunes</span><span>Version <?= appVersion ?></span></footer>
   </main>
@@ -75,35 +69,28 @@
 const youth={token:'',members:[],editing:null,busy:false,epoch:0};
 const esc=Ui.escape;Ui.mountIcons();
 function notice(message,type='error'){Ui.notice('youthNotice',message,type);}
-function lockYouth(revoke=true){const token=youth.token;youth.epoch++;youth.token='';youth.members=[];youth.editing=null;document.getElementById('youthSpace').hidden=true;document.getElementById('youthLogin').hidden=false;document.getElementById('youthPin').value='';document.getElementById('youthMembers').textContent='';document.getElementById('youthEditForm').hidden=true;hideIssued();if(revoke&&token)google.script.run.withFailureHandler(()=>{}).logoutAccess(token);}
+function lockYouth(revoke=true){const token=youth.token;youth.epoch++;youth.token='';youth.members=[];youth.editing=null;document.getElementById('youthSpace').hidden=true;document.getElementById('youthLogin').hidden=false;document.getElementById('youthPin').value='';document.getElementById('youthMembers').textContent='';document.getElementById('youthEditForm').hidden=true;if(revoke&&token)google.script.run.withFailureHandler(()=>{}).logoutAccess(token);}
 function loadYouth(){if(!youth.token)return;const epoch=youth.epoch;Ui.loading('youthRefresh',true,'Actualisation…');google.script.run.withSuccessHandler(rows=>{if(epoch!==youth.epoch)return;youth.members=rows;Ui.loading('youthRefresh',false);document.getElementById('youthLogin').hidden=true;document.getElementById('youthSpace').hidden=false;renderYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;Ui.loading('youthRefresh',false);notice(error.message||error);if(String(error.message||error).includes('SESSION_EXPIRED'))lockYouth(false);}).listYouthMemberAccess(youth.token);}
 function renderYouth(){
   const q=Ui.normalize(document.getElementById('youthSearch').value),status=document.getElementById('youthStatus').value;
   const rows=youth.members.filter(m=>(!status||m.statut===status)&&Ui.normalize(m.prenom+' '+m.nom+' '+m.email).includes(q));
   const aspirants=youth.members.filter(m=>m.statut==='Aspirant').length,societaires=youth.members.filter(m=>m.statut==='Sociétaire').length;
   document.getElementById('youthKpis').innerHTML='<div class="kpi-card"><span>Aspirants</span><strong>'+aspirants+'</strong></div><div class="kpi-card"><span>Sociétaires</span><strong>'+societaires+'</strong></div><div class="kpi-card"><span>Total jeunes</span><strong>'+youth.members.length+'</strong></div>';
-  document.getElementById('youthMembers').innerHTML=rows.length?rows.map(m=>'<div class="history-row"><div><strong>'+esc(m.prenom+' '+m.nom)+'</strong><p>'+esc(m.statut+' · '+m.cayenne+(m.email?' · '+m.email:''))+'</p><span class="pill '+(m.active?'green':'amber')+'">'+(m.active?'Actif':'Inactif')+'</span></div><div class="access-actions"><button class="text-button" type="button" data-youth-edit="'+esc(m.key)+'">Modifier</button>'+(m.active?'<button class="btn secondary" type="button" data-youth-access="'+(m.hasCode?'reset':'issue')+'" data-youth-key="'+esc(m.key)+'">'+(m.hasCode?'Réinitialiser l’accès':'Créer l’accès')+'</button>':'')+(m.hasCode?'<button class="text-button" type="button" data-youth-access="revoke" data-youth-key="'+esc(m.key)+'">Révoquer</button>':'')+'</div></div>').join(''):Ui.empty('Aucun membre','Aucun Sociétaire ou Aspirant ne correspond au filtre.','users');
+  document.getElementById('youthMembers').innerHTML=rows.length?rows.map(m=>'<div class="history-row"><div><strong>'+esc(m.prenom+' '+m.nom)+'</strong><p>'+esc(m.statut+' · '+m.cayenne+(m.email?' · '+m.email:''))+'</p></div><div class="access-actions"><button class="text-button" type="button" data-youth-edit="'+esc(m.key)+'">Modifier la fiche</button></div></div>').join(''):Ui.empty('Aucun membre','Aucun Sociétaire ou Aspirant ne correspond au filtre.','users');
 }
-function showIssued(result){if(!result||!result.code)return;document.getElementById('youthIssuedCode').value=result.code;document.getElementById('youthIssuedLabel').textContent='Code temporaire de '+result.profile.prenom+' '+result.profile.nom;document.getElementById('youthIssued').hidden=false;}
-function hideIssued(){document.getElementById('youthIssued').hidden=true;document.getElementById('youthIssuedCode').value='';}
-function finishAction(){youth.busy=false;Ui.loading('youthNewBtn',false);Ui.loading('youthEditSave',false);}
-function accessAction(key,action){if(youth.busy)return;if(action!=='issue'&&!confirm(action==='reset'?'Réinitialiser cet accès ? Le mot de passe actuel sera désactivé.':'Révoquer cet accès ?'))return;const epoch=youth.epoch;youth.busy=true;google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;finishAction();showIssued(result);const delivery=result.delivery||{};notice(result.code?(delivery.state==='sent'?'Code temporaire envoyé au membre.':'Code temporaire créé.'): 'Accès révoqué.','ok');loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;finishAction();notice(error.message||error);}).manageYouthMemberCode(key,action,youth.token);}
 document.getElementById('youthAccessForm').addEventListener('submit',e=>{e.preventDefault();const epoch=++youth.epoch;Ui.loading('youthLoginBtn',true,'Connexion…');google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;youth.token=result.token;Ui.loading('youthLoginBtn',false);document.getElementById('youthPin').value='';loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;Ui.loading('youthLoginBtn',false);notice(error.message||error);}).loginYouthBureau(document.getElementById('youthPin').value);});
 document.getElementById('youthLogout').addEventListener('click',()=>lockYouth(true));
 document.getElementById('youthRefresh').addEventListener('click',loadYouth);
 document.getElementById('youthSearch').addEventListener('input',renderYouth);
 document.getElementById('youthStatus').addEventListener('change',renderYouth);
 document.getElementById('youthMembers').addEventListener('click',e=>{
-  const edit=e.target.closest('[data-youth-edit]'),access=e.target.closest('[data-youth-access]');
-  if(access)return accessAction(access.dataset.youthKey,access.dataset.youthAccess);
+  const edit=e.target.closest('[data-youth-edit]');
   if(!edit)return;const m=youth.members.find(x=>x.key===edit.dataset.youthEdit);if(!m)return;youth.editing=m;
-  document.getElementById('youthEditTitle').textContent='Modifier '+m.prenom+' '+m.nom;document.getElementById('youthEditPrenom').value=m.prenom||'';document.getElementById('youthEditNom').value=m.nom||'';document.getElementById('youthEditStatut').value=m.statut;document.getElementById('youthEditCayenne').value=m.cayenne;document.getElementById('youthEditEmail').value=m.email||'';document.getElementById('youthEditTelephone').value=m.telephone||'';document.getElementById('youthEditActive').checked=m.active!==false;document.getElementById('youthEditForm').hidden=false;document.getElementById('youthEditForm').scrollIntoView({block:'start'});
+  document.getElementById('youthEditTitle').textContent='Modifier '+m.prenom+' '+m.nom;document.getElementById('youthEditPrenom').value=m.prenom||'';document.getElementById('youthEditNom').value=m.nom||'';document.getElementById('youthEditStatut').value=m.statut;document.getElementById('youthEditCayenne').value=m.cayenne;document.getElementById('youthEditEmail').value=m.email||'';document.getElementById('youthEditTelephone').value=m.telephone||'';document.getElementById('youthEditForm').hidden=false;document.getElementById('youthEditForm').scrollIntoView({block:'start'});
 });
 document.getElementById('youthEditCancel').addEventListener('click',()=>{youth.editing=null;document.getElementById('youthEditForm').hidden=true;});
-document.getElementById('youthEditForm').addEventListener('submit',e=>{e.preventDefault();if(!youth.editing||youth.busy)return;const epoch=youth.epoch,m=youth.editing,payload={key:m.key,prenom:document.getElementById('youthEditPrenom').value,nom:document.getElementById('youthEditNom').value,statut:document.getElementById('youthEditStatut').value,cayenne:document.getElementById('youthEditCayenne').value,email:document.getElementById('youthEditEmail').value,telephone:document.getElementById('youthEditTelephone').value,active:document.getElementById('youthEditActive').checked};youth.busy=true;Ui.loading('youthEditSave',true,'Enregistrement…');google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;finishAction();youth.editing=null;document.getElementById('youthEditForm').hidden=true;notice(result.message,'ok');loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;finishAction();notice(error.message||error);}).updateYouthMemberProfile(payload,youth.token);});
-document.getElementById('youthNewForm').addEventListener('submit',e=>{e.preventDefault();if(youth.busy)return;const epoch=youth.epoch,payload=Object.fromEntries(new FormData(e.target));youth.busy=true;Ui.loading('youthNewBtn',true,'Création…');google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;finishAction();e.target.reset();showIssued(result);notice(result.delivery&&result.delivery.state==='sent'?'Membre créé et code envoyé.':'Membre créé.','ok');loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;finishAction();notice(error.message||error);}).createYouthMemberAccess(payload,youth.token);});
-document.getElementById('youthCopyCode').addEventListener('click',async()=>{const input=document.getElementById('youthIssuedCode');input.select();try{await navigator.clipboard.writeText(input.value);notice('Code copié.','ok');}catch(_){notice('Code sélectionné : utilisez Copier.','ok');}});
-document.getElementById('youthHideCode').addEventListener('click',hideIssued);
+document.getElementById('youthEditForm').addEventListener('submit',e=>{e.preventDefault();if(!youth.editing||youth.busy)return;const epoch=youth.epoch,m=youth.editing,payload={key:m.key,prenom:document.getElementById('youthEditPrenom').value,nom:document.getElementById('youthEditNom').value,statut:document.getElementById('youthEditStatut').value,cayenne:document.getElementById('youthEditCayenne').value,email:document.getElementById('youthEditEmail').value,telephone:document.getElementById('youthEditTelephone').value};youth.busy=true;Ui.loading('youthEditSave',true,'Enregistrement…');google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;finishAction();youth.editing=null;document.getElementById('youthEditForm').hidden=true;notice(result.message,'ok');loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;finishAction();notice(error.message||error);}).updateYouthMemberProfile(payload,youth.token);});
+document.getElementById('youthNewForm').addEventListener('submit',e=>{e.preventDefault();if(youth.busy)return;const epoch=youth.epoch,payload=Object.fromEntries(new FormData(e.target));youth.busy=true;Ui.loading('youthNewBtn',true,'Création…');google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;finishAction();e.target.reset();notice(result.message||'Membre créé. La gestion de son accès reste au bureau principal.','ok');loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;finishAction();notice(error.message||error);}).createYouthMemberProfile(payload,youth.token);});
 </script>
 </body>
 </html>
