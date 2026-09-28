@@ -243,13 +243,17 @@ function saveAgendaPdfForEvent_(event,payload,companionRestricted){
   return {ok:true,agenda:agendaAdminInfo_(event),message:'Ordre du jour enregistré.'};
 }
 function getYouthAgendaPdf(eventId,token){
-  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId),meta=agendaMeta_(event.ID_Evenement);
+  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId);
+  if(!agendaMeetingType_(event))throw new Error('Ordre du jour et compte rendu sont réservés aux réunions.');
+  const meta=agendaMeta_(event.ID_Evenement);
   if(!meta)throw new Error('Aucun ordre du jour PDF n’a encore été ajouté.');
   if(clean_(meta.visibility)==='companions')throw new Error('Cet ordre du jour est réservé aux Compagnons.');
   return agendaPdfPayload_(meta);
 }
 function deleteYouthAgendaPdf(eventId,token){
-  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId),meta=agendaMeta_(event.ID_Evenement);
+  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId);
+  if(!agendaMeetingType_(event))throw new Error('Ordre du jour et compte rendu sont réservés aux réunions.');
+  const meta=agendaMeta_(event.ID_Evenement);
   if(meta&&clean_(meta.visibility)==='companions')throw new Error('Cet ordre du jour est réservé aux Compagnons.');
   const deleted=deleteAgendaForEvent_(event.ID_Evenement);
   return {ok:true,deleted:deleted,message:deleted?'Ordre du jour supprimé.':'Aucun ordre du jour n’était enregistré.'};
