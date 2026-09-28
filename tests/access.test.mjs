@@ -311,3 +311,10 @@ test('Youth Bureau has a separate session, sees only youth profiles and cannot m
   assert.equal(db.MEMBRES.find(m=>m.Email==='lina@example.test').Statut,'Sociétaire');
   assert.throws(()=>c.createYouthMemberProfile({nom:'Test',prenom:'Comp',statut:'Compagnon',cayenne:'Paris'},youth),/uniquement/);
 });
+
+test('Youth Bureau login reports its own code errors and missing configuration clearly',()=>{
+  const {c,settings}=fixture();
+  assert.throws(()=>c.loginYouthBureau('mauvais-code'),/Code du Bureau des jeunes incorrect/);
+  settings.jeunes_pin='';
+  assert.throws(()=>c.loginYouthBureau('nimporte-quoi'),/n’est pas encore configuré/);
+});
