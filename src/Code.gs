@@ -404,7 +404,7 @@ function getYouthDashboardData(year, token) {
   data.version = UC_APP.version;
   data.calendar = calendarRows_()
     .filter(function(e) {
-      return eventYear_(e) === data.year && youthMembers.some(function(member) { return eventForMember_(e, member); });
+      return eventYear_(e) === data.year && isActive_(e.Actif) && youthMembers.some(function(member) { return eventForMember_(e, member); });
     })
     .sort(function(a,b) { return asDate_(a.Date) - asDate_(b.Date); })
     .map(function(e) { return formatEventForClient_(e); });
