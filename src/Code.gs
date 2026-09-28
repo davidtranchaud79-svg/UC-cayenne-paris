@@ -941,10 +941,13 @@ function makeEventId_(date, title) {
 }
 
 function computeDashboard_(year, memberFilter) {
-  const events = getEventsForYear_(year);
+  const allEvents = getEventsForYear_(year);
   const members = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(member) {
     return member.Nom && member.Prenom && isActive_(member.Actif) && (!memberFilter || memberFilter(member));
   });
+  const events = memberFilter ? allEvents.filter(function(event) {
+    return members.some(function(member) { return eventForMember_(event, member); });
+  }) : allEvents;
   const responses = responseRows_().filter(function(row) {
     const event = events.find(function(e) { return e.ID_Evenement === row.ID_Evenement; });
     const member = members.find(function(m) { return memberKey_(m) === row.Cle_Personne; });
