@@ -265,7 +265,7 @@ test('Youth Bureau can create and modify youth events but never companion meetin
   assert.throws(()=>f.c.updateYouthEvent({id:'EVT-1',version:f.c.eventVersion_(f.c.calendarRows_().find(e=>e.ID_Evenement==='EVT-1')),date:'2026-09-22',title:'Compagnons',type:'Réunion des jeunes',cayenne:'Paris',modalites:'Standard'},f.youth),/ne sont pas accessibles/);
 });
 
-test('Youth Bureau can attach agenda and report PDFs only to non-companion events',()=>{
+test('Youth Bureau can attach agenda and report PDFs only to meetings',()=>{
   const f=fixture();f.c.ensureAuditSchema_();
   const created=f.c.createYouthEvent({date:'2026-10-07',title:'Réunion jeunes documents',type:'Réunion des jeunes',cayenne:'Paris'},f.youth);
   const id=created.event.id,pdf=Buffer.from('%PDF-1.4\nTEST').toString('base64'),payload={name:'document.pdf',mimeType:'application/pdf',data:pdf};
@@ -273,6 +273,11 @@ test('Youth Bureau can attach agenda and report PDFs only to non-companion event
   const report=f.c.saveYouthReportPdf(id,payload,f.youth);assert.equal(report.report.available,true);
   assert.match(f.c.getYouthAgendaPdf(id,f.youth).name,/^ODJ_/);
   assert.match(f.c.getYouthReportPdf(id,f.youth).name,/^CR_/);
+  const other=f.c.createYouthEvent({date:'2026-10-08',title:'Cours jeunes',type:'Autre',cayenne:'Paris'},f.youth);
+  assert.throws(()=>f.c.saveYouthAgendaPdf(other.event.id,payload,f.youth),/réservés aux réunions/);
+  assert.throws(()=>f.c.saveYouthReportPdf(other.event.id,payload,f.youth),/réservés aux réunions/);
+  assert.throws(()=>f.c.getYouthAgendaPdf(other.event.id,f.youth),/réservés aux réunions/);
+  assert.throws(()=>f.c.getYouthReportPdf(other.event.id,f.youth),/réservés aux réunions/);
   assert.throws(()=>f.c.saveYouthAgendaPdf('EVT-1',payload,f.youth),/Compagnons/);
   assert.throws(()=>f.c.saveYouthReportPdf('EVT-1',payload,f.youth),/Compagnons/);
   assert.equal(f.c.deleteYouthAgendaPdf(id,f.youth).deleted,true);
