@@ -155,7 +155,7 @@ function renderEventSelectors(){const d=youth.dashboard||{};document.getElementB
 function renderAll(){renderEventSelectors();renderOverview();renderEvents();renderMembers();setScreen(youth.screen);Ui.mountIcons();}
 function renderOverview(){
   const d=youth.dashboard||{kpis:{},followUps:[],events:[]},k=d.kpis||{};
-  const specs=[['Événements','events','calendar','', 'Au calendrier'],['Membres suivis','members','users','', 'Sociétaires & Aspirants'],['Présences annoncées','presents','check-circle','green','Intentions sur l’année'],['Absences excusées','excused','clock','amber','Cumul sur l’année'],['Sans réponse','noResponse','info','','Par membre et événement'],['Coups de main','aids','heart','blue','Présences avec aide']];
+  const specs=[['Événements','events','calendar','', 'Au calendrier'],['Membres actifs','members','users','', 'Sociétaires & Aspirants'],['Présences annoncées','presents','check-circle','green','Intentions sur l’année'],['Absences excusées','excused','clock','amber','Cumul sur l’année'],['Sans réponse','noResponse','info','','Par membre et événement'],['Coups de main','aids','heart','blue','Présences avec aide']];
   document.getElementById('youthOverviewKpis').innerHTML=specs.map(([label,key,icon,color,note])=>'<div class="kpi '+color+'"><div class="kpi-top"><span>'+esc(label)+'</span><span class="kpi-icon">'+Ui.icon(icon)+'</span></div><strong>'+Ui.count(k[key]||0)+'</strong><small>'+esc(note)+'</small></div>').join('');
   const events=d.events||[],today=new Date();today.setHours(0,0,0,0);
   const upcoming=events.filter(e=>{const parsed=Ui.date(e.date).value;return parsed&&parsed>=today;});
