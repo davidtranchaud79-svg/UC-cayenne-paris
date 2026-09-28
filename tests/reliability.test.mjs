@@ -252,13 +252,13 @@ test('Youth Bureau can create and modify youth events but never companion meetin
   const created=f.c.createYouthEvent({date:'2026-10-07',title:'Réunion jeunes créée',type:'Réunion des jeunes',start:'19:00',end:'21:00',place:'Cayenne de Paris',cayenne:'Paris',modalites:'Standard',comment:'Test'},f.youth);
   const id=created.event.id;
   let row=f.c.calendarRows_().find(e=>e.ID_Evenement===id);
-  assert.equal(row.Public_Statuts,'Sociétaire ; Aspirant');
+  assert.equal(row.Public_Statuts,'Sociétaire ; Aspirant ; Compagnon');
   assert.equal(row.Public_Cayennes,'');
   const formatted=f.c.formatEventForClient_(row);
   f.c.updateYouthEvent({...formatted,title:'Réunion jeunes modifiée',type:'Autre',date:'2026-10-08',cayenne:'Paris',modalites:'Standard'},f.youth);
   row=f.c.calendarRows_().find(e=>e.ID_Evenement===id);
   assert.equal(row.Titre,'Réunion jeunes modifiée');
-  assert.equal(row.Public_Statuts,'Sociétaire ; Aspirant');
+  assert.equal(row.Public_Statuts,'Sociétaire ; Aspirant ; Compagnon');
   assert.equal(row.Public_Cayennes,'');
   const current=f.c.formatEventForClient_(row);
   assert.throws(()=>f.c.updateYouthEvent({...current,type:'Réunion compagnon'},f.youth),/ne peut ni créer ni modifier/);
