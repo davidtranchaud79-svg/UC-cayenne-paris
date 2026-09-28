@@ -289,6 +289,7 @@ function updateMemberProfile(payload, token) {
     if ([changes.Nom,changes.Prenom,changes.Email,changes.Telephone].some(function(v) { return v.length > 200 || /^[=+@]/.test(v); })) throw new Error('Un champ est invalide ou trop long.');
     queueFollowup_(calendarRows_().map(function(e) { return e.ID_Evenement; }));
     writeRecord_(UC_APP.sheets.membres, table.rowNumbers[index], changes);
+    sortMembersByRank_();
     if (changes.Actif === 'Non') {
       const props = PropertiesService.getScriptProperties(), old = memberCodeHash_(m);
       memberAliases_(m).forEach(function(alias) { props.deleteProperty(memberAccessKey_(alias)); props.deleteProperty(memberCredentialKindKey_(alias)); pruneRememberedSessions_(alias, true); });
@@ -297,6 +298,26 @@ function updateMemberProfile(payload, token) {
     return {ok:true,message:changes.Actif === 'Non' ? 'Membre mis à jour et désactivé. Son historique est conservé et son accès a été révoqué.' : 'Membre mis à jour. Son historique et son accès sont conservés.'};
   });
 }
+function updateYouthMemberProfile(payload, token) {
+  assertYouthAdmin_(token);ensureAuditSchema_();
+  return accessLocked_(function(){
+    payload=payload||{};const table=getTableData_(UC_APP.sheets.membres),index=table.rows.findIndex(function(m){return memberKey_(m)===clean_(payload.key);});
+    if(index<0)throw new Error('Membre introuvable.');
+    const current=table.rows[index];if(!youthMemberAllowed_(current))throw new Error('Ce membre n’est pas accessible au Bureau des jeunes.');
+    const targetStatus=clean_(payload.statut==null?current.Statut:payload.statut);
+    if(!['Sociétaire','Aspirant'].includes(targetStatus))throw new Error('Le Bureau des jeunes ne peut gérer que les Sociétaires et Aspirants.');
+    const changes={Nom:clean_(payload.nom==null?current.Nom:payload.nom),Prenom:clean_(payload.prenom==null?current.Prenom:payload.prenom),Statut:targetStatus,
+      Cayenne:clean_(payload.cayenne==null?current.Cayenne:payload.cayenne),Email:clean_(payload.email==null?current.Email:payload.email),Telephone:clean_(payload.telephone==null?current.Telephone:payload.telephone),Actif:payload.active===false?'Non':'Oui'};
+    if(!changes.Nom||!changes.Prenom)throw new Error('Nom et prénom obligatoires.');
+    if(!getOptionList_('E',UC_APP.defaults.cayennes).includes(changes.Cayenne))throw new Error('Cayenne invalide.');
+    if(changes.Email&&!mailAddressValid_(changes.Email))throw new Error('Adresse email invalide.');
+    writeRecord_(UC_APP.sheets.membres,table.rowNumbers[index],changes);sortMembersByRank_();
+    if(changes.Actif==='Non'){const props=PropertiesService.getScriptProperties(),old=memberCodeHash_(current);memberAliases_(current).forEach(function(alias){props.deleteProperty(memberAccessKey_(alias));props.deleteProperty(memberCredentialKindKey_(alias));pruneRememberedSessions_(alias,true);});if(old)props.deleteProperty('uc.code.'+old);}
+    queueFollowup_(calendarRows_().map(function(e){return e.ID_Evenement;}));
+    return {ok:true,message:'Membre mis à jour dans l’espace Bureau des jeunes.'};
+  });
+}
+
 function deleteMemberRows_(sheetName, keys) {
   const table = getTableData_(sheetName), sheet = getSpreadsheet_().getSheetByName(sheetName);
   const rows = table.rows.map(function(row,i) { return {row:row,number:table.rowNumbers[i]}; })
@@ -320,6 +341,7 @@ function deleteMember(key, token) {
     aliases.forEach(function(alias) { props.deleteProperty(memberAccessKey_(alias)); props.deleteProperty(memberCredentialKindKey_(alias)); pruneRememberedSessions_(alias, true); });
     if (old) props.deleteProperty('uc.code.' + old);
     getSpreadsheet_().getSheetByName(UC_APP.sheets.membres).deleteRow(table.rowNumbers[index]);
+    sortMembersByRank_();
     queueFollowup_(calendarRows_().map(function(e) { return e.ID_Evenement; }));
     return {ok:true,deletedResponses:responses,deletedAttendance:attendance,deletedMails:mails,
       message:'Membre supprimé définitivement avec ' + responses + ' réponse(s) associée(s).'};
