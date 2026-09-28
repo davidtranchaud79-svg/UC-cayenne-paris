@@ -45,6 +45,7 @@ function app(file, overrides={}) {
         else if(method==='listMemberAccess')success([{...config.profile,key:config.profile.email,active:true,hasCode:false}]);
         else if(method==='listYouthMemberAccess')success([{nom:'Aardvark',prenom:'Zoé',statut:'Aspirant',cayenne:'Paris',email:'zoe@example.test',telephone:'',key:'MEM-ZOE',active:true,hasCode:false},{nom:'Autre',prenom:'Alex',statut:'Sociétaire',cayenne:'Paris',email:'alex@example.test',telephone:'',key:'MEM-ALEX',active:true,hasCode:true,hasPassword:true}]);
         else if(method==='manageMemberCode'||method==='createMemberAccess')success({profile:config.profile,code:'1234-5678-90AB-CDEF'});
+        else if(method==='sendAllMemberAccessCodes')success({ok:true,message:'1 accès envoyé.',summary:{sent:1,password:1,no_email:1,error:0,inactive:0,total:3}});
         else if(method==='manageYouthMemberCode'||method==='createYouthMemberAccess')throw Error('Youth Bureau must not manage access');
         else if(method==='createYouthMemberProfile')success({ok:true,profile:{nom:'Autre',prenom:'Alex',statut:'Sociétaire',cayenne:'Paris',email:'alex@example.test'},message:'Membre ajouté. La gestion de son accès reste réservée au bureau principal.'});
         else if(method==='changeBureauCode'||method==='changeYouthBureauCode')success({ok:true});
@@ -351,6 +352,21 @@ test('agenda controls appear only when the server exposes an agenda, and bureau 
   assert.ok(admin.doc.querySelector('[data-agenda-upload="evt-1"]'));assert.ok(admin.doc.querySelector('[data-agenda-open="evt-1"]'));assert.match(admin.doc.getElementById('eventsRoot').textContent,/Compagnons uniquement/);admin.dom.window.close();
   const member=app('Public.html',{getPublicConfig:()=>({...structuredClone(config),events:[{...events[0],agenda:{available:true,name:'ODJ.pdf'}}]})});
   assert.ok(member.doc.querySelector('[data-agenda-open="evt-1"]'));member.dom.window.close();
+});
+
+test('bureau can send all access codes and sees a delivery summary',()=>{
+ const a=app('Admin.html',{listMemberAccess:()=>[
+  {...config.profile,key:'camille@example.test',active:true,hasCode:true,delivery:{state:'sent',at:'2026-09-28T21:45:00Z',address:'camille@example.test'}},
+  {nom:'Autre',prenom:'Alex',statut:'Aspirant',cayenne:'Paris',email:'alex@example.test',telephone:'',key:'alex@example.test',active:true,hasCode:true,hasPassword:true,delivery:{state:'password',at:'2026-09-28T21:45:00Z'}}
+ ]});
+ a.login();
+ assert.match(a.doc.getElementById('memberAccessList').textContent,/Envoyé/);
+ assert.match(a.doc.getElementById('memberAccessList').textContent,/Mot de passe actif/);
+ a.doc.getElementById('sendAllAccessCodes').click();a.flush();
+ assert.ok(a.calls.find(c=>c.method==='sendAllMemberAccessCodes'));
+ assert.match(a.doc.getElementById('bulkAccessSummary').textContent,/Envoi global terminé/);
+ assert.match(a.doc.getElementById('bulkAccessSummary').textContent,/1 envoyé/);
+ a.dom.window.close();
 });
 
 test('bureau can edit the complete member profile and permanently delete a member',()=>{
