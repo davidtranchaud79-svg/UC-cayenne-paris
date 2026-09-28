@@ -101,8 +101,7 @@ function writeRecord_(sheetName, rowNumber, record) {
 
 function agendaPropertyKey_(eventId) { return 'uc.agenda.' + accessHash_(clean_(eventId)); }
 function agendaMeetingType_(event) {
-  const type = clean_(event && event.Type_Evenement);
-  return type === 'Réunion compagnon' || type === 'Réunion des jeunes' ? type : '';
+  return clean_(event && event.Type_Evenement);
 }
 function agendaMeta_(eventId) {
   const raw = PropertiesService.getScriptProperties().getProperty(agendaPropertyKey_(eventId));
@@ -154,7 +153,7 @@ function saveAgendaPdf(eventId, payload, token) {
   const id = clean_(eventId), event = calendarRows_().find(function(e) { return clean_(e.ID_Evenement) === id; });
   if (!event) throw new Error('Événement introuvable.');
   const type = agendaMeetingType_(event);
-  if (!type) throw new Error('Un ordre du jour PDF peut être ajouté uniquement à une réunion des jeunes ou une réunion compagnon.');
+  if (!type) throw new Error('Cet événement ne peut pas recevoir d’ordre du jour PDF.');
   payload = payload || {};
   const originalName = clean_(payload.name);
   if (!/\.pdf$/i.test(originalName) || clean_(payload.mimeType) !== 'application/pdf') throw new Error('Choisissez un fichier PDF.');
@@ -175,7 +174,7 @@ function saveAgendaPdf(eventId, payload, token) {
   if (old && old.fileId && old.fileId !== meta.fileId) {
     try { DriveApp.getFileById(old.fileId).setTrashed(true); } catch (_) {}
   }
-  return {ok:true, agenda:agendaAdminInfo_(event), message:type === 'Réunion compagnon' ? 'Ordre du jour enregistré. Il est accessible uniquement aux Compagnons.' : 'Ordre du jour enregistré. Il est accessible aux membres concernés par cette réunion.'};
+  return {ok:true, agenda:agendaAdminInfo_(event), message:type === 'Réunion compagnon' ? 'Ordre du jour enregistré. Il est accessible uniquement aux Compagnons.' : 'Ordre du jour enregistré. Il est rattaché à cet événement.'};
 }
 function getAgendaPdf(eventId, token) {
   const member = assertMember_(token), id = clean_(eventId);
@@ -208,6 +207,101 @@ function deleteAgendaPdf(eventId, token) {
   if (!calendarRows_().some(function(e) { return clean_(e.ID_Evenement) === id; })) throw new Error('Événement introuvable.');
   const deleted = deleteAgendaForEvent_(id);
   return {ok:true, deleted:deleted, message:deleted ? 'Ordre du jour supprimé.' : 'Aucun ordre du jour n’était enregistré.'};
+}
+
+function youthEventForManagement_(eventId) {
+  const id=clean_(eventId),event=calendarRows_().find(function(e){return clean_(e.ID_Evenement)===id;});
+  if(!event)throw new Error('Événement introuvable.');
+  if(clean_(event.Type_Evenement)==='Réunion compagnon')throw new Error('Les réunions de Compagnons ne sont pas accessibles au Bureau des jeunes.');
+  const youthMembers=getRowsAsObjects_(UC_APP.sheets.membres).filter(function(member){return member.Nom&&member.Prenom&&isActive_(member.Actif)&&youthMemberAllowed_(member);});
+  if(!youthMembers.some(function(member){return eventForMember_(event,member);}))throw new Error('Cet événement ne concerne pas le Bureau des jeunes.');
+  return event;
+}
+function saveYouthAgendaPdf(eventId,payload,token){
+  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId);
+  if(clean_(event.Type_Evenement)==='Réunion compagnon')throw new Error('Les réunions de Compagnons ne sont pas accessibles au Bureau des jeunes.');
+  return saveAgendaPdfForEvent_(event,payload,false);
+}
+function saveAgendaPdfForEvent_(event,payload,companionRestricted){
+  const id=clean_(event.ID_Evenement),type=agendaMeetingType_(event);payload=payload||{};
+  const originalName=clean_(payload.name);
+  if(!/\.pdf$/i.test(originalName)||clean_(payload.mimeType)!=='application/pdf')throw new Error('Choisissez un fichier PDF.');
+  const encoded=clean_(payload.data).replace(/^data:application\/pdf;base64,/i,'');
+  if(!encoded||encoded.length>6*1024*1024)throw new Error('Le PDF est trop volumineux. Limite : 4 Mo.');
+  let bytes;try{bytes=Utilities.base64Decode(encoded);}catch(_){throw new Error('Le fichier PDF est illisible.');}
+  if(!bytes||!bytes.length||bytes.length>4*1024*1024)throw new Error('Le PDF est trop volumineux. Limite : 4 Mo.');
+  const signature=bytes.slice(0,5).map(function(b){return String.fromCharCode((Number(b)+256)%256);}).join('');
+  if(signature!=='%PDF-')throw new Error('Le fichier sélectionné n’est pas un PDF valide.');
+  const safeName=('ODJ_'+formatDate_(event.Date)+'_'+slug_(event.Titre).slice(0,60)+'.pdf').replace(/_+/g,'_');
+  const file=agendaFolder_().createFile(Utilities.newBlob(bytes,'application/pdf',safeName));
+  try{file.setDescription('Ordre du jour — '+clean_(event.Titre)+' — '+formatDate_(event.Date));}catch(_){}
+  const old=agendaMeta_(id),meta={fileId:file.getId(),name:safeName,updatedAt:new Date().toISOString(),visibility:companionRestricted?'companions':'members'};
+  PropertiesService.getScriptProperties().setProperty(agendaPropertyKey_(id),JSON.stringify(meta));
+  if(old&&old.fileId&&old.fileId!==meta.fileId){try{DriveApp.getFileById(old.fileId).setTrashed(true);}catch(_){}}
+  return {ok:true,agenda:agendaAdminInfo_(event),message:'Ordre du jour enregistré.'};
+}
+function getYouthAgendaPdf(eventId,token){
+  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId),meta=agendaMeta_(event.ID_Evenement);
+  if(!meta)throw new Error('Aucun ordre du jour PDF n’a encore été ajouté.');
+  if(clean_(meta.visibility)==='companions')throw new Error('Cet ordre du jour est réservé aux Compagnons.');
+  return agendaPdfPayload_(meta);
+}
+function deleteYouthAgendaPdf(eventId,token){
+  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId),meta=agendaMeta_(event.ID_Evenement);
+  if(meta&&clean_(meta.visibility)==='companions')throw new Error('Cet ordre du jour est réservé aux Compagnons.');
+  const deleted=deleteAgendaForEvent_(event.ID_Evenement);
+  return {ok:true,deleted:deleted,message:deleted?'Ordre du jour supprimé.':'Aucun ordre du jour n’était enregistré.'};
+}
+
+function reportPropertyKey_(eventId){return 'uc.report.'+accessHash_(clean_(eventId));}
+function reportMeta_(eventId){
+  const raw=PropertiesService.getScriptProperties().getProperty(reportPropertyKey_(eventId));if(!raw)return null;
+  try{const meta=JSON.parse(raw);return meta&&clean_(meta.fileId)?meta:null;}catch(_){return null;}
+}
+function reportAdminInfo_(event){
+  const meta=reportMeta_(event.ID_Evenement);
+  return {eligible:clean_(event.Type_Evenement)!=='Réunion compagnon',available:!!meta,name:meta?clean_(meta.name):'',updatedAt:meta?clean_(meta.updatedAt):''};
+}
+function reportFolder_(){
+  const props=PropertiesService.getScriptProperties(),slot='uc.report.folder',id=props.getProperty(slot);
+  if(id){try{return DriveApp.getFolderById(id);}catch(_){props.deleteProperty(slot);}}
+  const folder=DriveApp.createFolder('UC Cayenne de Paris - Comptes rendus');props.setProperty(slot,folder.getId());return folder;
+}
+function reportPdfPayload_(meta){
+  let file;try{file=DriveApp.getFileById(meta.fileId);}catch(_){throw new Error('Compte rendu indisponible. Le PDF doit être remis.');}
+  const blob=file.getBlob();return {name:clean_(meta.name)||file.getName()||'compte-rendu.pdf',mimeType:'application/pdf',data:Utilities.base64Encode(blob.getBytes())};
+}
+function saveYouthReportPdf(eventId,payload,token){
+  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId);payload=payload||{};
+  const originalName=clean_(payload.name);
+  if(!/\.pdf$/i.test(originalName)||clean_(payload.mimeType)!=='application/pdf')throw new Error('Choisissez un fichier PDF.');
+  const encoded=clean_(payload.data).replace(/^data:application\/pdf;base64,/i,'');
+  if(!encoded||encoded.length>6*1024*1024)throw new Error('Le PDF est trop volumineux. Limite : 4 Mo.');
+  let bytes;try{bytes=Utilities.base64Decode(encoded);}catch(_){throw new Error('Le fichier PDF est illisible.');}
+  if(!bytes||!bytes.length||bytes.length>4*1024*1024)throw new Error('Le PDF est trop volumineux. Limite : 4 Mo.');
+  const signature=bytes.slice(0,5).map(function(b){return String.fromCharCode((Number(b)+256)%256);}).join('');
+  if(signature!=='%PDF-')throw new Error('Le fichier sélectionné n’est pas un PDF valide.');
+  const safeName=('CR_'+formatDate_(event.Date)+'_'+slug_(event.Titre).slice(0,60)+'.pdf').replace(/_+/g,'_');
+  const file=reportFolder_().createFile(Utilities.newBlob(bytes,'application/pdf',safeName));
+  try{file.setDescription('Compte rendu — '+clean_(event.Titre)+' — '+formatDate_(event.Date));}catch(_){}
+  const old=reportMeta_(event.ID_Evenement),meta={fileId:file.getId(),name:safeName,updatedAt:new Date().toISOString()};
+  PropertiesService.getScriptProperties().setProperty(reportPropertyKey_(event.ID_Evenement),JSON.stringify(meta));
+  if(old&&old.fileId&&old.fileId!==meta.fileId){try{DriveApp.getFileById(old.fileId).setTrashed(true);}catch(_){}}
+  return {ok:true,report:reportAdminInfo_(event),message:'Compte rendu enregistré.'};
+}
+function getYouthReportPdf(eventId,token){
+  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId),meta=reportMeta_(event.ID_Evenement);
+  if(!meta)throw new Error('Aucun compte rendu PDF n’a encore été ajouté.');
+  return reportPdfPayload_(meta);
+}
+function deleteReportForEvent_(eventId){
+  const props=PropertiesService.getScriptProperties(),key=reportPropertyKey_(eventId),meta=reportMeta_(eventId);props.deleteProperty(key);
+  if(meta&&meta.fileId){try{DriveApp.getFileById(meta.fileId).setTrashed(true);}catch(_){}}
+  return !!meta;
+}
+function deleteYouthReportPdf(eventId,token){
+  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId),deleted=deleteReportForEvent_(event.ID_Evenement);
+  return {ok:true,deleted:deleted,message:deleted?'Compte rendu supprimé.':'Aucun compte rendu n’était enregistré.'};
 }
 
 function updateEvent(payload, token) {
