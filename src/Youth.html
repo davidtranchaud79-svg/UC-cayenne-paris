@@ -7,112 +7,133 @@
 </head>
 <body>
   <?!= include('Ui'); ?>
-  <header class="public-header"><div class="public-header-inner">
-    <div class="brand bureau-brand"><?!= include('BrandBureau'); ?><div><div class="brand-name">Bureau des jeunes</div><span class="brand-subtitle">Cayenne de Paris</span></div></div>
-    <a class="btn secondary compact" target="_top" href="<?= publicUrl ?>">Espace membres</a>
-  </div></header>
+  <div class="admin-app">
+    <aside class="sidebar">
+      <div class="brand bureau-brand"><?!= include('BrandBureau'); ?><div><div class="brand-name">Cayenne<br>de Paris</div><span class="brand-subtitle">Union Compagnonnique</span></div></div>
+      <div class="nav-label">Bureau des jeunes</div>
+      <nav class="admin-nav" aria-label="Navigation du Bureau des jeunes">
+        <button class="nav-btn active" type="button" data-youth-screen="overview" aria-current="page"><span data-icon="grid"></span><span>Vue d’ensemble</span></button>
+        <button class="nav-btn" type="button" data-youth-screen="events"><span data-icon="calendar"></span><span>Événements</span></button>
+        <button class="nav-btn" type="button" data-youth-screen="members"><span data-icon="users"></span><span>Membres</span></button>
+      </nav>
+      <div class="sidebar-bottom"><a class="btn secondary block" target="_top" href="<?= publicUrl ?>">Espace membres <span data-icon="external"></span></a><p>Sociétaires &amp; Aspirants<br>La vie de notre Cayenne.</p></div>
+    </aside>
 
-  <main class="public-main">
-    <div class="welcome"><div><div class="eyebrow">Sociétaires & Aspirants</div><h1 class="serif">Espace Bureau des jeunes</h1><p>Vue d’ensemble, événements et gestion des fiches Sociétaires/Aspirants. Les Réunions compagnon, les réglages généraux et la gestion des accès restent réservés au bureau principal.</p></div></div>
-    <div id="youthNotice" class="notice" role="status" aria-live="polite" hidden></div>
-
-    <section id="youthLogin" class="panel access-panel">
-      <div class="access-copy"><span class="access-icon" data-icon="lock"></span><div><h2>Connexion Bureau des jeunes</h2><p>Utilisez le code spécifique défini par le bureau principal.</p></div></div>
-      <form id="youthAccessForm" class="access-form">
-        <input class="sr-only" type="text" name="username" autocomplete="username" value="bureau-jeunes-cayenne-paris" tabindex="-1" aria-hidden="true">
-        <div class="field"><label for="youthPin">Code Bureau des jeunes</label><input id="youthPin" name="password" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" required></div>
-        <button class="btn" id="youthLoginBtn" type="submit">Ouvrir l’espace</button>
-      </form>
-    </section>
-
-    <section id="youthSpace" hidden>
-      <div class="session-bar"><span class="dot"></span><strong>Accès limité Sociétaires / Aspirants</strong><button class="text-button" type="button" id="youthLogout"><span data-icon="logout"></span>Se déconnecter</button></div>
-
-      <div class="panel panel-pad" style="margin-bottom:22px">
-        <div class="section-head"><div><h2>Navigation</h2><p>Les données affichées ici concernent uniquement les Sociétaires et Aspirants.</p></div><div class="access-actions"><label class="sr-only" for="youthYear">Année</label><select id="youthYear"></select><button id="youthRefresh" class="btn secondary compact" type="button"><span data-icon="refresh"></span>Actualiser</button></div></div>
-        <div class="access-actions" style="margin-top:12px">
-          <button class="btn secondary compact" type="button" data-youth-screen="overview">Vue d’ensemble</button>
-          <button class="btn secondary compact" type="button" data-youth-screen="events">Événements</button>
-          <button class="btn secondary compact" type="button" data-youth-screen="members">Membres</button>
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div class="breadcrumb"><span>Bureau des jeunes</span><span data-icon="chevron"></span><b id="youthBreadcrumbTitle">Vue d’ensemble</b></div>
+        <div class="topbar-tools">
+          <span class="tag"><span data-icon="lock"></span>Accès jeunes</span>
+          <div class="year-control"><span data-icon="calendar"></span><label class="sr-only" for="youthYear">Année du suivi</label><select id="youthYear" aria-label="Année du suivi"></select></div>
+          <button id="youthRefresh" class="btn secondary compact" type="button" title="Actualiser les données"><span data-icon="refresh"></span><span>Actualiser</span></button>
         </div>
       </div>
 
-      <section id="youthOverviewScreen" data-youth-panel="overview">
-        <div class="kpi-grid" id="youthOverviewKpis"></div>
-        <div class="panel panel-pad" style="margin-top:22px">
-          <div class="section-head"><div><h2 id="youthOverviewTitle">Vue d’ensemble</h2><p>Statistiques calculées uniquement sur les Sociétaires et Aspirants.</p></div></div>
-          <div id="youthFollowUps"></div>
-        </div>
-      </section>
+      <div class="heading-row">
+        <div><div class="eyebrow">Présences &amp; engagements</div><h1 class="serif" id="youthScreenTitle">Vue d’ensemble</h1><p id="youthScreenSubtitle">La vie des Sociétaires et Aspirants, en un regard.</p></div>
+        <button class="btn" id="youthHeadingAction" type="button" data-youth-go="events"><span data-icon="plus"></span><span>Nouvel événement</span></button>
+      </div>
 
-      <section id="youthEventsScreen" data-youth-panel="events" hidden>
-        <div class="panel panel-pad">
-          <div class="section-head"><div><h2>Événements</h2><p>Le Bureau des jeunes peut créer et modifier ses événements, sauf les Réunions compagnon. L’Ordre du jour et le Compte rendu PDF apparaissent uniquement sur les Réunions des jeunes.</p></div><button id="newYouthEvent" class="btn" type="button">Créer un événement</button></div>
-          <div id="youthEvents"></div>
-        </div>
+      <div id="youthNotice" class="notice" role="status" aria-live="polite" hidden></div>
 
-        <form id="youthEventForm" class="panel panel-pad" style="margin-top:22px" hidden>
-          <div class="section-head"><div><h2 id="youthEventFormTitle">Créer un événement</h2><p>Un nouvel événement est automatiquement visible par les Sociétaires, Aspirants et Compagnons. Lors d’une modification, l’audience existante est conservée.</p></div><button id="cancelYouthEvent" class="text-button" type="button">Fermer</button></div>
-          <input id="youthEventId" type="hidden"><input id="youthEventVersion" type="hidden">
-          <div class="fields">
-            <div class="field"><label for="youthEventDate">Date</label><input id="youthEventDate" type="date" required></div>
-            <div class="field"><label for="youthEventTitle">Titre</label><input id="youthEventTitle" maxlength="200" required></div>
-            <div class="field"><label for="youthEventType">Type</label><select id="youthEventType" required></select></div>
-            <div class="field"><label for="youthEventCayenne">Cayenne</label><select id="youthEventCayenne"></select></div>
-            <div class="field"><label for="youthEventStart">Début</label><input id="youthEventStart" type="time"></div>
-            <div class="field"><label for="youthEventEnd">Fin</label><input id="youthEventEnd" type="time"></div>
-            <div class="field"><label for="youthEventPlace">Lieu</label><input id="youthEventPlace" maxlength="300" value="Cayenne de Paris"></div>
-            <div class="field"><label for="youthEventModalites">Modalités</label><select id="youthEventModalites"><option>Standard</option><option>Repas et aide</option><option>Réception</option></select></div>
-            <div class="field full"><label for="youthEventComment">Commentaire</label><textarea id="youthEventComment" maxlength="2000" rows="4"></textarea></div>
-            <div class="field full"><button id="saveYouthEvent" class="btn" type="submit">Enregistrer l’événement</button></div>
-          </div>
+      <section id="youthLogin" class="panel access-panel" aria-labelledby="youthAccessTitle">
+        <div class="access-copy"><div class="access-icon"><span data-icon="lock"></span></div><div><h2 id="youthAccessTitle">Bienvenue dans l’espace Bureau des jeunes.</h2><p>Entrez le code spécifique pour retrouver la vue d’ensemble, préparer les événements et suivre les Sociétaires et Aspirants.</p></div></div>
+        <form id="youthAccessForm" class="access-form">
+          <input class="sr-only" type="text" name="username" autocomplete="username" value="bureau-jeunes-cayenne-paris" tabindex="-1" aria-hidden="true">
+          <div class="field"><label for="youthPin">Code Bureau des jeunes</label><input id="youthPin" name="password" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" placeholder="Code du Bureau des jeunes" required></div>
+          <button class="btn" id="youthLoginBtn" type="submit">Ouvrir l’espace <span data-icon="arrow"></span></button>
         </form>
-
-        <input id="youthAgendaInput" type="file" accept="application/pdf,.pdf" hidden>
-        <input id="youthReportInput" type="file" accept="application/pdf,.pdf" hidden>
       </section>
 
-      <section id="youthMembersScreen" data-youth-panel="members" hidden>
-        <div class="kpi-grid" id="youthMemberKpis"></div>
-        <div class="panel panel-pad" style="margin-top:22px">
-          <div class="section-head"><div><h2>Les jeunes de la Cayenne</h2><p>Classement automatique par rang puis par ordre alphabétique.</p></div></div>
-          <div class="toolbar">
-            <div class="search-box"><span data-icon="search"></span><label class="sr-only" for="youthSearch">Rechercher un membre</label><input id="youthSearch" type="search" placeholder="Nom ou prénom…"></div>
-            <label class="sr-only" for="youthStatus">Filtrer par statut</label><select id="youthStatus"><option value="">Tous</option><option>Aspirant</option><option>Sociétaire</option></select>
-          </div>
-          <div id="youthMembers" style="margin-top:18px"></div>
-        </div>
+      <section id="youthSpace" hidden>
+        <div class="session-bar"><span class="dot"></span><span>Accès Bureau des jeunes actif</span><button class="text-button" type="button" id="youthLogout"><span data-icon="logout"></span>Verrouiller l’espace</button></div>
 
-        <details class="panel panel-pad" style="margin-top:22px"><summary><strong>Ajouter un Sociétaire ou Aspirant</strong></summary>
-          <form id="youthNewForm" class="fields" style="margin-top:18px">
-            <div class="field"><label for="youthNewPrenom">Prénom</label><input id="youthNewPrenom" name="prenom" maxlength="200" required></div>
-            <div class="field"><label for="youthNewNom">Nom</label><input id="youthNewNom" name="nom" maxlength="200" required></div>
-            <div class="field"><label for="youthNewStatut">Statut</label><select id="youthNewStatut" name="statut"><option>Sociétaire</option><option>Aspirant</option></select></div>
-            <div class="field"><label for="youthNewCayenne">Cayenne</label><select id="youthNewCayenne" name="cayenne"><option>Paris</option><option>Autre</option></select></div>
-            <div class="field"><label for="youthNewEmail">Email</label><input id="youthNewEmail" type="email" name="email" maxlength="200"></div>
-            <div class="field"><label for="youthNewTelephone">Téléphone</label><input id="youthNewTelephone" name="telephone" maxlength="200"></div>
-            <div class="field full"><button id="youthNewBtn" class="btn" type="submit">Créer le membre</button></div>
+        <section id="youthOverviewScreen" class="screen active" data-youth-panel="overview" aria-label="Vue d’ensemble">
+          <div class="kpi-grid" id="youthOverviewKpis"></div>
+          <div class="dashboard-grid">
+            <div class="panel panel-pad">
+              <div class="section-head"><div><h2>À l’agenda</h2><p>Les prochains rendez-vous qui concernent les jeunes.</p></div><button class="text-button" type="button" data-youth-go="events">Tout voir <span data-icon="arrow"></span></button></div>
+              <div id="youthDashboardEvents"></div>
+            </div>
+            <div class="dashboard-side">
+              <div class="panel panel-pad"><div class="section-head"><div><h2>À relancer</h2><p>Les réponses encore manquantes.</p></div></div><div id="youthFollowUps"></div></div>
+              <div class="panel panel-pad quick-panel"><h3>Le prochain rendez-vous<br>commence ici.</h3><p>Réunion, cours, fête ou JEP : préparez l’événement puis suivez les réponses.</p><button class="btn" type="button" data-youth-go="events">Préparer un événement <span data-icon="plus"></span></button></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="youthEventsScreen" class="screen" data-youth-panel="events" aria-label="Gestion des événements" hidden>
+          <div class="event-management">
+            <form id="youthEventForm" class="panel panel-pad event-form">
+              <div class="event-form-head"><span class="tag wine" style="margin-bottom:12px"><span data-icon="plus"></span>Calendrier</span><h2 id="youthEventFormTitle">Un événement, une date.</h2><p>Les événements créés ici sont visibles par les Sociétaires, Aspirants et Compagnons. Les Réunions compagnon restent réservées au bureau principal.</p></div>
+              <input id="youthEventId" type="hidden"><input id="youthEventVersion" type="hidden">
+              <div class="fields">
+                <div class="field full"><label for="youthEventDate">Date de l’événement *</label><input id="youthEventDate" type="date" required></div>
+                <div class="field full"><label for="youthEventTitle">Nom de l’événement *</label><input id="youthEventTitle" maxlength="200" required></div>
+                <div class="field"><label for="youthEventStart">Début</label><input id="youthEventStart" type="time"></div>
+                <div class="field"><label for="youthEventEnd">Fin</label><input id="youthEventEnd" type="time"></div>
+                <div class="field full"><label for="youthEventPlace">Lieu</label><input id="youthEventPlace" maxlength="300" placeholder="Cayenne de Paris"></div>
+              </div>
+              <div class="field" style="margin:16px 0"><label for="youthEventModalites">Choix proposés aux membres</label><select id="youthEventModalites"><option>Standard</option><option>Repas et aide</option><option>Réception</option></select></div>
+              <details open><summary>Précisions visibles par les membres</summary><div class="fields"><div class="field"><label for="youthEventType">Type</label><select id="youthEventType" required></select></div><div class="field"><label for="youthEventCayenne">Cayenne</label><select id="youthEventCayenne"></select></div><div class="field full"><label for="youthEventComment">Commentaire</label><textarea id="youthEventComment" maxlength="2000" rows="4" placeholder="Une information pour cet événement…"></textarea></div></div></details>
+              <button id="cancelYouthEvent" class="text-button" type="button" hidden>Quitter la modification</button>
+              <button id="saveYouthEvent" class="btn block" type="submit"><span data-icon="plus"></span>Ajouter au calendrier</button>
+            </form>
+
+            <input id="youthAgendaInput" type="file" accept="application/pdf,.pdf" hidden>
+            <input id="youthReportInput" type="file" accept="application/pdf,.pdf" hidden>
+
+            <div>
+              <div class="section-head"><div><h2>Le calendrier</h2><p>Les rendez-vous accessibles au Bureau des jeunes.</p></div></div>
+              <div class="toolbar"><div class="search-box"><span data-icon="search"></span><label class="sr-only" for="youthEventSearch">Rechercher dans le calendrier</label><input id="youthEventSearch" type="search" placeholder="Rechercher un événement…"></div></div>
+              <div class="result-count" id="youthCalendarCount"></div>
+              <div id="youthEvents" class="calendar-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="youthMembersScreen" class="screen" data-youth-panel="members" aria-label="Suivi des membres" hidden>
+          <div class="kpi-grid" id="youthMemberKpis"></div>
+          <div class="panel panel-pad">
+            <div class="section-head"><div><h2>Les membres</h2><p>Sociétaires et Aspirants, classés automatiquement.</p></div><button id="showYouthNewMember" class="btn compact" type="button"><span data-icon="plus"></span>Ajouter un membre</button></div>
+            <div class="toolbar">
+              <div class="search-box"><span data-icon="search"></span><label class="sr-only" for="youthSearch">Rechercher un membre</label><input id="youthSearch" type="search" placeholder="Rechercher un membre…"></div>
+              <label class="sr-only" for="youthStatus">Filtrer par statut</label><select id="youthStatus"><option value="">Tous les statuts</option><option>Aspirant</option><option>Sociétaire</option></select>
+            </div>
+            <div class="result-count" id="youthMemberCount"></div>
+            <div id="youthMembers" class="member-table-wrap"></div>
+          </div>
+
+          <details id="youthNewMemberDetails" class="panel panel-pad" style="margin-top:22px"><summary><strong>Ajouter un Sociétaire ou Aspirant</strong></summary>
+            <form id="youthNewForm" class="fields" style="margin-top:18px">
+              <div class="field"><label for="youthNewPrenom">Prénom</label><input id="youthNewPrenom" name="prenom" maxlength="200" required></div>
+              <div class="field"><label for="youthNewNom">Nom</label><input id="youthNewNom" name="nom" maxlength="200" required></div>
+              <div class="field"><label for="youthNewStatut">Statut</label><select id="youthNewStatut" name="statut"><option>Sociétaire</option><option>Aspirant</option></select></div>
+              <div class="field"><label for="youthNewCayenne">Cayenne</label><select id="youthNewCayenne" name="cayenne"><option>Paris</option><option>Autre</option></select></div>
+              <div class="field"><label for="youthNewEmail">Email</label><input id="youthNewEmail" type="email" name="email" maxlength="200"></div>
+              <div class="field"><label for="youthNewTelephone">Téléphone</label><input id="youthNewTelephone" name="telephone" maxlength="200"></div>
+              <div class="field full"><button id="youthNewBtn" class="btn" type="submit">Créer le membre</button></div>
+            </form>
+          </details>
+
+          <form id="youthEditForm" class="panel panel-pad" style="margin-top:22px" hidden>
+            <div class="section-head"><div><h2 id="youthEditTitle">Modifier le membre</h2><p>Le statut peut uniquement rester Sociétaire ou Aspirant dans cet espace.</p></div><button id="youthEditCancel" class="text-button" type="button">Fermer</button></div>
+            <div class="fields">
+              <div class="field"><label for="youthEditPrenom">Prénom</label><input id="youthEditPrenom" maxlength="200" required></div>
+              <div class="field"><label for="youthEditNom">Nom</label><input id="youthEditNom" maxlength="200" required></div>
+              <div class="field"><label for="youthEditStatut">Statut</label><select id="youthEditStatut"><option>Sociétaire</option><option>Aspirant</option></select></div>
+              <div class="field"><label for="youthEditCayenne">Cayenne</label><select id="youthEditCayenne"><option>Paris</option><option>Autre</option></select></div>
+              <div class="field"><label for="youthEditEmail">Email</label><input id="youthEditEmail" type="email" maxlength="200"></div>
+              <div class="field"><label for="youthEditTelephone">Téléphone</label><input id="youthEditTelephone" maxlength="200"></div>
+            </div>
+            <button id="youthEditSave" class="btn" type="submit">Enregistrer les modifications</button>
           </form>
-        </details>
-
-        <form id="youthEditForm" class="panel panel-pad" style="margin-top:22px" hidden>
-          <div class="section-head"><div><h2 id="youthEditTitle">Modifier le membre</h2><p>Le statut peut uniquement rester Sociétaire ou Aspirant dans cet espace.</p></div><button id="youthEditCancel" class="text-button" type="button">Fermer</button></div>
-          <div class="fields">
-            <div class="field"><label for="youthEditPrenom">Prénom</label><input id="youthEditPrenom" maxlength="200" required></div>
-            <div class="field"><label for="youthEditNom">Nom</label><input id="youthEditNom" maxlength="200" required></div>
-            <div class="field"><label for="youthEditStatut">Statut</label><select id="youthEditStatut"><option>Sociétaire</option><option>Aspirant</option></select></div>
-            <div class="field"><label for="youthEditCayenne">Cayenne</label><select id="youthEditCayenne"><option>Paris</option><option>Autre</option></select></div>
-            <div class="field"><label for="youthEditEmail">Email</label><input id="youthEditEmail" type="email" maxlength="200"></div>
-            <div class="field"><label for="youthEditTelephone">Téléphone</label><input id="youthEditTelephone" maxlength="200"></div>
-          </div>
-          <button id="youthEditSave" class="btn" type="submit">Enregistrer les modifications</button>
-        </form>
+        </section>
       </section>
-    </section>
 
-    <footer class="page-footer"><span>Cayenne de Paris · Bureau des jeunes</span><span>Version <?= appVersion ?></span></footer>
-  </main>
-
+      <footer class="page-footer"><span>Cayenne de Paris · Bureau des jeunes</span><span>Version <?= appVersion ?></span></footer>
+    </main>
+  </div>
 <script>
 const youth={token:'',members:[],dashboard:null,editing:null,eventEditing:null,busy:false,docBusy:false,epoch:0,screen:'overview',year:''};
 const esc=Ui.escape;Ui.mountIcons();
