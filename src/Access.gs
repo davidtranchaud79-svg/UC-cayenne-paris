@@ -136,6 +136,18 @@ function loginBureau(code) {
     return {token: createAccessSession_({role: 'bureau', version: accessHash_(expected)})};
   });
 }
+function loginYouthBureau(code) {
+  return checkLogin_('youth', function() {
+    const expected = clean_(getSettings_().jeunes_pin);
+    if (!expected || accessHash_(clean_(code)) !== accessHash_(expected)) return null;
+    return {token:createAccessSession_({role:'youth',version:accessHash_(expected)})};
+  });
+}
+function assertYouthAdmin_(token) {
+  const session=accessSession_(token,'youth'),expected=clean_(getSettings_().jeunes_pin);
+  if(!expected||session.version!==accessHash_(expected))throw new Error('SESSION_EXPIRED: Reconnectez-vous avec le code du Bureau des jeunes.');
+}
+function youthMemberAllowed_(member){return ['Sociétaire','Aspirant'].includes(clean_(member.Statut));}
 
 function assertMember_(token) {
   const session = accessSession_(token, 'member');
@@ -194,11 +206,18 @@ function setMemberPassword(newPassword, confirmation, token) {
 function listMemberAccess(token) {
   assertAdmin_(token);
   ensureAuditSchema_();
-  return getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) { return m.Nom && m.Prenom; }).map(function(m) {
+  sortMembersByRank_();
+  return sortMemberObjects_(getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) { return m.Nom && m.Prenom; })).map(function(m) {
     const key = memberKey_(m);
     const kind = memberCredentialKind_(m);
     return Object.assign(memberProfile_(m), {key:key,active:isActive_(m.Actif),hasCode:!!memberCodeHash_(m),accessType:kind,hasPassword:kind === 'password'});
   });
+}
+
+function listYouthMemberAccess(token) {
+  assertYouthAdmin_(token);ensureAuditSchema_();sortMembersByRank_();
+  return sortMemberObjects_(getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m){return m.Nom&&m.Prenom&&youthMemberAllowed_(m);}))
+    .map(function(m){const key=memberKey_(m),kind=memberCredentialKind_(m);return Object.assign(memberProfile_(m),{key:key,active:isActive_(m.Actif),hasCode:!!memberCodeHash_(m),accessType:kind,hasPassword:kind==='password'});});
 }
 
 function issueMemberCode_(key, replace) {
@@ -268,6 +287,21 @@ function sendMemberAccessEmail_(issued) {
   }
 }
 
+function manageYouthMemberCode(key, action, token) {
+  const result=accessLocked_(function(){
+    assertYouthAdmin_(token);ensureAuditSchema_();
+    const member=getRowsAsObjects_(UC_APP.sheets.membres).find(function(m){return memberAliases_(m).includes(String(key));});
+    if(!member||!youthMemberAllowed_(member))throw new Error('Membre indisponible dans l’espace Bureau des jeunes.');
+    if(action==='issue'||action==='reset')return issueMemberCode_(memberKey_(member),action==='reset');
+    if(action!=='revoke')throw new Error('Action invalide.');
+    const props=PropertiesService.getScriptProperties(),old=memberCodeHash_(member);
+    memberAliases_(member).forEach(function(alias){props.deleteProperty(memberAccessKey_(alias));props.deleteProperty(memberCredentialKindKey_(alias));pruneRememberedSessions_(alias,true);});
+    if(old)props.deleteProperty('uc.code.'+old);return {ok:true};
+  });
+  if(result&&result.code)result.delivery=sendMemberAccessEmail_(result);
+  return result;
+}
+
 function manageMemberCode(key, action, token) {
   const result = accessLocked_(function() {
     assertAdmin_(token);
@@ -285,6 +319,21 @@ function manageMemberCode(key, action, token) {
   });
   if (result && result.code) result.delivery = sendMemberAccessEmail_(result);
   return result;
+}
+
+function createYouthMemberAccess(payload, token) {
+  const result=accessLocked_(function(){
+    assertYouthAdmin_(token);ensureAuditSchema_();payload=payload||{};
+    const member={Nom:clean_(payload.nom),Prenom:clean_(payload.prenom),Statut:clean_(payload.statut),Cayenne:clean_(payload.cayenne),Email:clean_(payload.email),Telephone:clean_(payload.telephone),Actif:'Oui'};
+    if(!member.Nom||!member.Prenom)throw new Error('Nom et prénom obligatoires.');
+    if(!['Sociétaire','Aspirant'].includes(member.Statut))throw new Error('Le Bureau des jeunes peut créer uniquement des Sociétaires ou Aspirants.');
+    if(!getOptionList_('E',UC_APP.defaults.cayennes).includes(member.Cayenne))throw new Error('Choisissez une Cayenne dans la liste.');
+    if(member.Email&&!mailAddressValid_(member.Email))throw new Error('Adresse mail invalide.');
+    if(getRowsAsObjects_(UC_APP.sheets.membres).some(function(m){return legacyMemberKey_(m)===legacyMemberKey_(member);}))throw new Error('Ce membre existe déjà.');
+    member.ID_Membre='MEM-'+Utilities.getUuid();member.Cle_Historique='';queueFollowup_(calendarRows_().map(function(e){return e.ID_Evenement;}));upsertMember_(member);
+    return issueMemberCode_(memberKey_(member),false);
+  });
+  if(result&&result.code)result.delivery=sendMemberAccessEmail_(result);return result;
 }
 
 function createMemberAccess(payload, token) {
@@ -308,6 +357,16 @@ function createMemberAccess(payload, token) {
   });
   if (result && result.code) result.delivery = sendMemberAccessEmail_(result);
   return result;
+}
+
+function changeYouthBureauCode(newCode, token) {
+  return accessLocked_(function(){
+    assertAdmin_(token);const code=clean_(newCode);
+    if(code.length<8||code.length>80||/^=/.test(code))throw new Error('Le code du Bureau des jeunes doit contenir entre 8 et 80 caractères.');
+    const sheet=getSpreadsheet_().getSheetByName(UC_APP.sheets.parametres),rows=sheet.getRange(1,1,Math.min(sheet.getLastRow(),50),1).getValues();
+    const index=rows.findIndex(function(row){return row[0]==='jeunes_pin';});if(index<0)throw new Error('Paramètre jeunes_pin introuvable.');
+    sheet.getRange(index+1,2).setNumberFormat('@').setValue(code);return {ok:true};
+  });
 }
 
 function changeBureauCode(newCode, token) {
