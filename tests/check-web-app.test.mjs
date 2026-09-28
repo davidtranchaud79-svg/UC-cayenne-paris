@@ -4,7 +4,7 @@ import { checkWebApp } from '../scripts/check-web-app.mjs';
 
 test('accessible old pages do not pass a check for the new published version',async()=>{
  for(const version of ['', '2026.09.22.1', '2026.09.23.2']){
-   const result=await checkWebApp('AKfy-test',async url=>({ok:true,status:200,text:async()=>'<form id="'+(url.includes('admin')?'accessForm':'memberLoginForm')+'">Version '+version}), '2026.09.23.2');
+   const result=await checkWebApp('AKfy-test',async url=>({ok:true,status:200,text:async()=>'<form id="'+(url.includes('page=admin')?'accessForm':url.includes('page=jeunes')?'youthAccessForm':'memberLoginForm')+'">Version '+version}), '2026.09.23.2');
    assert.equal(result.ok,version==='2026.09.23.2');assert.equal(result.pages[0].accessible,true);assert.equal(result.pages[0].version,version);
  }
 });
