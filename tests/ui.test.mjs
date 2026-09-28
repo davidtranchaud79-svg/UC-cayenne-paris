@@ -11,10 +11,10 @@ const events = [
 ];
 const config = {activeYear:2026,statuses:['Sociétaire','Aspirant','Compagnon'],cayennes:['Paris','Autre'],responseTypes:['Présent','Absent','Absent excusé'],causes:['Travail','Familiale'],events,eventTypes:['JEP','Fête de novembre'],eventTemplates:[{id:'tpl-1',name:'JEP',defaultTitle:'Journées du patrimoine',type:'JEP',cayenne:'Paris',start:'09:00',end:'18:00',place:'Paris'}],urls:{publicUrl,adminUrl:publicUrl+'?page=admin',youthUrl:publicUrl+'?page=jeunes'}};
 const dashboard = {year:2026,kpis:{events:2,members:1,presents:1,excused:0,noResponse:1,aids:1},events:events.map(e=>({...e,presents:1,excused:0,noResponse:0,aids:1})),members:[{nom:'Exemple',prenom:'Camille',statut:'Sociétaire',cayenne:'Paris',presents:1,excused:0,noResponse:1,aids:1,presenceRate:0.5}],causes:[]};
-const youthDashboard = {year:2026,kpis:{events:2,members:2,presents:2,excused:1,noResponse:1,aids:1},events:[
+const youthDashboard = {year:2026,kpis:{events:2,members:2,presents:2,excused:1,noResponse:1,aids:1},eventTypes:['Réunion des jeunes','JEP','Fête de novembre','Autre'],cayennes:['Paris','Autre'],events:[
   {...events[0],presents:2,excused:0,absent:0,noResponse:0,aids:1,missingMembers:[]},
   {...events[1],presents:0,excused:1,absent:0,noResponse:1,aids:0,missingMembers:[{nom:'Autre',prenom:'Alex',statut:'Sociétaire',cayenne:'Paris'}]}
-],calendar:events,followUps:[{eventId:'evt-2',title:'Fête de novembre',date:'21/11/2026',noResponse:1,missingMembers:[{nom:'Autre',prenom:'Alex'}]}],members:[],causes:[]};
+],calendar:events.map((e,i)=>({...e,version:'YV'+i,cayenne:'Paris',modalites:'Standard',comment:'',agenda:{eligible:true,available:false},report:{eligible:true,available:false}})),followUps:[{eventId:'evt-2',title:'Fête de novembre',date:'21/11/2026',noResponse:1,missingMembers:[{nom:'Autre',prenom:'Alex'}]}],members:[],causes:[]};
 function render(file) {
   return readFileSync(new URL(file,src),'utf8').replace(/<\?!= include\('([A-Za-z]+)'\); \?>/g,(_,name)=>readFileSync(new URL(name+'.html',src),'utf8')).replaceAll('<?= appVersion ?>','2026.09.23.2').replaceAll('<?= publicUrl ?>',publicUrl).replaceAll('<?= adminUrl ?>',publicUrl+'?page=admin').replaceAll('<?= youthUrl ?>',publicUrl+'?page=jeunes');
 }
@@ -53,6 +53,13 @@ function app(file, overrides={}) {
         else if(method==='deleteMember')success({ok:true,deletedResponses:2,message:'Membre supprimé définitivement avec 2 réponse(s) associée(s).'});
         else if(method==='getDashboardData')success(structuredClone(dashboard));
         else if(method==='getYouthDashboardData')success(structuredClone(youthDashboard));
+        else if(method==='createYouthEvent')success({ok:true,event:{id:'evt-new'},message:'Événement créé : Réunion jeunes'});
+        else if(method==='updateYouthEvent')success({ok:true,message:'Événement mis à jour.'});
+        else if(method==='saveYouthAgendaPdf')success({ok:true,message:'Ordre du jour enregistré.'});
+        else if(method==='saveYouthReportPdf')success({ok:true,message:'Compte rendu enregistré.'});
+        else if(method==='getYouthAgendaPdf'||method==='getYouthReportPdf')success({name:'document.pdf',mimeType:'application/pdf',data:'JVBERi0xLjQ='});
+        else if(method==='deleteYouthAgendaPdf')success({ok:true,deleted:true,message:'Ordre du jour supprimé.'});
+        else if(method==='deleteYouthReportPdf')success({ok:true,deleted:true,message:'Compte rendu supprimé.'});
         else if(method==='submitResponses')success({ok:true,saved:args[0].answers.length});
         else if(method==='createEventFromTemplate')success({ok:true,message:'Événement créé.'});
         else if(method==='generateEventSheet')success({sheetName:'CR_JEP',sheetUrl:'https://docs.google.com/spreadsheets/d/demo/edit#gid=1'});
@@ -359,7 +366,7 @@ test('first access requires choosing a personal password before event responses 
  assert.ok(a.calls.find(c=>c.method==='setMemberPassword'));a.dom.window.close();
 });
 
-test('Youth Bureau has overview, read-only events and youth-member management without general settings or access controls',()=>{
+test('Youth Bureau has overview, editable non-companion events, documents and youth-member management without general settings or access controls',()=>{
  const a=app('Youth.html',{});
  a.fill('youthPin','JEUNES-TEST');a.submit('youthAccessForm');a.flush();
  assert.ok(a.calls.find(c=>c.method==='loginYouthBureau'));assert.ok(a.calls.find(c=>c.method==='listYouthMemberAccess'));assert.ok(a.calls.find(c=>c.method==='getYouthDashboardData'));
@@ -370,7 +377,17 @@ test('Youth Bureau has overview, read-only events and youth-member management wi
  assert.equal(a.doc.getElementById('youthEventsScreen').hidden,false);
  assert.match(a.doc.getElementById('youthEvents').textContent,/Journées du patrimoine/);
  assert.match(a.doc.getElementById('youthEvents').textContent,/Fête de novembre/);
- assert.doesNotMatch(a.doc.getElementById('youthEvents').textContent,/Modifier|Supprimer|Créer/);
+ assert.ok(a.doc.querySelector('[data-youth-event-edit="evt-1"]'));
+ assert.ok(a.doc.querySelector('[data-youth-doc-upload="agenda"][data-event-id="evt-1"]'));
+ assert.ok(a.doc.querySelector('[data-youth-doc-upload="report"][data-event-id="evt-1"]'));
+ assert.doesNotMatch(a.doc.getElementById('youthEvents').textContent,/Supprimer l’événement/);
+ a.doc.getElementById('newYouthEvent').click();
+ a.fill('youthEventDate','2026-10-07','change');a.fill('youthEventTitle','Réunion jeunes');
+ a.submit('youthEventForm');a.flush();
+ assert.ok(a.calls.find(c=>c.method==='createYouthEvent'));
+ a.doc.querySelector('[data-youth-event-edit="evt-1"]').click();
+ a.fill('youthEventTitle','JEP modifié');a.submit('youthEventForm');a.flush();
+ assert.ok(a.calls.find(c=>c.method==='updateYouthEvent'));
  a.doc.querySelector('[data-youth-screen="members"]').click();
  assert.match(a.doc.getElementById('youthMembers').textContent,/Zoé Aardvark/);
  assert.match(a.doc.getElementById('youthMembers').textContent,/Alex Autre/);
