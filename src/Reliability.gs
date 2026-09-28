@@ -472,7 +472,7 @@ function deleteMember(key, token) {
     const attendance = deleteMemberRows_(UC_APP.sheets.pointages, aliases);
     const mails = deleteMemberRows_(UC_APP.sheets.mails, aliases);
     const props = PropertiesService.getScriptProperties(), old = memberCodeHash_(member);
-    aliases.forEach(function(alias) { props.deleteProperty(memberAccessKey_(alias)); props.deleteProperty(memberCredentialKindKey_(alias)); pruneRememberedSessions_(alias, true); });
+    aliases.forEach(function(alias) { props.deleteProperty(memberAccessKey_(alias)); props.deleteProperty(memberCredentialKindKey_(alias)); props.deleteProperty(accessDeliveryPropertyKey_(alias)); pruneRememberedSessions_(alias, true); });
     if (old) props.deleteProperty('uc.code.' + old);
     getSpreadsheet_().getSheetByName(UC_APP.sheets.membres).deleteRow(table.rowNumbers[index]);
     sortMembersByRank_();
