@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.28.4',
+  version: '2026.09.28.5',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -402,13 +402,41 @@ function getYouthDashboardData(year, token) {
     return member.Nom && member.Prenom && isActive_(member.Actif) && youthMemberAllowed_(member);
   });
   data.version = UC_APP.version;
+  data.eventTypes = getOptionList_('H', UC_APP.defaults.eventTypes).filter(function(type) { return clean_(type) !== 'Réunion compagnon'; });
+  data.cayennes = getOptionList_('E', UC_APP.defaults.cayennes);
   data.calendar = calendarRows_()
     .filter(function(e) {
       return eventYear_(e) === data.year && isActive_(e.Actif) && clean_(e.Type_Evenement) !== 'Réunion compagnon' && youthMembers.some(function(member) { return eventForMember_(e, member); });
     })
     .sort(function(a,b) { return asDate_(a.Date) - asDate_(b.Date); })
-    .map(function(e) { return formatEventForClient_(e); });
+    .map(function(e) { return Object.assign(formatEventForClient_(e), {agenda:agendaAdminInfo_(e), report:reportAdminInfo_(e)}); });
   return data;
+}
+
+function createYouthEvent(payload, token) {
+  assertYouthAdmin_(token); setupSystemIfMissing_();
+  return accessLocked_(function() {
+    payload = payload || {};
+    const date = parseInputDate_(payload.date), title = clean_(payload.title), type = clean_(payload.type || 'Réunion des jeunes');
+    if (!date || !title || title.length > 200) throw new Error('Date et titre valides obligatoires.');
+    if (type === 'Réunion compagnon') throw new Error('Le Bureau des jeunes ne peut pas créer une Réunion compagnon.');
+    if (!getOptionList_('H', UC_APP.defaults.eventTypes).includes(type)) throw new Error('Type d’événement invalide.');
+    const event = {
+      ID_Evenement:makeEventId_(date,title), Annee:date.getFullYear(), Date:date, Titre:title, Type_Evenement:type,
+      Heure_Debut:clean_(payload.start), Heure_Fin:clean_(payload.end), Lieu:clean_(payload.place || 'Cayenne de Paris'),
+      Cayenne:clean_(payload.cayenne || 'Paris'), Categorie_CR:'Événement', Actif:'Oui', Commentaire:clean_(payload.comment),
+      Modalites:clean_(payload.modalites || 'Standard'), Public_Statuts:'Sociétaire;Aspirant', Public_Cayennes:'',
+      Version:Utilities.getUuid(), Modifie_Le:new Date()
+    };
+    if (!getOptionList_('E', UC_APP.defaults.cayennes).includes(event.Cayenne)) throw new Error('Cayenne invalide.');
+    if (!['Standard','Repas et aide','Réception'].includes(event.Modalites)) throw new Error('Modalités invalides.');
+    ['Heure_Debut','Heure_Fin'].forEach(function(k) { if (event[k] && !/^([01]\d|2[0-3]):[0-5]\d$/.test(event[k])) throw new Error('Horaire invalide.'); });
+    if (event.Commentaire.length > 2000 || event.Lieu.length > 300) throw new Error('Texte trop long.');
+    const sheet=getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier);
+    queueFollowup_([event.ID_Evenement]);writeRecord_(UC_APP.sheets.calendrier,sheet.getLastRow()+1,event);
+    sheet.getRange(sheet.getLastRow(),3).setNumberFormat('yyyy-mm-dd');
+    return {ok:true,event:formatEventForClient_(event),message:'Événement créé : '+event.Titre};
+  });
 }
 
 function generateEventSheet(eventId, adminPin) {
