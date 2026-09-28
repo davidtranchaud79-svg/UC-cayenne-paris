@@ -245,3 +245,36 @@ test('Youth Bureau overview and events contain only Sociétaires/Aspirants and e
   assert.equal(d.calendar.some(e=>e.type==='Réunion compagnon'),false);
   assert.throws(()=>f.c.getYouthDashboardData(2026,f.bureau),/SESSION_EXPIRED/);
 });
+
+test('Youth Bureau can create and modify youth events but never companion meetings or event audience',()=>{
+  const f=fixture();f.c.ensureAuditSchema_();
+  assert.throws(()=>f.c.createYouthEvent({date:'2026-10-07',title:'Interdit',type:'Réunion compagnon',cayenne:'Paris'},f.youth),/ne peut pas créer/);
+  const created=f.c.createYouthEvent({date:'2026-10-07',title:'Réunion jeunes créée',type:'Réunion des jeunes',start:'19:00',end:'21:00',place:'Cayenne de Paris',cayenne:'Paris',modalites:'Standard',comment:'Test'},f.youth);
+  const id=created.event.id;
+  let row=f.c.calendarRows_().find(e=>e.ID_Evenement===id);
+  assert.equal(row.Public_Statuts,'Sociétaire;Aspirant');
+  assert.equal(row.Public_Cayennes,'');
+  const formatted=f.c.formatEventForClient_(row);
+  f.c.updateYouthEvent({...formatted,title:'Réunion jeunes modifiée',type:'Autre',date:'2026-10-08',cayenne:'Paris',modalites:'Standard'},f.youth);
+  row=f.c.calendarRows_().find(e=>e.ID_Evenement===id);
+  assert.equal(row.Titre,'Réunion jeunes modifiée');
+  assert.equal(row.Public_Statuts,'Sociétaire;Aspirant');
+  assert.equal(row.Public_Cayennes,'');
+  const current=f.c.formatEventForClient_(row);
+  assert.throws(()=>f.c.updateYouthEvent({...current,type:'Réunion compagnon'},f.youth),/ne peut ni créer ni modifier/);
+  assert.throws(()=>f.c.updateYouthEvent({id:'EVT-1',version:f.c.eventVersion_(f.c.calendarRows_().find(e=>e.ID_Evenement==='EVT-1')),date:'2026-09-22',title:'Compagnons',type:'Réunion des jeunes',cayenne:'Paris',modalites:'Standard'},f.youth),/ne sont pas accessibles/);
+});
+
+test('Youth Bureau can attach agenda and report PDFs only to non-companion events',()=>{
+  const f=fixture();f.c.ensureAuditSchema_();
+  const created=f.c.createYouthEvent({date:'2026-10-07',title:'Réunion jeunes documents',type:'Réunion des jeunes',cayenne:'Paris'},f.youth);
+  const id=created.event.id,pdf=Buffer.from('%PDF-1.4\nTEST').toString('base64'),payload={name:'document.pdf',mimeType:'application/pdf',data:pdf};
+  const agenda=f.c.saveYouthAgendaPdf(id,payload,f.youth);assert.equal(agenda.agenda.available,true);
+  const report=f.c.saveYouthReportPdf(id,payload,f.youth);assert.equal(report.report.available,true);
+  assert.match(f.c.getYouthAgendaPdf(id,f.youth).name,/^ODJ_/);
+  assert.match(f.c.getYouthReportPdf(id,f.youth).name,/^CR_/);
+  assert.throws(()=>f.c.saveYouthAgendaPdf('EVT-1',payload,f.youth),/Compagnons/);
+  assert.throws(()=>f.c.saveYouthReportPdf('EVT-1',payload,f.youth),/Compagnons/);
+  assert.equal(f.c.deleteYouthAgendaPdf(id,f.youth).deleted,true);
+  assert.equal(f.c.deleteYouthReportPdf(id,f.youth).deleted,true);
+});
