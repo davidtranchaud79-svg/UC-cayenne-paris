@@ -172,7 +172,7 @@ function mailContent_(candidate) {
   if (!reminder) lines.push('Enregistrement : ' + Utilities.formatDate(asDate_(response.Horodatage), 'Europe/Paris', 'dd/MM/yyyy HH:mm') + ' (heure de Paris)', 'Référence : ' + response.ID_Reponse);
   if (reminder && response.Reponse === 'Je ne sais pas encore') lines.push('', 'Merci de confirmer votre présence ou votre absence.');
   lines.push('', 'Vous pouvez modifier votre réponse dans votre espace personnel :',
-    getAppUrls_().publicUrl, '', 'Cayenne de Paris — Union Compagnonnique');
+    UC_APP.defaults.webAppUrl, '', 'Cayenne de Paris — Union Compagnonnique');
   return {subject: (reminder ? 'Rappel pour demain' : 'Confirmation de votre réponse') + ' — ' + title + ' — ' + date, body: lines.join('\n')};
 }
 
