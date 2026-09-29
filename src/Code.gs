@@ -1199,7 +1199,6 @@ function getAttendance(eventId, token) {
   return {eventId:eventId, eventTitle:clean_(event.Titre), eventDate:formatDate_(event.Date), canEdit:canEdit, members:members,
     counts:{present:groups['Présent'].length,absent:groups['Absent'].length,excused:groups['Excusé'].length,unmarked:groups['Non pointé'].length},
     groups:{present:groups['Présent'],absent:groups['Absent'],excused:groups['Excusé'],unmarked:groups['Non pointé']}};
-  };
 }
 
 function saveAttendance(payload, token) {
