@@ -147,12 +147,15 @@ test('creating or replacing a member code emails the code and direct member link
   assert.match(sent[0].body,/80 ans et plus/);
   assert.match(sent[0].body,/seul l’enregistrement dans le formulaire fera foi/);
   assert.match(sent[0].body,/réponses restent modifiables/);
+  assert.match(sent[0].body,/UTILISEZ UNIQUEMENT LE LIEN CI-DESSOUS/);
+  assert.match(sent[0].body,/ne plus utiliser les anciens liens/);
+  assert.match(sent[0].body,/Lien officiel vers votre espace membre/);
   assert.match(sent[0].body,/Cher membre de la Cayenne de Paris/);
   assert.equal(sent[0].subject,'important : excuse et présence');
   const replacement=c.manageMemberCode('camille@example.test','reset',bureau);
   assert.equal(replacement.delivery.state,'sent');assert.equal(sent.length,2);
 });
-test('bulk access delivery sends fresh temporary codes, preserves personal passwords and records visible statuses',()=>{
+test('bulk access delivery sends fresh temporary codes and the official link while preserving personal passwords',()=>{
   const {c,db,bureau,issue,sent}=fixture();
   const oldCamille=issue('camille@example.test');
   const alexTemp=issue('alex@example.test'),alexLogin=c.loginMember(alexTemp).token;
@@ -161,13 +164,31 @@ test('bulk access delivery sends fresh temporary codes, preserves personal passw
   db.MEMBRES.push({Nom:'Inactif',Prenom:'Iris',Email:'iris@example.test',Statut:'Compagnon',Cayenne:'Paris',Actif:'Non'});
   sent.length=0;
   const result=c.sendAllMemberAccessCodes(bureau);
-  assert.deepEqual({...result.summary},{sent:1,password:1,no_email:1,error:0,inactive:1,quota:0,total:4});
-  assert.equal(sent.length,1);assert.equal(sent[0].to,'camille@example.test');
+  assert.deepEqual({...result.summary},{sent:1,link_sent:1,no_email:1,error:0,inactive:1,quota:0,total:4});
+  assert.equal(sent.length,2);
+  const tempMail=sent.find(m=>m.to==='camille@example.test');
+  const linkMail=sent.find(m=>m.to==='alex@example.test');
+  assert.ok(tempMail);assert.ok(linkMail);
+  assert.match(tempMail.body,/UTILISEZ UNIQUEMENT LE LIEN CI-DESSOUS/);
+  assert.match(linkMail.body,/nouveau lien d’accès|lien officiel/i);
+  assert.match(linkMail.body,/mot de passe personnel : il est conservé/i);
+  assert.ok(!linkMail.body.includes('MotDePasseAlex2026'));
   assert.equal(Object.prototype.hasOwnProperty.call(result.results[0],'code'),false);
   assert.throws(()=>c.loginMember(oldCamille),/incorrect/);
   assert.equal(c.loginMember('MotDePasseAlex2026').profile.prenom,'Alex');
   const statuses=Object.fromEntries(c.listMemberAccess(bureau).map(m=>[m.prenom,m.delivery&&m.delivery.state]));
-  assert.equal(statuses.Camille,'sent');assert.equal(statuses.Alex,'password');assert.equal(statuses.Bruno,'no_email');assert.equal(statuses.Iris,'inactive');
+  assert.equal(statuses.Camille,'sent');assert.equal(statuses.Alex,'link_sent');assert.equal(statuses.Bruno,'no_email');assert.equal(statuses.Iris,'inactive');
+});
+
+test('bulk mail failure preserves the previously valid temporary code',()=>{
+  const {c,db,bureau,issue}=fixture();
+  const old=issue('camille@example.test');
+  db.MEMBRES[1].Actif='Non';
+  c.MailApp.sendEmail=()=>{throw Error('mail indisponible');};
+  const result=c.sendAllMemberAccessCodes(bureau);
+  assert.equal(result.summary.error,1);
+  assert.equal(result.summary.inactive,1);
+  assert.equal(c.loginMember(old).profile.prenom,'Camille');
 });
 
 test('personal codes are stored as hashes, can be rotated and revoked, and inactive members cannot sign in',()=>{
@@ -249,6 +270,7 @@ test('a new deployment keeps bureau and member links on the same live app',()=>{
   const {c}=fixture();
   const current='https://script.google.com/macros/s/AKfy-current-deployment/exec';
   const fallback=vm.runInContext('UC_APP.defaults.webAppUrl',c);
+  assert.equal(fallback,'https://script.google.com/macros/s/AKfycbyUTrmXyfNZbbV_I2vBHTKc4-l_Oe7-Ev5cio_z2_bJxoK0js0zWluFdZi35vXqAwKvUA/exec');
   c.ScriptApp={getService:()=>({getUrl:()=>current})};
   c.getSettings_=()=>{throw Error('Login page must not read private Sheet settings');};
   const urls=c.getAppUrls_({web_app_url:'https://script.google.com/macros/s/AKfy-obsolete/exec'});
