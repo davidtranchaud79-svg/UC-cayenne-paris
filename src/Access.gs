@@ -340,17 +340,32 @@ function sendAllMemberAccessCodes(token) {
       if(!isActive_(member.Actif))return {key:key,profile:profile,state:'inactive'};
       if(kind==='password')return {key:key,profile:profile,state:'password'};
       if(!mailAddressValid_(clean_(profile.email)))return {key:key,profile:profile,state:'no_email'};
-      return {key:key,profile:profile,state:'ready',issued:issueMemberCode_(key,!!memberCodeHash_(member))};
+      return {key:key,profile:profile,state:'ready',reset:!!memberCodeHash_(member)};
     });
   });
   const results=prepared.map(function(item){
-    const delivery=item.state==='ready'?sendMemberAccessEmail_(item.issued):{state:item.state,address:clean_(item.profile.email)};
+    let delivery={state:item.state,address:clean_(item.profile.email)};
+    if(item.state==='ready') {
+      try {
+        if(MailApp.getRemainingDailyQuota()<1) delivery={state:'quota',address:clean_(item.profile.email),detail:'Quota Google atteint. Accès existant conservé. Réessayez après le renouvellement du quota.'};
+        else {
+          const issued=accessLocked_(function(){
+            assertAdmin_(token);
+            const member=getRowsAsObjects_(UC_APP.sheets.membres).find(function(m){return memberKey_(m)===item.key;});
+            if(!member||!isActive_(member.Actif))return null;
+            if(memberCredentialKind_(member)==='password')return {password:true};
+            return issueMemberCode_(item.key,!!memberCodeHash_(member));
+          });
+          delivery=!issued?{state:'inactive'}:issued.password?{state:'password'}:sendMemberAccessEmail_(issued);
+        }
+      } catch(error) {delivery={state:'error',address:clean_(item.profile.email),detail:clean_(error.message).slice(0,250)};}
+    }
     const saved=rememberAccessDelivery_(item.key,delivery);
     return {key:item.key,nom:item.profile.nom,prenom:item.profile.prenom,state:saved.state,at:saved.at,address:saved.address,detail:saved.detail};
   });
-  const summary={sent:0,password:0,no_email:0,error:0,inactive:0,total:results.length};
+  const summary={sent:0,password:0,no_email:0,error:0,inactive:0,quota:0,total:results.length};
   results.forEach(function(row){if(Object.prototype.hasOwnProperty.call(summary,row.state))summary[row.state]++;else if(row.state!=='sent')summary.error++;});
-  return {ok:true,results:results,summary:summary,message:summary.sent+' accès envoyé'+(summary.sent>1?'s':'')+'.'};
+  return {ok:true,results:results,summary:summary,message:summary.sent+' accès envoyé(s) sur '+summary.total+' membres : '+summary.password+' mot(s) de passe personnel(s) conservé(s), '+summary.no_email+' sans email valide, '+summary.inactive+' inactif(s), '+summary.quota+' en attente de quota Google, '+summary.error+' erreur(s). Consultez le détail sous chaque membre.'};
 }
 
 function createYouthMemberProfile(payload, token) {

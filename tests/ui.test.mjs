@@ -419,3 +419,10 @@ test('Youth Bureau has overview, editable non-companion events, documents and yo
  assert.equal(a.calls.some(c=>c.method==='manageYouthMemberCode'||c.method==='createYouthMemberAccess'),false);
  a.dom.window.close();
 });
+
+test('future events can be selected for read-only attendance preview',()=>{
+ const a=app('Admin.html',{getDashboardData:()=>({...structuredClone(dashboard),events:[{...events[1],date:'21/11/2099'}]}),getAttendance:()=>({eventId:'evt-2',canEdit:false,members:[{key:'m',name:'Camille',announced:'Présent',actual:'Non pointé',version:''}]})});
+ a.login();a.fill('attendanceEvent','evt-2','change');assert.equal(a.doc.getElementById('attendanceEvent').value,'evt-2');
+ a.doc.getElementById('loadAttendance').click();a.flush();assert.equal(a.doc.getElementById('saveAttendance').disabled,true);
+ assert.equal(a.doc.querySelector('[data-attendance-index]').disabled,true);assert.match(a.doc.getElementById('attendanceNotice').textContent,/jour de/);a.dom.window.close();
+});

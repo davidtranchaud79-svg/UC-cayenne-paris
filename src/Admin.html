@@ -95,7 +95,7 @@
       </section>
       <section id="screen-reports" class="screen" aria-label="Comptes rendus">
         <div class="section-head"><h2>Pointage réel</h2></div>
-        <p>Événements passés et du jour. Les réponses annoncées restent conservées.</p>
+        <p>Choisissez un événement de l’année pour consulter les réponses annoncées. Le pointage réel ouvre le jour de l’événement.</p>
         <label for="attendanceEvent">Événement à pointer</label>
         <select id="attendanceEvent" data-protected disabled></select>
         <button id="loadAttendance" class="btn secondary" type="button" data-protected disabled>Charger le pointage</button>
@@ -136,8 +136,8 @@
   function renderAttendanceSummary(){
     const data=state.dashboard?.attendance;
     const select=document.getElementById('attendanceEvent'),selected=select.value;
-    select.innerHTML='<option value="">Choisir un événement</option>'+(state.dashboard?.events||[]).filter(e=>{const d=Ui.date(e.date).value;return d&&d<=new Date();}).map(e=>'<option value="'+Ui.escape(e.id)+'">'+Ui.escape(e.date+' · '+e.title)+'</option>').join('');
-    select.value=selected;
+    select.innerHTML='<option value="">Choisir un événement</option>'+(state.dashboard?.events||[]).map(e=>'<option value="'+Ui.escape(e.id)+'">'+Ui.escape(e.date+' · '+e.title)+'</option>').join('');
+    select.value=Array.from(select.options).some(o=>o.value===selected)?selected:'';
     const summary=document.getElementById('attendanceSummary');
     if(!data){summary.textContent='Connectez-vous pour afficher le suivi.';return;}
     document.getElementById('dashboardMonthly').insertAdjacentHTML('beforeend','<h3>Pointage réel · '+state.dashboard.year+'</h3><p>'+Ui.count(data.total.present)+' présents · '+Ui.count(data.total.absent)+' absents · '+Ui.count(data.total.excused)+' excusés · '+Ui.count(data.total.unmarked)+' non pointés</p>'+data.monthly.map(m=>'<div class="month-row"><strong>'+Ui.escape(new Date(2026,m.month-1,1).toLocaleDateString('fr-FR',{month:'long'}))+'</strong><p>'+Ui.count(m.present)+' présents · '+Ui.count(m.absent)+' absents · '+Ui.count(m.excused)+' excusés · '+Ui.count(m.unmarked)+' non pointés</p></div>').join(''));
@@ -147,18 +147,18 @@
   function loadAttendance(){
     clearAttendance();const eventId=document.getElementById('attendanceEvent').value;if(!eventId)return;
     const request=attendanceRequest,session=state.session;Ui.notice('attendanceNotice','Chargement…','ok');
-    google.script.run.withSuccessHandler(data=>{if(request!==attendanceRequest||session!==state.session)return;attendanceRoster=data;document.getElementById('attendanceNotice').hidden=true;
-      document.getElementById('attendanceRoster').innerHTML=data.members.length?data.members.map((m,i)=>'<div class="attendance-row"><div><strong>'+Ui.escape(m.name)+'</strong><small>Annonce : '+Ui.escape(m.announced)+'</small></div><label>Présence réelle<select data-attendance-index="'+i+'">'+['Non pointé','Présent','Absent','Excusé'].map(v=>'<option'+(v===m.actual?' selected':'')+'>'+v+'</option>').join('')+'</select></label></div>').join(''):'Aucun membre actif.';document.getElementById('saveAttendance').disabled=!data.members.length;
+    google.script.run.withSuccessHandler(data=>{if(request!==attendanceRequest||session!==state.session)return;attendanceRoster=data;document.getElementById('attendanceNotice').hidden=true;if(data.canEdit===false)Ui.notice('attendanceNotice','Consultation des réponses annoncées. Le pointage réel ouvre le jour de l’événement.','ok');
+      document.getElementById('attendanceRoster').innerHTML=data.members.length?data.members.map((m,i)=>'<div class="attendance-row"><div><strong>'+Ui.escape(m.name)+'</strong><small>Annonce : '+Ui.escape(m.announced)+'</small></div><label>Présence réelle<select data-attendance-index="'+i+'"'+(data.canEdit===false?' disabled':'')+'>'+['Non pointé','Présent','Absent','Excusé'].map(v=>'<option'+(v===m.actual?' selected':'')+'>'+v+'</option>').join('')+'</select></label></div>').join(''):'Aucun membre actif.';document.getElementById('saveAttendance').disabled=data.canEdit===false||!data.members.length;
     }).withFailureHandler(e=>{if(request===attendanceRequest&&session===state.session)Ui.notice('attendanceNotice',e.message||e);}).getAttendance(eventId,pin());
   }
   function saveAttendance(){
-    if(!attendanceRoster)return;
+    if(!attendanceRoster||attendanceRoster.canEdit===false)return;
     const changes=Array.from(document.querySelectorAll('[data-attendance-index]')).map(s=>{const m=attendanceRoster.members[Number(s.dataset.attendanceIndex)];return {key:m.key,version:m.version,actual:s.value,previous:m.actual};}).filter(m=>m.actual!==m.previous);
     if(!changes.length){Ui.notice('attendanceNotice','Aucune modification.','ok');return;}
     const request=attendanceRequest,session=state.session;
     document.getElementById('saveAttendance').disabled=true;
     document.querySelectorAll('[data-attendance-index]').forEach(s=>s.disabled=true);
-    google.script.run.withSuccessHandler(result=>{if(request!==attendanceRequest||session!==state.session)return;loadAttendance();loadDashboard();Ui.notice('adminNotice',result.warning||'Pointage enregistré et synthèses actualisées.',result.warning?'error':'ok');}).withFailureHandler(e=>{if(request!==attendanceRequest||session!==state.session)return;document.getElementById('saveAttendance').disabled=false;document.querySelectorAll('[data-attendance-index]').forEach(s=>s.disabled=false);Ui.notice('attendanceNotice',e.message||e);}).saveAttendance({eventId:attendanceRoster.eventId,changes:changes},pin());
+    google.script.run.withSuccessHandler(result=>{if(request!==attendanceRequest||session!==state.session)return;loadAttendance();loadDashboard();Ui.notice('adminNotice',result.warning||'Pointage enregistré. Les synthèses seront actualisées automatiquement.',result.warning?'error':'ok');}).withFailureHandler(e=>{if(request!==attendanceRequest||session!==state.session)return;document.getElementById('saveAttendance').disabled=false;document.querySelectorAll('[data-attendance-index]').forEach(s=>s.disabled=false);Ui.notice('attendanceNotice',e.message||e);}).saveAttendance({eventId:attendanceRoster.eventId,changes:changes},pin());
   }
   document.querySelectorAll('[data-screen]').forEach(b=>b.addEventListener('click',()=>showScreen(b.dataset.screen)));
   document.body.addEventListener('click',event=>{const button=event.target.closest('[data-go]');if(button)showScreen(button.dataset.go);});
@@ -238,15 +238,16 @@
     if(stateName==='sent')return '<span class="pill green">Envoyé'+(when?' · '+Ui.escape(when):'')+'</span>';
     if(stateName==='password')return '<span class="pill blue">Mot de passe actif · non renvoyé</span>';
     if(stateName==='no_email')return '<span class="pill amber">Non envoyé · email manquant</span>';
+    if(stateName==='quota')return '<span class="pill amber">Non envoyé · quota Google atteint, accès conservé</span>';
     if(stateName==='inactive')return '<span class="pill neutral">Non envoyé · membre inactif</span>';
     if(stateName==='revoked')return '<span class="pill neutral">Accès révoqué</span>';
-    return '<span class="pill amber">Échec d’envoi'+(when?' · '+Ui.escape(when):'')+'</span>';
+    return '<span class="pill amber">Échec d’envoi'+(when?' · '+Ui.escape(when):'')+'</span>'+ (d.detail?'<p class="small">'+Ui.escape(d.detail)+'</p>':'');
   }
   function renderBulkAccessSummary_(){
     const box=document.getElementById('bulkAccessSummary'),s=state.bulkAccessSummary;
     if(!s){box.hidden=true;box.innerHTML='';return;}
-    box.hidden=false;box.className='notice '+(s.error?'error':'ok');
-    box.innerHTML='<div><strong>Envoi global terminé.</strong><div class="button-row" style="margin-top:8px"><span class="pill green">'+Ui.count(s.sent)+' envoyé'+(s.sent>1?'s':'')+'</span><span class="pill blue">'+Ui.count(s.password)+' mot'+(s.password>1?'s':'')+' de passe actif'+(s.password>1?'s':'')+'</span><span class="pill amber">'+Ui.count(s.no_email)+' sans email</span><span class="pill amber">'+Ui.count(s.error)+' erreur'+(s.error>1?'s':'')+'</span><span class="pill neutral">'+Ui.count(s.inactive)+' inactif'+(s.inactive>1?'s':'')+'</span></div></div>';
+    box.hidden=false;box.className='notice '+(s.error||s.quota?'error':'ok');
+    box.innerHTML='<div><strong>Envoi global terminé.</strong><div class="button-row" style="margin-top:8px"><span class="pill green">'+Ui.count(s.sent)+' envoyé'+(s.sent>1?'s':'')+'</span><span class="pill blue">'+Ui.count(s.password)+' mot'+(s.password>1?'s':'')+' de passe actif'+(s.password>1?'s':'')+'</span><span class="pill amber">'+Ui.count(s.quota)+' en attente de quota</span><span class="pill amber">'+Ui.count(s.no_email)+' sans email</span><span class="pill amber">'+Ui.count(s.error)+' erreur'+(s.error>1?'s':'')+'</span><span class="pill neutral">'+Ui.count(s.inactive)+' inactif'+(s.inactive>1?'s':'')+'</span></div></div>';
   }
   function renderMemberAccess(){
     document.getElementById('memberAccessList').innerHTML=state.accessMembers.length?state.accessMembers.map(m=>{const access=!m.hasCode?'Sans accès':m.hasPassword?'Mot de passe choisi':'Code temporaire actif';return '<div class="history-row"><div><strong>'+Ui.escape(m.prenom+' '+m.nom)+'</strong><p>'+Ui.escape(m.statut+' · '+m.cayenne+' · '+(!m.active?'Membre inactif':access))+'</p><div style="margin-top:7px">'+renderAccessDelivery_(m)+'</div></div><div class="access-actions"><button class="text-button" type="button" data-email-member="'+Ui.escape(m.key)+'">Modifier le membre</button>'+ (m.active?'<button class="btn secondary" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="'+(m.hasCode?'reset':'issue')+'">'+(m.hasCode?'Réinitialiser l’accès':(m.email?'Créer et envoyer l’accès':'Créer l’accès'))+'</button>':'')+(m.hasCode?'<button class="text-button" type="button" data-member-key="'+Ui.escape(m.key)+'" data-access-action="revoke">Révoquer l’accès</button>':'')+'</div></div>';}).join(''):Ui.empty('Aucun membre','Ajoutez le premier membre pour créer son accès.','users');

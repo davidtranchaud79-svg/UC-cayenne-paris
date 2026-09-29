@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.29.1',
+  version: '2026.09.29.2',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -1181,13 +1181,13 @@ function getAttendance(eventId, token) {
   setupSystemIfMissing_();
   const event = calendarRows_().find(function(e) { return e.ID_Evenement === eventId && isActive_(e.Actif); });
   if (!event) throw new Error('Événement introuvable ou inactif.');
-  if (formatDate_(event.Date) > formatDate_(new Date())) throw new Error('Le pointage ouvre le jour de l’événement.');
+  const canEdit = formatDate_(event.Date) <= formatDate_(new Date());
   const latest = attendanceLatest_();
   const answers = {};
   responseRows_().filter(function(r) { return r.ID_Evenement === eventId; }).forEach(function(r) {
     if (!answers[r.Cle_Personne] || asDate_(r.Horodatage) >= asDate_(answers[r.Cle_Personne].Horodatage)) answers[r.Cle_Personne] = r;
   });
-  return {eventId: eventId, members: getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) { return m.Nom && m.Prenom && isActive_(m.Actif) && eventForMember_(event, m); }).map(function(m) {
+  return {eventId: eventId, canEdit: canEdit, members: getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) { return m.Nom && m.Prenom && isActive_(m.Actif) && eventForMember_(event, m); }).map(function(m) {
     const key = memberKey_(m);
     const row = latest[eventId + '|' + key];
     return {key: key, name: m.Prenom + ' ' + m.Nom, announced: answers[key] ? answers[key].Reponse : 'Sans réponse', actual: row ? row.Presence_Reelle : 'Non pointé', version: row ? row.ID_Pointage : ''};
@@ -1199,6 +1199,7 @@ function saveAttendance(payload, token) {
   if (!payload || !Array.isArray(payload.changes) || !payload.changes.length) throw new Error('Aucun pointage à enregistrer.');
   return accessLocked_(function() {
     const roster = getAttendance(payload.eventId, token);
+    if (!roster.canEdit) throw new Error('Le pointage ouvre le jour de l’événement.');
     const seen = new Set();
     const rows = payload.changes.map(function(change) {
       const member = roster.members.find(function(m) { return m.key === change.key; });

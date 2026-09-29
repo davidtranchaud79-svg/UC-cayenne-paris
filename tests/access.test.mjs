@@ -19,7 +19,7 @@ function fixture(){
     Utilities:{getUuid:randomUUID,computeDigest:(_,text)=>Array.from(createHash('sha256').update(text).digest()),DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},formatDate:d=>d.toISOString().slice(0,10)},
     Session:{getScriptTimeZone:()=> 'Europe/Paris'},
     ScriptApp:{getService:()=>({getUrl:()=> 'https://script.google.com/macros/s/TEST/exec'})},
-    MailApp:{sendEmail:message=>sent.push(message)}
+    MailApp:{getRemainingDailyQuota:()=>100,sendEmail:message=>sent.push(message)}
   });
   vm.runInContext(code+'\n'+access+'\n'+['Notifications.gs','Reliability.gs','Background.gs'].map(f=>readFileSync(new URL('../src/'+f,import.meta.url),'utf8')).join('\n'),context);
   const headers=vm.runInContext('UC_APP.headers.reponses',context);
@@ -161,7 +161,7 @@ test('bulk access delivery sends fresh temporary codes, preserves personal passw
   db.MEMBRES.push({Nom:'Inactif',Prenom:'Iris',Email:'iris@example.test',Statut:'Compagnon',Cayenne:'Paris',Actif:'Non'});
   sent.length=0;
   const result=c.sendAllMemberAccessCodes(bureau);
-  assert.deepEqual({...result.summary},{sent:1,password:1,no_email:1,error:0,inactive:1,total:4});
+  assert.deepEqual({...result.summary},{sent:1,password:1,no_email:1,error:0,inactive:1,quota:0,total:4});
   assert.equal(sent.length,1);assert.equal(sent[0].to,'camille@example.test');
   assert.equal(Object.prototype.hasOwnProperty.call(result.results[0],'code'),false);
   assert.throws(()=>c.loginMember(oldCamille),/incorrect/);
@@ -346,3 +346,9 @@ test('Youth Bureau login reports its own code errors and missing configuration c
   settings.jeunes_pin='';
   assert.throws(()=>c.loginYouthBureau('nimporte-quoi'),/n’est pas encore configuré/);
 });
+
+ test('bulk quota does not rotate existing credentials and reports every member',()=>{
+ const {c,bureau,issue}=fixture();const code=issue();c.MailApp.getRemainingDailyQuota=()=>0;
+ const r=c.sendAllMemberAccessCodes(bureau);assert.equal(r.summary.quota,2);assert.equal(r.summary.sent,0);
+ assert.equal(c.loginMember(code).profile.prenom,'Camille');assert.match(r.message,/quota Google/);
+ });
