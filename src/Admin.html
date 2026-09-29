@@ -148,7 +148,8 @@
     clearAttendance();const eventId=document.getElementById('attendanceEvent').value;if(!eventId)return;
     const request=attendanceRequest,session=state.session;Ui.notice('attendanceNotice','Chargement…','ok');
     google.script.run.withSuccessHandler(data=>{if(request!==attendanceRequest||session!==state.session)return;attendanceRoster=data;document.getElementById('attendanceNotice').hidden=true;if(data.canEdit===false)Ui.notice('attendanceNotice','Consultation des réponses annoncées. Le pointage réel ouvre le jour de l’événement.','ok');
-      document.getElementById('attendanceRoster').innerHTML=data.members.length?data.members.map((m,i)=>'<div class="attendance-row"><div><strong>'+Ui.escape(m.name)+'</strong><small>Annonce : '+Ui.escape(m.announced)+'</small></div><label>Présence réelle<select data-attendance-index="'+i+'"'+(data.canEdit===false?' disabled':'')+'>'+['Non pointé','Présent','Absent','Excusé'].map(v=>'<option'+(v===m.actual?' selected':'')+'>'+v+'</option>').join('')+'</select></label></div>').join(''):'Aucun membre actif.';document.getElementById('saveAttendance').disabled=data.canEdit===false||!data.members.length;
+      const g=data.groups||{},n=data.counts||{};const group=(title,count,names,cls)=>'<div class="panel panel-pad"><h3>'+Ui.escape(title)+' · '+Ui.count(count)+'</h3><p class="small">'+((names||[]).length?(names||[]).map(Ui.escape).join(' · '):'Aucun')+'</p></div>';
+      document.getElementById('attendanceRoster').innerHTML=(data.members.length?'<div class="count-line"><span><b>'+Ui.count(n.present)+'</b> présents</span><span><b>'+Ui.count(n.absent)+'</b> absents</span><span><b>'+Ui.count(n.excused)+'</b> excusés</span><span><b>'+Ui.count(n.unmarked)+'</b> non pointés</span></div><div class="grid-2">'+group('Présents',n.present,g.present,'green')+group('Absents',n.absent,g.absent,'neutral')+group('Excusés',n.excused,g.excused,'amber')+group('Non pointés',n.unmarked,g.unmarked,'neutral')+'</div>'+data.members.map((m,i)=>'<div class="attendance-row"><div><strong>'+Ui.escape(m.name)+'</strong><small>Annonce : '+Ui.escape(m.announced)+'</small></div><label>Présence réelle<select data-attendance-index="'+i+'"'+(data.canEdit===false?' disabled':'')+'>'+['Non pointé','Présent','Absent','Excusé'].map(v=>'<option'+(v===m.actual?' selected':'')+'>'+v+'</option>').join('')+'</select></label></div>').join(''):'Aucun membre actif.');document.getElementById('saveAttendance').disabled=data.canEdit===false||!data.members.length;
     }).withFailureHandler(e=>{if(request===attendanceRequest&&session===state.session)Ui.notice('attendanceNotice',e.message||e);}).getAttendance(eventId,pin());
   }
   function saveAttendance(){
@@ -192,7 +193,7 @@
   });
   document.getElementById('sendAllAccessCodes').addEventListener('click',()=>{
     if(state.accessBusy||!state.token)return;
-    if(!confirm('Envoyer les accès à tous les membres actifs ? Les codes temporaires existants seront remplacés. Les mots de passe personnels déjà choisis ne seront pas modifiés. Les membres sans adresse email valide ne recevront rien.'))return;
+    if(!confirm('Envoyer ou reprendre l’envoi des accès ? Les membres déjà traités pour le lien d’accueil permanent seront ignorés. Les mots de passe personnels seront conservés. En cas de quota Google atteint, vous pourrez relancer plus tard et reprendre là où l’envoi s’est arrêté.'))return;
     const session=state.session;state.accessBusy=true;state.bulkAccessSummary=null;hideIssuedCode();renderMemberAccess();Ui.loading('sendAllAccessCodes',true,'Envoi en cours…');
     google.script.run.withSuccessHandler(result=>{
       if(session!==state.session)return;state.accessBusy=false;state.bulkAccessSummary=result.summary||null;Ui.loading('sendAllAccessCodes',false);Ui.notice('accessNotice',result.message||'Envoi terminé.','ok');loadMemberAccess();
@@ -238,7 +239,7 @@
     if(stateName==='sent')return '<span class="pill green">Envoyé · code temporaire'+(when?' · '+Ui.escape(when):'')+'</span>';
     if(stateName==='link_sent')return '<span class="pill blue">Nouveau lien envoyé · mot de passe conservé'+(when?' · '+Ui.escape(when):'')+'</span>';
     if(stateName==='password')return '<span class="pill blue">Mot de passe actif · non renvoyé</span>';
-    if(stateName==='no_email')return '<span class="pill amber">Non envoyé · email manquant</span>';
+    if(stateName==='already_sent')return '<span class="pill green">Déjà envoyé · campagne actuelle</span>';if(stateName==='no_email')return '<span class="pill amber">Non envoyé · email manquant</span>';
     if(stateName==='quota')return '<span class="pill amber">Non envoyé · quota Google atteint, accès conservé</span>';
     if(stateName==='inactive')return '<span class="pill neutral">Non envoyé · membre inactif</span>';
     if(stateName==='revoked')return '<span class="pill neutral">Accès révoqué</span>';
