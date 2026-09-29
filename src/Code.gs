@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.29.9',
+  version: '2026.09.29.10',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -1249,18 +1249,17 @@ function attendanceSummary_(events, members) {
 }
 
 function getEventConfidentialDetails(eventId, adminPin) {
-  return withAdmin_(adminPin, function() {
-    eventId = clean_(eventId);
-    if (!calendarRows_().some(function(e) { return e.ID_Evenement === eventId; })) throw new Error('Événement introuvable.');
-    return buildEventRows_(eventId).map(function(row) {
-      return {
-        name: clean_(row.prenom + ' ' + row.nom),
-        response: clean_(row.reponse),
-        causes: clean_(row.causes),
-        precision: clean_(row.precision),
-        comment: clean_(row.commentaire)
-      };
-    });
+  assertAdmin_(adminPin);
+  eventId = clean_(eventId);
+  if (!calendarRows_().some(function(e) { return e.ID_Evenement === eventId; })) throw new Error('Événement introuvable.');
+  return buildEventRows_(eventId).map(function(row) {
+    return {
+      name: clean_(row.prenom + ' ' + row.nom),
+      response: clean_(row.reponse),
+      causes: clean_(row.causes),
+      precision: clean_(row.precision),
+      comment: clean_(row.commentaire)
+    };
   });
 }
 
