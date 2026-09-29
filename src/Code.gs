@@ -1248,23 +1248,19 @@ function attendanceSummary_(events, members) {
   return {total: total, monthly: Object.keys(monthly).map(function(month) { return Object.assign({month: Number(month)}, monthly[month]); }), members: Object.keys(byMember).map(function(key) { return Object.assign({key: key}, byMember[key]); })};
 }
 
-function getEventResponseDetails(eventId, adminPin) {
+function getEventConfidentialDetails(eventId, adminPin) {
   return withAdmin_(adminPin, function() {
     eventId = clean_(eventId);
-    const event = calendarRows_().find(function(e) { return e.ID_Evenement === eventId; });
-    if (!event) throw new Error('Événement introuvable.');
-    const rows = buildEventRows_(eventId);
-    const groups = {present: [], absent: [], excused: [], undecided: [], noResponse: []};
-    rows.forEach(function(row) {
-      const item = {name: clean_(row.prenom + ' ' + row.nom), causes: clean_(row.causes), precision: clean_(row.precision)};
-      if (row.reponse === 'Présent') groups.present.push(item);
-      else if (row.reponse === 'Absent') groups.absent.push(item);
-      else if (row.reponse === 'Absent excusé') groups.excused.push(item);
-      else if (row.reponse === 'Je ne sais pas encore') groups.undecided.push(item);
-      else groups.noResponse.push(item);
+    if (!calendarRows_().some(function(e) { return e.ID_Evenement === eventId; })) throw new Error('Événement introuvable.');
+    return buildEventRows_(eventId).map(function(row) {
+      return {
+        name: clean_(row.prenom + ' ' + row.nom),
+        response: clean_(row.reponse),
+        causes: clean_(row.causes),
+        precision: clean_(row.precision),
+        comment: clean_(row.commentaire)
+      };
     });
-    Object.keys(groups).forEach(function(key) { groups[key].sort(function(a,b) { return a.name.localeCompare(b.name, 'fr'); }); });
-    return {eventId:event.ID_Evenement,title:clean_(event.Titre),date:formatDate_(event.Date),groups:groups};
   });
 }
 

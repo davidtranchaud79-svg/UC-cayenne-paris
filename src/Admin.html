@@ -180,17 +180,19 @@
     if(e.target.closest('a,button'))return;
     const card=e.target.closest('[data-report-event]');if(card)showEventResponseDetails(card.dataset.reportEvent);
   });
-  document.getElementById('closeConfidential').addEventListener('click',()=>{document.getElementById('confidentialPanel').hidden=true;});
+  document.getElementById('closeConfidential').addEventListener('click',()=>{state.confidentialRequest++;document.getElementById('confidentialDetails').innerHTML='';document.getElementById('confidentialPanel').hidden=true;});
   function showEventResponseDetails(eventId){
     if(!eventId||!state.token)return;
     const request=++state.confidentialRequest,session=state.session,panel=document.getElementById('confidentialPanel'),root=document.getElementById('confidentialDetails');
+    const event=(state.dashboard?.events||[]).find(item=>String(item.id)===String(eventId))||{};
     panel.hidden=false;root.innerHTML='<p>Chargement…</p>';panel.scrollIntoView({behavior:'smooth',block:'start'});
-    google.script.run.withSuccessHandler(data=>{
-      if(request!==state.confidentialRequest||session!==state.session)return;
-      const g=data.groups||{};
-      const block=(title,items,cls)=>'<div class="panel panel-pad"><h3>'+Ui.escape(title)+' · '+Ui.count((items||[]).length)+'</h3>'+((items||[]).length?'<ul class="detail-list">'+items.map(item=>'<li><strong>'+Ui.escape(item.name)+'</strong>'+(title==='Absents excusés'&&(item.causes||item.precision)?'<small>'+Ui.escape([item.causes,item.precision].filter(Boolean).join(' · '))+'</small>':'')+'</li>').join('')+'</ul>':'<p class="small">Aucun</p>')+'</div>';
-      root.innerHTML='<h3>'+Ui.escape(data.date+' · '+data.title)+'</h3><div class="grid-2">'+block('Présents',g.present,'green')+block('Absents',g.absent,'neutral')+block('Absents excusés',g.excused,'amber')+block('Indécis',g.undecided,'neutral')+block('Sans réponse',g.noResponse,'neutral')+'</div>';
-    }).withFailureHandler(error=>{if(request===state.confidentialRequest&&session===state.session)root.innerHTML='<p>'+Ui.escape(error.message||error)+'</p>';}).getEventResponseDetails(eventId,pin());
+    google.script.run.withSuccessHandler(rows=>{
+      if(request!==state.confidentialRequest||session!==state.session||panel.hidden)return;
+      const groups={present:[],absent:[],excused:[],undecided:[],noResponse:[]};
+      (rows||[]).forEach(item=>{if(item.response==='Présent')groups.present.push(item);else if(item.response==='Absent')groups.absent.push(item);else if(item.response==='Absent excusé')groups.excused.push(item);else if(item.response==='Je ne sais pas encore')groups.undecided.push(item);else groups.noResponse.push(item);});
+      const block=(title,items)=>'<div class="panel panel-pad"><h3>'+Ui.escape(title)+' · '+Ui.count(items.length)+'</h3>'+(items.length?'<ul class="detail-list">'+items.map(item=>'<li><strong>'+Ui.escape(item.name)+'</strong>'+(title==='Absents excusés'&&(item.causes||item.precision||item.comment)?'<small>'+Ui.escape([item.causes,item.precision,item.comment].filter(Boolean).join(' · '))+'</small>':'')+'</li>').join('')+'</ul>':'<p class="small">Aucun</p>')+'</div>';
+      root.innerHTML='<h3>'+Ui.escape((event.date?event.date+' · ':'')+(event.title||'Événement'))+'</h3><div class="grid-2">'+block('Présents',groups.present)+block('Absents',groups.absent)+block('Absents excusés',groups.excused)+block('Indécis',groups.undecided)+block('Sans réponse',groups.noResponse)+'</div>';
+    }).withFailureHandler(error=>{if(request===state.confidentialRequest&&session===state.session&&!panel.hidden)root.innerHTML='<p>'+Ui.escape(error.message||error)+'</p>';}).getEventConfidentialDetails(eventId,pin());
   }
   function init(){google.script.run.withSuccessHandler(config=>{state.config=config;document.getElementById('adminYear').value=config.activeYear;wireUrls(config.urls || {});fillSelect('templateSelect',config.eventTemplates || [],x=>x.name,x=>x.id);fillSelect('eventType',config.eventTypes || []);fillSelect('eventCayenne',config.cayennes || []);applySelectedTemplate();renderAudience();}).withFailureHandler(e=>Ui.notice('adminNotice',e.message || e)).getBootstrapConfig();}
   function wireUrls(urls){if(urls.publicUrl)['publicLink','settingsPublicUrl'].forEach(id=>document.getElementById(id).href=urls.publicUrl);if(urls.adminUrl)document.getElementById('settingsAdminUrl').href=urls.adminUrl;if(urls.youthUrl)document.getElementById('settingsYouthUrl').href=urls.youthUrl;}
