@@ -184,7 +184,7 @@
   function clearConfidentialDetails(){state.confidentialRequest++;document.getElementById('confidentialDetails').innerHTML='';document.getElementById('confidentialPanel').hidden=true;document.querySelectorAll('[data-event-details]').forEach(node=>{node.innerHTML='';node.hidden=true;});document.querySelectorAll('[data-confidential-event]').forEach(button=>button.setAttribute('aria-expanded','false'));}
   function showEventResponseDetails(eventId){
     if(!eventId||!state.token)return;
-    const request=++state.confidentialRequest,session=state.session,panel=document.getElementById('confidentialPanel'),globalRoot=document.getElementById('confidentialDetails'),root=document.querySelector('[data-event-details="'+CSS.escape(String(eventId))+'"]');
+    const request=++state.confidentialRequest,session=state.session,panel=document.getElementById('confidentialPanel'),globalRoot=document.getElementById('confidentialDetails'),root=Array.from(document.querySelectorAll('[data-event-details]')).find(node=>String(node.dataset.eventDetails)===String(eventId));
     const event=(state.dashboard?.events||[]).find(item=>String(item.id)===String(eventId))||{};
     if(!root)return;document.querySelectorAll('[data-event-details]').forEach(node=>{if(node!==root){node.innerHTML='';node.hidden=true;}});document.querySelectorAll('[data-confidential-event]').forEach(button=>button.setAttribute('aria-expanded',String(button.dataset.confidentialEvent)===String(eventId)?'true':'false'));panel.hidden=true;root.hidden=false;root.innerHTML='<p>Chargement des noms…</p>';root.scrollIntoView({behavior:'smooth',block:'nearest'});
     google.script.run.withSuccessHandler(rows=>{
