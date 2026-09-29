@@ -135,7 +135,7 @@ test('creating or replacing a member code emails the code and direct member link
   const first=c.manageMemberCode('camille@example.test','issue',bureau);
   assert.equal(first.delivery.state,'sent');assert.equal(first.delivery.address,'camille@example.test');
   assert.equal(sent.length,1);assert.ok(sent[0].body.includes(first.code));
-  assert.ok(sent[0].body.includes('https://script.google.com/macros/s/'));assert.ok(sent[0].body.includes('/exec'));
+  assert.ok(sent[0].body.includes('https://davidtranchaud79-svg.github.io/UC-cayenne-paris/'));
   assert.match(sent[0].body,/gestionnaire de mots de passe/);
   assert.match(sent[0].body,/réunions, cours, agapes/);
   assert.match(sent[0].body,/présent, absent ou absent excusé/);
@@ -164,7 +164,7 @@ test('bulk access delivery sends fresh temporary codes and the official link whi
   db.MEMBRES.push({Nom:'Inactif',Prenom:'Iris',Email:'iris@example.test',Statut:'Compagnon',Cayenne:'Paris',Actif:'Non'});
   sent.length=0;
   const result=c.sendAllMemberAccessCodes(bureau);
-  assert.deepEqual({...result.summary},{sent:1,link_sent:1,no_email:1,error:0,inactive:1,quota:0,total:4});
+  assert.deepEqual({...result.summary},{sent:1,link_sent:1,already_sent:0,no_email:1,error:0,inactive:1,quota:0,total:4});
   assert.equal(sent.length,2);
   const tempMail=sent.find(m=>m.to==='camille@example.test');
   const linkMail=sent.find(m=>m.to==='alex@example.test');
@@ -374,3 +374,10 @@ test('Youth Bureau login reports its own code errors and missing configuration c
  const r=c.sendAllMemberAccessCodes(bureau);assert.equal(r.summary.quota,2);assert.equal(r.summary.sent,0);
  assert.equal(c.loginMember(code).profile.prenom,'Camille');assert.match(r.message,/quota Google/);
  });
+
+
+test('bulk access delivery resumes without resending members already completed in the current landing campaign',()=>{
+  const {c,bureau,sent}=fixture();
+  const first=c.sendAllMemberAccessCodes(bureau);assert.equal(first.summary.sent+first.summary.link_sent,2);assert.equal(sent.length,2);
+  const second=c.sendAllMemberAccessCodes(bureau);assert.equal(second.summary.already_sent,2);assert.equal(second.summary.sent+second.summary.link_sent,0);assert.equal(sent.length,2);
+});
