@@ -10,8 +10,8 @@ Les données nominatives, les excuses et les motifs d'absence restent dans le Go
 
 ## Liens actuels
 
-- Formulaire public : https://script.google.com/macros/s/AKfycbyPsFlnXwb498NhA2-6Jc8BizlAzfj2MMECnbrXoHaU8PPwY5UHH6gbrxA_QKcIykaIVw/exec
-- Dashboard admin : https://script.google.com/macros/s/AKfycbyPsFlnXwb498NhA2-6Jc8BizlAzfj2MMECnbrXoHaU8PPwY5UHH6gbrxA_QKcIykaIVw/exec?page=admin
+- Formulaire public : https://script.google.com/macros/s/AKfycbwNpiWb_mSKol9WtdSuKyQmGUQtJ6dEnMQMI3BmZRJFRODkHsxntfbo8BeLGQVQbOMb1w/exec
+- Dashboard admin : https://script.google.com/macros/s/AKfycbwNpiWb_mSKol9WtdSuKyQmGUQtJ6dEnMQMI3BmZRJFRODkHsxntfbo8BeLGQVQbOMb1w/exec?page=admin
 - Google Sheet : https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit
 - Dépôt GitHub : https://github.com/davidtranchaud79-svg/UC-cayenne-paris
 
