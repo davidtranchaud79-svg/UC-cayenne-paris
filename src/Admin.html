@@ -235,7 +235,7 @@
     const d=m.delivery||{},stateName=d.state||'';
     if(!stateName)return '<span class="pill neutral">Pas encore envoyé</span>';
     const when=d.at?new Date(d.at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
-    if(stateName==='sent')return '<span class="pill green">Code envoyé'+(when?' · '+Ui.escape(when):'')+'</span>';
+    if(stateName==='sent')return '<span class="pill green">Envoyé · code temporaire'+(when?' · '+Ui.escape(when):'')+'</span>';
     if(stateName==='link_sent')return '<span class="pill blue">Nouveau lien envoyé · mot de passe conservé'+(when?' · '+Ui.escape(when):'')+'</span>';
     if(stateName==='password')return '<span class="pill blue">Mot de passe actif · non renvoyé</span>';
     if(stateName==='no_email')return '<span class="pill amber">Non envoyé · email manquant</span>';
