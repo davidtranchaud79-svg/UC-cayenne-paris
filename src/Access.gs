@@ -236,27 +236,43 @@ function listYouthMemberAccess(token) {
     .map(function(m){return Object.assign(memberProfile_(m),{key:memberKey_(m)});});
 }
 
+function prepareMemberCode_(member) {
+  const key = memberKey_(member), props = PropertiesService.getScriptProperties();
+  let raw, hash;
+  do {
+    raw = (Utilities.getUuid().slice(0, 8) + Utilities.getUuid().slice(0, 8)).toUpperCase();
+    hash = accessHash_(raw);
+  } while (props.getProperty('uc.code.' + hash));
+  return {key:key, profile:memberProfile_(member), code:raw.match(/.{4}/g).join('-'), hash:hash, oldHash:memberCodeHash_(member)};
+}
+
+function activatePreparedMemberCode_(prepared, allowPasswordReplace) {
+  return accessLocked_(function() {
+    const props = PropertiesService.getScriptProperties();
+    const member = getRowsAsObjects_(UC_APP.sheets.membres).find(function(m) { return memberKey_(m) === prepared.key; });
+    if (!member || !isActive_(member.Actif)) throw new Error('Membre introuvable ou inactif.');
+    if (!allowPasswordReplace && memberCredentialKind_(member) === 'password') throw new Error('Le membre a choisi un mot de passe entre-temps : il a été conservé.');
+    const current = memberCodeHash_(member);
+    if (clean_(current) !== clean_(prepared.oldHash)) throw new Error('Accès modifié entre-temps : aucun ancien code n’a été supprimé.');
+    memberAliases_(member).forEach(function(alias) {
+      props.deleteProperty(memberAccessKey_(alias));
+      props.deleteProperty(memberCredentialKindKey_(alias));
+      pruneRememberedSessions_(alias, true);
+    });
+    props.setProperty('uc.code.' + prepared.hash, prepared.key);
+    props.setProperty(memberAccessKey_(prepared.key), prepared.hash);
+    props.setProperty(memberCredentialKindKey_(prepared.key), 'temporary');
+    if (current && current !== prepared.hash) props.deleteProperty('uc.code.' + current);
+    pruneRememberedSessions_(prepared.key, true);
+    return {key:prepared.key, profile:memberProfile_(member), code:prepared.code};
+  });
+}
+
 function issueMemberCode_(key, replace) {
   const member = memberByKey_(key);
-  key = memberKey_(member);
-  const props = PropertiesService.getScriptProperties();
-  const slot = memberAccessKey_(key);
   const old = memberCodeHash_(member);
   if (old && !replace) throw new Error('Ce membre dispose déjà d’un code. Utilisez Remplacer le code.');
-  let code, hash;
-  do {
-    code = (Utilities.getUuid().slice(0, 8) + Utilities.getUuid().slice(0, 8)).toUpperCase();
-    hash = accessHash_(code);
-  } while (props.getProperty('uc.code.' + hash));
-  memberAliases_(member).forEach(function(alias) {
-    props.deleteProperty(memberAccessKey_(alias)); props.deleteProperty(memberCredentialKindKey_(alias)); pruneRememberedSessions_(alias, true);
-  });
-  props.setProperty('uc.code.' + hash, key);
-  props.setProperty(slot, hash);
-  props.setProperty(memberCredentialKindKey_(key), 'temporary');
-  if (old) props.deleteProperty('uc.code.' + old);
-  pruneRememberedSessions_(key, true);
-  return {key:key, profile: memberProfile_(member), code: code.match(/.{4}/g).join('-')};
+  return activatePreparedMemberCode_(prepareMemberCode_(member), replace === true);
 }
 
 function sendMemberAccessEmail_(issued) {
@@ -283,7 +299,10 @@ function sendMemberAccessEmail_(issued) {
     '',
     'Votre code temporaire de première connexion : ' + issued.code,
     '',
-    'Lien direct vers votre espace membre :',
+    'IMPORTANT — UTILISEZ UNIQUEMENT LE LIEN CI-DESSOUS POUR VOUS CONNECTER.',
+    'Merci de ne plus utiliser les anciens liens qui ont pu vous être transmis auparavant.',
+    '',
+    'Lien officiel vers votre espace membre :',
     url,
     '',
     'Lors de votre première connexion, l’application vous demandera de choisir votre propre mot de passe personnel.',
@@ -298,6 +317,37 @@ function sendMemberAccessEmail_(issued) {
   try {
     MailApp.sendEmail({to:address, subject:'important : excuse et présence', body:body, name:'Cayenne de Paris'});
     return {state:'sent', address:address};
+  } catch (error) {
+    return {state:'error', address:address, detail:clean_(error && error.message).slice(0,250)};
+  }
+}
+
+function sendMemberLinkEmail_(profile) {
+  profile = profile || {};
+  const address = clean_(profile.email);
+  if (!mailAddressValid_(address)) return {state:'no_email', address:address};
+  const url = getAppUrls_().publicUrl;
+  const body = [
+    'Cher membre de la Cayenne de Paris,',
+    '',
+    'Le lien officiel de l’espace membres de la Cayenne de Paris a été mis à jour.',
+    '',
+    'IMPORTANT — UTILISEZ UNIQUEMENT LE LIEN CI-DESSOUS POUR VOUS CONNECTER.',
+    'Merci de ne plus utiliser les anciens liens qui ont pu vous être transmis auparavant.',
+    '',
+    'Lien officiel vers votre espace membre :',
+    url,
+    '',
+    'Vous avez déjà choisi votre mot de passe personnel : il est conservé et n’a pas été réinitialisé.',
+    'Connectez-vous simplement avec ce même mot de passe.',
+    '',
+    'Sur votre appareil personnel, vous pouvez cocher « Garder ma session ouverte sur cet appareil pendant 90 jours ».',
+    '',
+    'Cayenne de Paris — Union Compagnonnique'
+  ].join('\n');
+  try {
+    MailApp.sendEmail({to:address, subject:'important : nouveau lien d’accès Cayenne de Paris', body:body, name:'Cayenne de Paris'});
+    return {state:'link_sent', address:address};
   } catch (error) {
     return {state:'error', address:address, detail:clean_(error && error.message).slice(0,250)};
   }
@@ -338,34 +388,50 @@ function sendAllMemberAccessCodes(token) {
     return sortMemberObjects_(getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m){return m.Nom&&m.Prenom;})).map(function(member){
       const key=memberKey_(member),profile=memberProfile_(member),kind=memberCredentialKind_(member);
       if(!isActive_(member.Actif))return {key:key,profile:profile,state:'inactive'};
-      if(kind==='password')return {key:key,profile:profile,state:'password'};
       if(!mailAddressValid_(clean_(profile.email)))return {key:key,profile:profile,state:'no_email'};
-      return {key:key,profile:profile,state:'ready',reset:!!memberCodeHash_(member)};
+      if(kind==='password')return {key:key,profile:profile,state:'password_ready'};
+      return {key:key,profile:profile,state:'ready'};
     });
   });
   const results=prepared.map(function(item){
     let delivery={state:item.state,address:clean_(item.profile.email)};
-    if(item.state==='ready') {
+    if(item.state==='ready'||item.state==='password_ready') {
       try {
-        if(MailApp.getRemainingDailyQuota()<1) delivery={state:'quota',address:clean_(item.profile.email),detail:'Quota Google atteint. Accès existant conservé. Réessayez après le renouvellement du quota.'};
-        else {
-          const issued=accessLocked_(function(){
+        if(MailApp.getRemainingDailyQuota()<1) {
+          delivery={state:'quota',address:clean_(item.profile.email),detail:'Quota Google atteint. Les accès existants sont conservés. Réessayez après le renouvellement du quota.'};
+        } else {
+          const action=accessLocked_(function(){
             assertAdmin_(token);
             const member=getRowsAsObjects_(UC_APP.sheets.membres).find(function(m){return memberKey_(m)===item.key;});
-            if(!member||!isActive_(member.Actif))return null;
-            if(memberCredentialKind_(member)==='password')return {password:true};
-            return issueMemberCode_(item.key,!!memberCodeHash_(member));
+            if(!member||!isActive_(member.Actif))return {type:'inactive'};
+            if(!mailAddressValid_(clean_(member.Email)))return {type:'no_email'};
+            if(memberCredentialKind_(member)==='password')return {type:'password',profile:memberProfile_(member)};
+            return {type:'temporary',prepared:prepareMemberCode_(member)};
           });
-          delivery=!issued?{state:'inactive'}:issued.password?{state:'password'}:sendMemberAccessEmail_(issued);
+          if(action.type==='inactive') delivery={state:'inactive',address:clean_(item.profile.email)};
+          else if(action.type==='no_email') delivery={state:'no_email',address:''};
+          else if(action.type==='password') delivery=sendMemberLinkEmail_(action.profile);
+          else {
+            delivery=sendMemberAccessEmail_(action.prepared);
+            if(delivery.state==='sent') {
+              try {
+                activatePreparedMemberCode_(action.prepared,false);
+              } catch(error) {
+                delivery={state:'error',address:clean_(action.prepared.profile.email),detail:'Le mail a été remis à Google mais l’activation du nouveau code n’a pas été confirmée. Ne relancez pas l’envoi global avant vérification : '+clean_(error.message).slice(0,160)};
+              }
+            }
+          }
         }
-      } catch(error) {delivery={state:'error',address:clean_(item.profile.email),detail:clean_(error.message).slice(0,250)};}
+      } catch(error) {
+        delivery={state:'error',address:clean_(item.profile.email),detail:clean_(error.message).slice(0,250)};
+      }
     }
     const saved=rememberAccessDelivery_(item.key,delivery);
     return {key:item.key,nom:item.profile.nom,prenom:item.profile.prenom,state:saved.state,at:saved.at,address:saved.address,detail:saved.detail};
   });
-  const summary={sent:0,password:0,no_email:0,error:0,inactive:0,quota:0,total:results.length};
-  results.forEach(function(row){if(Object.prototype.hasOwnProperty.call(summary,row.state))summary[row.state]++;else if(row.state!=='sent')summary.error++;});
-  return {ok:true,results:results,summary:summary,message:summary.sent+' accès envoyé(s) sur '+summary.total+' membres : '+summary.password+' mot(s) de passe personnel(s) conservé(s), '+summary.no_email+' sans email valide, '+summary.inactive+' inactif(s), '+summary.quota+' en attente de quota Google, '+summary.error+' erreur(s). Consultez le détail sous chaque membre.'};
+  const summary={sent:0,link_sent:0,no_email:0,error:0,inactive:0,quota:0,total:results.length};
+  results.forEach(function(row){if(Object.prototype.hasOwnProperty.call(summary,row.state))summary[row.state]++;else if(row.state!=='sent'&&row.state!=='link_sent')summary.error++;});
+  return {ok:true,results:results,summary:summary,message:summary.sent+' nouveau(x) code(s) temporaire(s) envoyé(s) et '+summary.link_sent+' lien(s) envoyé(s) avec mot de passe conservé, sur '+summary.total+' membres : '+summary.no_email+' sans email valide, '+summary.inactive+' inactif(s), '+summary.quota+' en attente de quota Google, '+summary.error+' erreur(s). Consultez le détail sous chaque membre.'};
 }
 
 function createYouthMemberProfile(payload, token) {
