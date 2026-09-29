@@ -27,7 +27,7 @@ jobs:
     env:
       CLASP_SCRIPT_ID: ${{ secrets.CLASP_SCRIPT_ID }}
       # Public identifier from the application's shared URL; it is not a credential.
-      CLASP_DEPLOYMENT_ID: AKfycbw6ZupSLIZAW7HkYgak11rX-7NFYj_c8yPIbi3Uai54fz_Qu0SuX6QJQe6ibIHb0Zeavw
+      CLASP_DEPLOYMENT_ID: AKfycbxBEWx9xmh0LBG9SGw07uEO3mXxuDATm3gT5XjRPPr3at7DBWDGjmCIteSYU3I3sjIJNQ
 
     steps:
       - name: Checkout repository
