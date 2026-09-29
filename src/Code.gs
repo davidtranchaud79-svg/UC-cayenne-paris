@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.29.5',
+  version: '2026.09.29.6',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -26,6 +26,7 @@ const UC_APP = {
     adminPin: '1234',
     webAppUrl: 'https://script.google.com/macros/s/AKfycbw6ZupSLIZAW7HkYgak11rX-7NFYj_c8yPIbi3Uai54fz_Qu0SuX6QJQe6ibIHb0Zeavw/exec',
     adminAppUrl: 'https://script.google.com/macros/s/AKfycbw6ZupSLIZAW7HkYgak11rX-7NFYj_c8yPIbi3Uai54fz_Qu0SuX6QJQe6ibIHb0Zeavw/exec?page=admin',
+    landingPageUrl: 'https://davidtranchaud79-svg.github.io/UC-cayenne-paris/',
     statuses: ['Sociétaire', 'Aspirant', 'Compagnon'],
     cayennes: ['Paris', 'Autre'],
     reponses: ['Présent', 'Absent', 'Je ne sais pas encore', 'Absent excusé', 'Disponible pour aider'],
@@ -1187,11 +1188,18 @@ function getAttendance(eventId, token) {
   responseRows_().filter(function(r) { return r.ID_Evenement === eventId; }).forEach(function(r) {
     if (!answers[r.Cle_Personne] || asDate_(r.Horodatage) >= asDate_(answers[r.Cle_Personne].Horodatage)) answers[r.Cle_Personne] = r;
   });
-  return {eventId: eventId, canEdit: canEdit, members: getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) { return m.Nom && m.Prenom && isActive_(m.Actif) && eventForMember_(event, m); }).map(function(m) {
+  const members = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) { return m.Nom && m.Prenom && isActive_(m.Actif) && eventForMember_(event, m); }).map(function(m) {
     const key = memberKey_(m);
     const row = latest[eventId + '|' + key];
     return {key: key, name: m.Prenom + ' ' + m.Nom, announced: answers[key] ? answers[key].Reponse : 'Sans réponse', actual: row ? row.Presence_Reelle : 'Non pointé', version: row ? row.ID_Pointage : ''};
-  })};
+  });
+  const groups = {'Présent':[], 'Absent':[], 'Excusé':[], 'Non pointé':[]};
+  members.forEach(function(m) { (groups[m.actual] || groups['Non pointé']).push(m.name); });
+  Object.keys(groups).forEach(function(k) { groups[k].sort(function(a,b){ return a.localeCompare(b,'fr'); }); });
+  return {eventId:eventId, eventTitle:clean_(event.Titre), eventDate:formatDate_(event.Date), canEdit:canEdit, members:members,
+    counts:{present:groups['Présent'].length,absent:groups['Absent'].length,excused:groups['Excusé'].length,unmarked:groups['Non pointé'].length},
+    groups:{present:groups['Présent'],absent:groups['Absent'],excused:groups['Excusé'],unmarked:groups['Non pointé']}};
+  };
 }
 
 function saveAttendance(payload, token) {
