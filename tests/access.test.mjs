@@ -278,6 +278,16 @@ test('one invalid event or missing other reason rejects the whole batch',()=>{
  db.CALENDRIER.push({...db.CALENDRIER[0],ID_Evenement:'evt2',Actif:'Non'});
  assert.throws(()=>c.submitResponses({requestId:randomUUID(),answers:[{eventId:'evt1',reponse:'Présent'},{eventId:'evt2',reponse:'Présent'}]},token));assert.equal(db.REPONSES.length,0);
 });
+test('youth and companion meetings require an agape yes/no answer and dashboard counts it',()=>{
+ const {c,db,member}=fixture(),token=member();
+ db.CALENDRIER[0].Type_Evenement='Réunion des jeunes';db.CALENDRIER[0].Titre='Réunion des jeunes';db.CALENDRIER[0].Modalites='Standard';
+ const submit=participation=>c.submitResponses({requestId:randomUUID(),answers:[{eventId:'evt1',reponse:'Présent',participation}]},token);
+ assert.throws(()=>submit(''),/agapes/);
+ submit('Agapes : Oui');assert.equal(db.REPONSES.at(-1).Participation,'Agapes : Oui');
+ let stats=c.computeDashboard_(2026).events.find(e=>e.id==='evt1');assert.equal(stats.agapeYes,1);assert.equal(stats.agapeNo,0);assert.equal(stats.meals,1);
+ submit('Agapes : Non');stats=c.computeDashboard_(2026).events.find(e=>e.id==='evt1');assert.equal(stats.agapeYes,0);assert.equal(stats.agapeNo,1);assert.equal(stats.meals,0);
+ db.CALENDRIER[0].Type_Evenement='Réunion compagnon';assert.throws(()=>submit('Repas seulement'),/agapes/);
+});
 test('meal-only, help-only, reception slots and absent sanitize conflicting details',()=>{
  const {c,db,member}=fixture(),token=member();db.CALENDRIER[0].Modalites='Repas et aide';
  const submit=a=>c.submitResponses({requestId:randomUUID(),answers:[{eventId:'evt1',reponse:'Présent',...a}]},token);
