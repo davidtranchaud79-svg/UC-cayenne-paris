@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.28.10',
+  version: '2026.09.29.1',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -334,8 +334,12 @@ function submitMemberResponses_(payload, member) {
     a.participation = clean_(a.participation);
     a.creneaux = Array.isArray(a.creneaux) ? Array.from(new Set(a.creneaux.map(clean_))) : [];
     const mode = clean_(event.Modalites || 'Standard');
+    const meetingWithAgape = ['Réunion des jeunes','Réunion compagnon'].includes(clean_(event.Type_Evenement));
     if (a.reponse !== 'Présent') { a.participation = ''; a.creneaux = []; }
-    else if (mode === 'Repas et aide') {
+    else if (meetingWithAgape) {
+      if (!['Agapes : Oui','Agapes : Non'].includes(a.participation)) throw new Error('Indiquez si vous participerez aux agapes après la réunion.');
+      a.creneaux = [];
+    } else if (mode === 'Repas et aide') {
       if (!['Repas seulement', 'Repas et aide', 'Aide seulement (sans repas)'].includes(a.participation)) throw new Error('Choisissez votre participation au repas et à l’aide.');
       a.creneaux = [];
     } else if (mode === 'Réception') {
@@ -1026,7 +1030,9 @@ function computeDashboard_(year, memberFilter, eventFilter) {
       undecided: undecided,
       aids: aids,
       modalites: clean_(event.Modalites || 'Standard'),
-      meals: eventResponses.filter(function(r) { return r.Reponse === 'Présent' && ['Repas seulement', 'Repas et aide'].includes(r.Participation); }).length,
+      meals: eventResponses.filter(function(r) { return r.Reponse === 'Présent' && (['Repas seulement', 'Repas et aide'].includes(r.Participation) || r.Participation === 'Agapes : Oui'); }).length,
+      agapeYes: eventResponses.filter(function(r) { return r.Reponse === 'Présent' && r.Participation === 'Agapes : Oui'; }).length,
+      agapeNo: eventResponses.filter(function(r) { return r.Reponse === 'Présent' && r.Participation === 'Agapes : Non'; }).length,
       morning: eventResponses.filter(function(r) { return r.Reponse === 'Présent' && clean_(r.Creneaux).split(' ; ').includes('Matin'); }).length,
       evening: eventResponses.filter(function(r) { return r.Reponse === 'Présent' && clean_(r.Creneaux).split(' ; ').includes('Soir'); }).length,
       comment: clean_(event.Commentaire),
