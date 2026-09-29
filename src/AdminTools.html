@@ -105,7 +105,10 @@ function loadConfidential(id){
   if(!state.token)return;const session=state.session,request=++state.confidentialRequest;
   document.getElementById('confidentialPanel').hidden=false;document.getElementById('confidentialDetails').textContent='Chargement…';
   google.script.run.withSuccessHandler(rows=>{if(session!==state.session||request!==state.confidentialRequest)return;
-    document.getElementById('confidentialDetails').innerHTML=rows.length?rows.map(r=>'<article class="history-row"><div><strong>'+Ui.escape(r.name)+'</strong><p>'+Ui.escape([r.response,r.causes,r.precision].filter(Boolean).join(' · '))+'</p><p>'+Ui.escape(r.comment||'')+'</p></div></article>').join(''):Ui.empty('Aucun détail confidentiel','Les motifs et commentaires restent réservés au bureau.');
+    const buckets={present:[],absent:[],excused:[],undecided:[],missing:[]};
+    rows.forEach(r=>{const v=Ui.normalize(r.response||'');if(v==='present')buckets.present.push(r);else if(v==='absent excuse')buckets.excused.push(r);else if(v==='absent')buckets.absent.push(r);else if(v==='je ne sais pas encore')buckets.undecided.push(r);else buckets.missing.push(r);});
+    const group=(title,list,klass)=>'<section class="panel panel-pad"><div class="section-head"><h3>'+title+'</h3><span class="pill '+klass+'">'+Ui.count(list.length)+'</span></div>'+(list.length?list.map(r=>'<article class="history-row"><div><strong>'+Ui.escape(r.name)+'</strong>'+(r.causes||r.precision||r.comment?'<p>'+Ui.escape([r.causes,r.precision,r.comment].filter(Boolean).join(' · '))+'</p>':'')+'</div></article>').join(''):'<p class="small muted">Aucun membre.</p>')+'</section>';
+    document.getElementById('confidentialDetails').innerHTML=rows.length?'<div class="grid-2">'+group('Présents',buckets.present,'green')+group('Absents',buckets.absent,'neutral')+group('Absents excusés',buckets.excused,'amber')+group('Indécis',buckets.undecided,'blue')+group('Sans réponse',buckets.missing,'neutral')+'</div>':Ui.empty('Aucune réponse','Aucune réponse enregistrée pour cet événement.');
     document.getElementById('confidentialPanel').scrollIntoView({block:'start'});
   }).withFailureHandler(error=>{if(session!==state.session||request!==state.confidentialRequest)return;document.getElementById('confidentialDetails').textContent=error.message||error;}).getEventConfidentialDetails(id,pin());
 }
