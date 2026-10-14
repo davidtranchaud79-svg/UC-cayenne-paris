@@ -47,7 +47,7 @@
               <div class="field full"><label for="templateSelect">Partir d’un modèle</label><select id="templateSelect"></select></div>
               <div class="field full"><label for="eventDate">Date de l’événement *</label><input id="eventDate" type="date" required></div>
               <div class="field full"><label for="eventTitle">Nom de l’événement *</label><input id="eventTitle" required></div>
-              <div class="field"><label for="eventStart">Début</label><input id="eventStart" type="time"></div><div class="field"><label for="eventEnd">Fin</label><input id="eventEnd" type="time"></div>
+              <div class="field"><label for="eventStart">Début</label><input id="eventStart" type="time" step="60"></div><div class="field"><label for="eventEnd">Fin</label><input id="eventEnd" type="time" step="60"></div>
               <div class="field full"><label for="eventPlace">Lieu</label><input id="eventPlace" placeholder="Cayenne de Paris"></div>
             </div>
             <div class="field" style="margin:16px 0"><label for="eventModalites">Choix proposés aux membres</label><select id="eventModalites"><option>Standard</option><option>Repas et aide</option><option>Réception</option></select><p class="small">Repas et aide : trois choix. Réception : matin et/ou soir.</p></div><details open><summary>Précisions visibles par les membres</summary><div class="fields"><div class="field"><label for="eventType">Type</label><select id="eventType"></select></div><div class="field"><label for="eventCayenne">Cayenne</label><select id="eventCayenne"></select></div><div class="field full"><label for="eventComment">Commentaire</label><textarea id="eventComment" placeholder="Une information pour cet événement…"></textarea></div></div></details>
