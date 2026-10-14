@@ -57,6 +57,120 @@ function memberProfile_(member) {
     cayenne: clean_(member.Cayenne), email: clean_(member.Email), telephone: clean_(member.Telephone)};
 }
 
+function passwordResetMessage_() {
+  return 'Si cette adresse correspond à un membre actif, un code de récupération a été envoyé. Vérifiez aussi vos courriers indésirables.';
+}
+function normalizePasswordResetEmail_(value) { return clean_(value).toLowerCase(); }
+function normalizePasswordResetCode_(value) {
+  const code = String(value == null ? '' : value).toUpperCase().replace(/[\s-]/g, '');
+  return /^[A-F0-9]{12}$/.test(code) ? code : '';
+}
+function passwordResetTokenKey_(hash) { return 'uc.password.reset.token.' + hash; }
+function passwordResetRateKey_(key) { return 'uc.password.reset.rate.' + accessHash_(clean_(key)); }
+function prunePasswordResetTokens_(memberKey) {
+  const props = PropertiesService.getScriptProperties(), values = props.getProperties(), now = Date.now();
+  Object.keys(values).filter(function(key) { return key.indexOf('uc.password.reset.token.') === 0; }).forEach(function(key) {
+    try {
+      const token = JSON.parse(values[key]);
+      if (!token || token.expires <= now || (memberKey && token.key === memberKey)) props.deleteProperty(key);
+    } catch (_) { props.deleteProperty(key); }
+  });
+}
+function sendMemberPasswordResetEmail_(prepared) {
+  const address = clean_(prepared && prepared.address), url = UC_APP.defaults.landingPageUrl;
+  if (!mailAddressValid_(address)) return false;
+  const body = [
+    'Cher membre de la Cayenne de Paris,',
+    '',
+    'Une demande de réinitialisation de votre mot de passe a été effectuée depuis l’espace membre.',
+    '',
+    'Votre code de récupération : ' + prepared.code,
+    '',
+    'Ce code est valable pendant 30 minutes.',
+    'Retournez sur l’espace membre, choisissez « Mot de passe oublié ? », puis saisissez ce code et votre nouveau mot de passe.',
+    '',
+    'Lien officiel vers votre espace membre :',
+    url,
+    '',
+    'Votre mot de passe actuel reste valable tant que vous n’avez pas terminé la réinitialisation.',
+    'Si vous n’êtes pas à l’origine de cette demande, ignorez simplement ce message.',
+    '',
+    'Cayenne de Paris — Union Compagnonnique'
+  ].join('\n');
+  MailApp.sendEmail({to:address, subject:'Réinitialisation de votre mot de passe — Cayenne de Paris', body:body, name:'Cayenne de Paris'});
+  return true;
+}
+function requestMemberPasswordReset(email) {
+  const address = normalizePasswordResetEmail_(email), generic = {ok:true, message:passwordResetMessage_()};
+  if (!mailAddressValid_(address)) return generic;
+  const prepared = accessLocked_(function() {
+    prunePasswordResetTokens_('');
+    const matches = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(member) {
+      return member.Nom && member.Prenom && isActive_(member.Actif) && normalizePasswordResetEmail_(member.Email) === address;
+    });
+    if (matches.length !== 1) return null;
+    const member = matches[0], key = memberKey_(member), props = PropertiesService.getScriptProperties();
+    const rateKey = passwordResetRateKey_(key), now = Date.now();
+    let rate = null;
+    try { rate = JSON.parse(props.getProperty(rateKey) || 'null'); } catch (_) {}
+    if (!rate || !rate.windowStart || now - rate.windowStart >= 86400000) rate = {windowStart:now, count:0, lastAt:0};
+    if ((rate.lastAt && now - rate.lastAt < 15 * 60 * 1000) || rate.count >= 5) return {throttled:true};
+    if (MailApp.getRemainingDailyQuota && MailApp.getRemainingDailyQuota() < 1) return {unavailable:true};
+    prunePasswordResetTokens_(key);
+    const raw = Utilities.getUuid().replace(/-/g, '').slice(0, 12).toUpperCase();
+    const hash = accessHash_('RESET:' + raw), tokenKey = passwordResetTokenKey_(hash);
+    props.setProperty(tokenKey, JSON.stringify({key:key, address:address, expires:now + 30 * 60 * 1000}));
+    return {key:key, address:address, code:raw.match(/.{4}/g).join('-'), tokenKey:tokenKey, rateKey:rateKey, rate:rate};
+  });
+  if (!prepared || prepared.throttled || prepared.unavailable) return generic;
+  try {
+    sendMemberPasswordResetEmail_(prepared);
+    accessLocked_(function() {
+      const props = PropertiesService.getScriptProperties(), now = Date.now(), rate = prepared.rate || {windowStart:now,count:0,lastAt:0};
+      rate.lastAt = now; rate.count = Number(rate.count || 0) + 1;
+      props.setProperty(prepared.rateKey, JSON.stringify(rate));
+      rememberAccessDelivery_(prepared.key, {state:'reset_sent', address:prepared.address, detail:'Réinitialisation autonome'});
+    });
+  } catch (_) {
+    accessLocked_(function() { PropertiesService.getScriptProperties().deleteProperty(prepared.tokenKey); });
+  }
+  return generic;
+}
+function confirmMemberPasswordReset(email, recoveryCode, newPassword, confirmation, remember) {
+  return checkLogin_('reset', function() {
+    const address = normalizePasswordResetEmail_(email), code = normalizePasswordResetCode_(recoveryCode);
+    if (!mailAddressValid_(address) || !code) return null;
+    const props = PropertiesService.getScriptProperties(), tokenKey = passwordResetTokenKey_(accessHash_('RESET:' + code));
+    const raw = props.getProperty(tokenKey);
+    if (!raw) return null;
+    let reset;
+    try { reset = JSON.parse(raw); } catch (_) { props.deleteProperty(tokenKey); return null; }
+    if (!reset || reset.expires <= Date.now() || normalizePasswordResetEmail_(reset.address) !== address) {
+      props.deleteProperty(tokenKey); return null;
+    }
+    let member;
+    try { member = memberByKey_(reset.key); } catch (_) { props.deleteProperty(tokenKey); return null; }
+    if (normalizePasswordResetEmail_(member.Email) !== address) { props.deleteProperty(tokenKey); return null; }
+    const password = validateMemberPassword_(newPassword);
+    if (password !== String(confirmation == null ? '' : confirmation)) throw new Error('Les deux mots de passe ne correspondent pas.');
+    const key = memberKey_(member), hash = passwordHash_(password), usedBy = props.getProperty('uc.code.' + hash);
+    if (usedBy && usedBy !== key) throw new Error('Choisissez un autre mot de passe.');
+    const old = memberCodeHash_(member);
+    memberAliases_(member).forEach(function(alias) {
+      props.deleteProperty(memberAccessKey_(alias));
+      props.deleteProperty(memberCredentialKindKey_(alias));
+      pruneRememberedSessions_(alias, true);
+    });
+    if (old) props.deleteProperty('uc.code.' + old);
+    props.setProperty('uc.code.' + hash, key);
+    props.setProperty(memberAccessKey_(key), hash);
+    props.setProperty(memberCredentialKindKey_(key), 'password');
+    prunePasswordResetTokens_(key);
+    const token = createAccessSession_({role:'member', key:key, version:hash}, remember === true);
+    return {ok:true, token:token, remembered:remember === true, profile:memberProfile_(member), message:'Votre nouveau mot de passe est enregistré. Vous êtes connecté.'};
+  }, 'Code de récupération invalide ou expiré.');
+}
+
 function memberByKey_(key) {
   ensureAuditSchema_();
   const matches = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(member) {
