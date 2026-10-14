@@ -102,6 +102,14 @@ test('legacy code and remembered session survive migration and email correction;
   assert.throws(()=>f.c.loginMember(code),/incorrect/);
 });
 
+test('time-only spreadsheet values keep the exact entered hour and minute',()=>{
+  const f=fixture();
+  const sheetTime=new Date('1899-12-30T19:00:00.000Z');
+  assert.equal(f.c.formatEventTime_(sheetTime),'19:00');
+  f.calendar.grid[3][5]=sheetTime;
+  assert.equal(f.c.formatEventForClient_(f.c.calendarRows_()[0]).start,'19:00');
+});
+
 test('event moved to another year remains one event across member history, dashboard, monthly totals and report',()=>{
   const f=fixture();f.c.ensureAuditSchema_();const m=f.c.getRowsAsObjects_('MEMBRES')[0],event=f.c.formatEventForClient_(f.c.calendarRows_()[0]);
   const responseBefore=structuredClone(f.responses.grid),oldName=f.c.makeCrSheetName_(f.c.calendarRows_()[0]);
