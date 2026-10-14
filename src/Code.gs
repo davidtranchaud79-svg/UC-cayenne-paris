@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.09.29.10',
+  version: '2026.10.14.11',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -1512,4 +1512,4 @@ function ensureParticipationSchema_() {
   props.setProperty('uc.participation.schema', '2');
 }
 
-function formatEventTime_(value) { return value instanceof Date ? Utilities.formatDate(value, Session.getScriptTimeZone(), 'HH:mm') : clean_(value); }
+function formatEventTime_(value) { return value instanceof Date ? Utilities.formatDate(value, 'GMT', 'HH:mm') : clean_(value); }
