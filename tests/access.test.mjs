@@ -155,6 +155,33 @@ test('creating or replacing a member code emails the code and direct member link
   const replacement=c.manageMemberCode('camille@example.test','reset',bureau);
   assert.equal(replacement.delivery.state,'sent');assert.equal(sent.length,2);
 });
+test('forgotten password recovery is email-based, rate-limited and changes the password only after code confirmation',()=>{
+  const {c,issue,sent}=fixture();
+  const temporary=issue('camille@example.test'),first=c.loginMember(temporary).token;
+  c.setMemberPassword('AncienMotDePasse2026','AncienMotDePasse2026',first);
+  sent.length=0;
+  const requested=c.requestMemberPasswordReset('camille@example.test');
+  assert.match(requested.message,/Si cette adresse correspond/);
+  assert.equal(sent.length,1);
+  assert.equal(sent[0].subject,'Réinitialisation de votre mot de passe — Cayenne de Paris');
+  assert.match(sent[0].body,/mot de passe actuel reste valable/);
+  const recovery=(sent[0].body.match(/[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}/)||[])[0];
+  assert.ok(recovery);
+  assert.equal(c.loginMember('AncienMotDePasse2026').profile.prenom,'Camille','request alone must not invalidate the current password');
+  const again=c.requestMemberPasswordReset('camille@example.test');
+  assert.equal(again.message,requested.message);
+  assert.equal(sent.length,1,'repeated request inside the cooldown must not resend');
+  const unknown=c.requestMemberPasswordReset('personne-inconnue@example.test');
+  assert.equal(unknown.message,requested.message);
+  assert.equal(sent.length,1,'unknown addresses must not receive mail or reveal account existence');
+  assert.throws(()=>c.confirmMemberPasswordReset('camille@example.test','AAAA-BBBB-CCCC','NouveauMotDePasse2026','NouveauMotDePasse2026',false),/invalide ou expiré/);
+  const reset=c.confirmMemberPasswordReset('camille@example.test',recovery,'NouveauMotDePasse2026','NouveauMotDePasse2026',true);
+  assert.equal(reset.ok,true);assert.equal(reset.remembered,true);
+  assert.throws(()=>c.loginMember('AncienMotDePasse2026'),/incorrect|désactivé/);
+  assert.equal(c.loginMember('NouveauMotDePasse2026').profile.prenom,'Camille');
+  assert.throws(()=>c.confirmMemberPasswordReset('camille@example.test',recovery,'EncoreUnMotDePasse2026','EncoreUnMotDePasse2026',false),/invalide ou expiré/,'recovery code is one-time');
+});
+
 test('bulk access delivery sends fresh temporary codes and the official link while preserving personal passwords',()=>{
   const {c,db,bureau,issue,sent}=fixture();
   const oldCamille=issue('camille@example.test');
