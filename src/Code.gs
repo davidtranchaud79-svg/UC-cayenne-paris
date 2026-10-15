@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.10.15.16',
+  version: '2026.10.15.17',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -28,6 +28,8 @@ const UC_APP = {
     webAppUrl: 'https://script.google.com/macros/s/AKfycbx1lvJ1X3P9luSlmibOo3E33mskuBPR7vBPHSlxrmGgbNDsY--T3NZYcMbRN4NY3lx7Vg/exec',
     adminAppUrl: 'https://script.google.com/macros/s/AKfycbx1lvJ1X3P9luSlmibOo3E33mskuBPR7vBPHSlxrmGgbNDsY--T3NZYcMbRN4NY3lx7Vg/exec?page=admin',
     landingPageUrl: 'https://davidtranchaud79-svg.github.io/UC-cayenne-paris/',
+    youthImportSpreadsheetId: '1I3XwVdrc0K7XXkCtvA9E3rzjnhXIBADkA-oXOF9_eTc',
+    youthImportSpreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1I3XwVdrc0K7XXkCtvA9E3rzjnhXIBADkA-oXOF9_eTc/edit',
     statuses: ['Sociétaire', 'Aspirant', 'Compagnon'],
     cayennes: ['Paris', 'Autre'],
     reponses: ['Présent', 'Absent', 'Je ne sais pas encore', 'Absent excusé', 'Disponible pour aider'],
@@ -580,6 +582,114 @@ function getYouthDashboardData(year, token) {
     .sort(function(a,b) { return asDate_(a.Date) - asDate_(b.Date); })
     .map(function(e) { return Object.assign(formatEventForClient_(e), {agenda:agendaAdminInfo_(e), report:reportAdminInfo_(e)}); });
   return data;
+}
+
+
+function getYouthEventImportInfo(token) {
+  assertYouthAdmin_(token);
+  return {
+    url: UC_APP.defaults.youthImportSpreadsheetUrl,
+    spreadsheetId: UC_APP.defaults.youthImportSpreadsheetId,
+    sheetName: 'IMPORT_JEUNES',
+    note: 'Les lignes cochées sont importées dans le calendrier principal sans donner accès au classeur maître.'
+  };
+}
+
+function getYouthImportSheet_() {
+  const ss = SpreadsheetApp.openById(UC_APP.defaults.youthImportSpreadsheetId);
+  const sheet = ss.getSheetByName('IMPORT_JEUNES');
+  if (!sheet) throw new Error('Onglet IMPORT_JEUNES introuvable dans le fichier du Bureau des jeunes.');
+  return sheet;
+}
+
+function importYouthEventsFromSheet(token) {
+  assertYouthAdmin_(token);
+  setupSystemIfMissing_();
+  const result = accessLocked_(function() {
+    const importSheet = getYouthImportSheet_();
+    const firstRow = 7, width = eventImportHeaders_().length, lastRow = importSheet.getLastRow();
+    if (lastRow < firstRow) return {ok:true, imported:0, skipped:0, errors:0, eventIds:[]};
+
+    const values = importSheet.getRange(firstRow,1,lastRow-firstRow+1,width).getValues();
+    const templates = getEventTemplates_();
+    const allowedTypes = getOptionList_('H', UC_APP.defaults.eventTypes).filter(function(type){ return clean_(type) !== 'Réunion compagnon'; });
+    const allowedCayennes = getOptionList_('E', UC_APP.defaults.cayennes);
+    const calendarSheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier);
+    const table = getTableData_(UC_APP.sheets.calendrier);
+    const headers = calendarSheet.getRange(table.headerRow,1,1,calendarSheet.getLastColumn()).getValues()[0].map(clean_);
+    const existing = calendarRows_();
+    const usedIds = new Set(existing.map(function(e){ return clean_(e.ID_Evenement); }).filter(Boolean));
+    const duplicateKeys = new Map();
+    existing.forEach(function(e){ duplicateKeys.set(formatDate_(e.Date)+'|'+slug_(e.Titre), clean_(e.ID_Evenement)); });
+
+    const records = [], importedIds = [];
+    let imported = 0, skipped = 0, errors = 0;
+    const now = new Date();
+
+    values.forEach(function(row, index) {
+      if (!eventImportSelected_(row[0])) return;
+      const line = firstRow + index;
+      try {
+        if (clean_(row[20])) {
+          row[0] = false; row[18] = 'OK'; row[19] = 'Déjà importé : ' + clean_(row[20]); skipped++; return;
+        }
+
+        const templateRef = clean_(row[1]);
+        const template = templates.filter(function(t){ return t.id === templateRef || t.name === templateRef; })[0] || {};
+        if (templateRef && !template.id) throw new Error('Modèle inconnu.');
+
+        const date = eventImportDate_(row[2]);
+        const title = clean_(row[3] || template.defaultTitle || template.name);
+        const type = clean_(row[4] || template.type || 'Autre');
+        const start = eventImportTime_(row[5]) || clean_(template.start);
+        const end = eventImportTime_(row[6]) || clean_(template.end);
+        const place = clean_(row[7] || template.place || 'Cayenne de Paris');
+        const cayenne = clean_(row[8] || template.cayenne || 'Paris');
+        const category = clean_(row[9] || template.category || 'Événement');
+        const modalites = clean_(row[10] || template.modalites || 'Standard');
+        const comment = clean_(row[16] || template.comment);
+
+        if (!date) throw new Error('Date obligatoire au format AAAA-MM-JJ.');
+        if (!title) throw new Error('Titre obligatoire, directement ou via un modèle.');
+        if (type === 'Réunion compagnon') throw new Error('Le Bureau des jeunes ne peut pas importer une Réunion compagnon.');
+        if (!allowedTypes.includes(type)) throw new Error('Type d’événement invalide pour le Bureau des jeunes.');
+        if (!allowedCayennes.includes(cayenne)) throw new Error('Cayenne invalide.');
+        if (!['Standard','Repas et aide','Réception'].includes(modalites)) throw new Error('Modalités invalides.');
+        if (title.length > 200 || comment.length > 2000 || place.length > 300) throw new Error('Texte trop long.');
+        [start,end].forEach(function(time){ if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Horaire invalide.'); });
+
+        const duplicateKey = formatDate_(date)+'|'+slug_(title);
+        if (duplicateKeys.has(duplicateKey)) {
+          const existingId = duplicateKeys.get(duplicateKey);
+          row[0] = false; row[18] = 'OK'; row[19] = 'Déjà présent dans CALENDRIER'; row[20] = existingId; skipped++; return;
+        }
+
+        const event = {
+          ID_Evenement:eventImportId_(date,title,usedIds), Annee:date.getFullYear(), Date:date, Titre:title, Type_Evenement:type,
+          Heure_Debut:start, Heure_Fin:end, Lieu:place, Cayenne:cayenne, Categorie_CR:category, Actif:'Oui',
+          Commentaire:comment, Modalites:modalites, Public_Statuts:'Sociétaire ; Aspirant ; Compagnon', Public_Cayennes:'',
+          Version:Utilities.getUuid(), Modifie_Le:now
+        };
+        const recordRow = headers.map(function(header){ return Object.prototype.hasOwnProperty.call(event,header) ? sheetLiteral_(event[header]) : ''; });
+        records.push(recordRow); importedIds.push(event.ID_Evenement); duplicateKeys.set(duplicateKey,event.ID_Evenement);
+        row[0] = false; row[18] = 'OK'; row[19] = 'Importé : ' + title; row[20] = event.ID_Evenement; row[21] = now; imported++;
+      } catch (error) {
+        row[18] = 'ERREUR'; row[19] = 'Ligne ' + line + ' · ' + clean_(error.message || error).slice(0, 240); errors++;
+      }
+    });
+
+    if (records.length) {
+      const start = calendarSheet.getLastRow()+1;
+      calendarSheet.getRange(start,1,records.length,headers.length).setValues(records);
+      calendarSheet.getRange(start,3,records.length,1).setNumberFormat('yyyy-mm-dd');
+    }
+    importSheet.getRange(firstRow,1,values.length,width).setValues(values);
+    return {ok:errors===0, imported:imported, skipped:skipped, errors:errors, eventIds:importedIds};
+  });
+
+  if (result.eventIds.length) queueFollowup_(result.eventIds);
+  result.message = result.imported + ' événement(s) importé(s), ' + result.skipped + ' ignoré(s), ' + result.errors + ' erreur(s).';
+  return result;
 }
 
 function createYouthEvent(payload, token) {
