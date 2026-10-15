@@ -64,6 +64,15 @@
         </section>
 
         <section id="youthEventsScreen" class="screen" data-youth-panel="events" aria-label="Gestion des événements" hidden>
+          <div class="panel panel-pad" style="margin-bottom:22px">
+            <div class="section-head"><div><h2>Import massif d’événements</h2><p>Le tableau d’import est séparé du classeur principal. Vous pouvez préparer plusieurs événements sans accéder aux membres, réponses, pointages ou paramètres du Bureau.</p></div></div>
+            <div class="button-row">
+              <a id="youthImportLink" class="btn secondary" href="https://docs.google.com/spreadsheets/d/1I3XwVdrc0K7XXkCtvA9E3rzjnhXIBADkA-oXOF9_eTc/edit" target="_blank" rel="noopener">Ouvrir le tableau d’import</a>
+              <button id="youthImportEvents" class="btn" type="button">Importer les lignes cochées</button>
+            </div>
+            <p class="small" style="margin-top:12px">Cochez « À importer » dans le tableau, puis revenez ici. Les Réunions compagnon sont bloquées automatiquement et les doublons date + titre sont ignorés.</p>
+            <div id="youthImportNotice" class="notice" role="status" hidden style="margin-top:14px"></div>
+          </div>
           <div class="event-management">
             <form id="youthEventForm" class="panel panel-pad event-form">
               <div class="event-form-head"><span class="tag wine" style="margin-bottom:12px"><span data-icon="plus"></span>Calendrier</span><h2 id="youthEventFormTitle">Un événement, une date.</h2><p>Les événements créés ici sont visibles par les Sociétaires, Aspirants et Compagnons. Les Réunions compagnon restent réservées au bureau principal.</p></div>
@@ -257,6 +266,19 @@ function isoDate(value){const p=String(value||'').split('/');return p.length===3
 function clearYouthEventForm(){youth.eventEditing=null;document.getElementById('youthEventForm').reset();document.getElementById('youthEventId').value='';document.getElementById('youthEventVersion').value='';document.getElementById('youthEventFormTitle').textContent='Un événement, une date.';renderEventSelectors();document.getElementById('youthEventPlace').value='Cayenne de Paris';if(document.getElementById('youthEventType').options.length)document.getElementById('youthEventType').value='Réunion des jeunes';document.getElementById('cancelYouthEvent').hidden=true;document.getElementById('saveYouthEvent').innerHTML=Ui.icon('plus')+' Ajouter au calendrier';}
 function openYouthEventForm(event){clearYouthEventForm();setScreen('events');if(event){youth.eventEditing=event;document.getElementById('youthEventFormTitle').textContent='Modifier '+event.title;document.getElementById('cancelYouthEvent').hidden=false;document.getElementById('saveYouthEvent').textContent='Enregistrer les modifications';document.getElementById('youthEventId').value=event.id;document.getElementById('youthEventVersion').value=event.version||'';document.getElementById('youthEventDate').value=isoDate(event.date);document.getElementById('youthEventTitle').value=event.title||'';document.getElementById('youthEventType').value=event.type||'';document.getElementById('youthEventCayenne').value=event.cayenne||'Paris';document.getElementById('youthEventStart').value=event.start||'';document.getElementById('youthEventEnd').value=event.end||'';document.getElementById('youthEventPlace').value=event.place||'';document.getElementById('youthEventModalites').value=event.modalites||'Standard';document.getElementById('youthEventComment').value=event.comment||'';}document.getElementById('youthEventForm').hidden=false;document.getElementById('youthEventForm').scrollIntoView({block:'start'});}
 function eventPayload(){return {id:document.getElementById('youthEventId').value,version:document.getElementById('youthEventVersion').value,date:document.getElementById('youthEventDate').value,title:document.getElementById('youthEventTitle').value,type:document.getElementById('youthEventType').value,cayenne:document.getElementById('youthEventCayenne').value,start:document.getElementById('youthEventStart').value,end:document.getElementById('youthEventEnd').value,place:document.getElementById('youthEventPlace').value,modalites:document.getElementById('youthEventModalites').value,comment:document.getElementById('youthEventComment').value};}
+function importYouthEvents(){
+  if(!youth.token||document.getElementById('youthImportEvents').disabled)return;
+  const epoch=youth.epoch;Ui.loading('youthImportEvents',true,'Import…');
+  google.script.run.withSuccessHandler(result=>{
+    if(epoch!==youth.epoch)return;Ui.loading('youthImportEvents',false);
+    Ui.notice('youthImportNotice',result.message,result.errors?'error':'ok');
+    if(result.imported)loadYouthDashboard();
+  }).withFailureHandler(error=>{
+    if(epoch!==youth.epoch)return;Ui.loading('youthImportEvents',false);
+    Ui.notice('youthImportNotice',error.message||error);
+    if(String(error.message||error).includes('SESSION_EXPIRED'))lockYouth(false);
+  }).importYouthEventsFromSheet(youth.token);
+}
 function fileToPayload(file,done){if(!file)return;if(file.type!=='application/pdf'||!/\.pdf$/i.test(file.name)){notice('Choisissez un fichier PDF.');return;}if(file.size>4*1024*1024){notice('Le PDF est trop volumineux. Limite : 4 Mo.');return;}const reader=new FileReader();reader.onload=()=>done({name:file.name,mimeType:file.type,data:String(reader.result||'')});reader.onerror=()=>notice('Impossible de lire ce PDF.');reader.readAsDataURL(file);}
 function openPdfPayload(payload,popup){try{const raw=atob(payload.data),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));if(popup){popup.location.href=url;popup.document.title=payload.name||'PDF';}else window.open(url,'_blank');setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(_){if(popup)popup.close();notice('Impossible d’ouvrir ce PDF.');}}
 function uploadYouthDocument(kind,eventId,file){if(youth.docBusy)return;fileToPayload(file,payload=>{youth.docBusy=true;const epoch=youth.epoch;const success=result=>{if(epoch!==youth.epoch)return;youth.docBusy=false;notice(result.message,'ok');loadYouthDashboard();};const failure=error=>{if(epoch!==youth.epoch)return;youth.docBusy=false;notice(error.message||error);};const run=google.script.run.withSuccessHandler(success).withFailureHandler(failure);if(kind==='agenda')run.saveYouthAgendaPdf(eventId,payload,youth.token);else run.saveYouthReportPdf(eventId,payload,youth.token);});}
@@ -271,6 +293,7 @@ document.querySelectorAll('[data-youth-screen]').forEach(button=>button.addEvent
 document.getElementById('youthSearch').addEventListener('input',renderMembers);
 document.getElementById('youthStatus').addEventListener('change',renderMembers);
 document.getElementById('youthEventSearch').addEventListener('input',renderEvents);
+document.getElementById('youthImportEvents').addEventListener('click',importYouthEvents);
 document.getElementById('youthAttendanceEvent').addEventListener('change',clearYouthAttendance);
 document.getElementById('loadYouthAttendance').addEventListener('click',loadYouthAttendance);
 document.getElementById('saveYouthAttendance').addEventListener('click',saveYouthAttendance);
