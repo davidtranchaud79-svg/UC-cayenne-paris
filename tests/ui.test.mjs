@@ -476,6 +476,40 @@ test('Youth Bureau has overview, editable non-companion events, documents and yo
  a.dom.window.close();
 });
 
+test('Bureau des jeunes: new-event action clears a previously selected event instead of editing it',()=>{
+  const a=app('Youth.html');
+  a.fill('youthPin','JEUNES-TEST');a.submit('youthAccessForm');a.flush();
+  a.doc.querySelector('[data-youth-screen="events"]').click();
+
+  a.doc.querySelector('[data-youth-event-edit="evt-1"]').click();
+  assert.equal(a.doc.getElementById('youthEventId').value,'evt-1');
+  assert.equal(a.doc.getElementById('youthEventTitle').value,'Journées du patrimoine');
+  assert.match(a.doc.getElementById('youthEventMode').textContent,/Modification/);
+  assert.match(a.doc.getElementById('saveYouthEvent').textContent,/modifications/);
+
+  a.doc.getElementById('youthCreateNewEvent').click();
+  assert.equal(a.doc.getElementById('youthEventId').value,'');
+  assert.equal(a.doc.getElementById('youthEventVersion').value,'');
+  assert.equal(a.doc.getElementById('youthEventDate').value,'');
+  assert.equal(a.doc.getElementById('youthEventTitle').value,'');
+  assert.equal(a.doc.getElementById('youthEventComment').value,'');
+  assert.equal(a.doc.getElementById('cancelYouthEvent').hidden,true);
+  assert.match(a.doc.getElementById('youthEventMode').textContent,/Création/);
+  assert.match(a.doc.getElementById('saveYouthEvent').textContent,/Ajouter au calendrier/);
+
+  a.fill('youthEventDate','2026-11-02','change');
+  a.fill('youthEventTitle','Fruits et légumes de saison');
+  a.submit('youthEventForm');a.flush();
+  assert.ok(a.calls.find(c=>c.method==='createYouthEvent'&&c.args[0].title==='Fruits et légumes de saison'&&c.args[0].id===''));
+  assert.equal(a.calls.filter(c=>c.method==='updateYouthEvent').length,0);
+
+  a.doc.querySelector('[data-youth-event-edit="evt-1"]').click();
+  a.doc.querySelector('[data-youth-screen="attendance"]').click();
+  a.doc.querySelector('[data-youth-screen="events"]').click();
+  assert.equal(a.doc.getElementById('youthEventId').value,'','navigating back to Événements opens creation, not previous editing');
+  a.dom.window.close();
+});
+
 test('future events can be selected for read-only attendance preview',()=>{
  const a=app('Admin.html',{getDashboardData:()=>({...structuredClone(dashboard),events:[{...events[1],date:'21/11/2099'}]}),getAttendance:()=>({eventId:'evt-2',canEdit:false,members:[{key:'m',name:'Camille',announced:'Présent',actual:'Non pointé',version:''}]})});
  a.login();a.fill('attendanceEvent','evt-2','change');assert.equal(a.doc.getElementById('attendanceEvent').value,'evt-2');
