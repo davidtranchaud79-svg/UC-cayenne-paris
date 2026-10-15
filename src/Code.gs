@@ -251,7 +251,6 @@ function createEventFromTemplate(payload, adminPin) {
   const sheet = getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier);
   queueFollowup_([event.ID_Evenement]);
   writeRecord_(UC_APP.sheets.calendrier, sheet.getLastRow() + 1, event);
-  sheet.getRange(sheet.getLastRow(), 3).setNumberFormat('yyyy-mm-dd');
 
   return {
     ok: true,
@@ -728,7 +727,6 @@ function createYouthEvent(payload, token) {
     if (event.Commentaire.length > 2000 || event.Lieu.length > 300) throw new Error('Texte trop long.');
     const sheet=getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier);
     queueFollowup_([event.ID_Evenement]);writeRecord_(UC_APP.sheets.calendrier,sheet.getLastRow()+1,event);
-    sheet.getRange(sheet.getLastRow(),3).setNumberFormat('yyyy-mm-dd');
     return {ok:true,event:formatEventForClient_(event),message:'Événement créé : '+event.Titre};
   });
 }
