@@ -1188,7 +1188,7 @@ function youthAttendanceEventAllowed_(event) {
   });
   return youthMembers.some(function(member) { return eventForMember_(event, member); });
 }
-function attendanceRoster_(eventId, eventAllowed) {
+function attendanceRoster_(eventId, eventAllowed, memberAllowed) {
   setupSystemIfMissing_();
   eventId = clean_(eventId);
   const event = calendarRows_().find(function(e) { return e.ID_Evenement === eventId && isActive_(e.Actif); });
@@ -1201,7 +1201,7 @@ function attendanceRoster_(eventId, eventAllowed) {
     if (!answers[r.Cle_Personne] || asDate_(r.Horodatage) >= asDate_(answers[r.Cle_Personne].Horodatage)) answers[r.Cle_Personne] = r;
   });
   const members = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) {
-    return m.Nom && m.Prenom && isActive_(m.Actif) && eventForMember_(event, m);
+    return m.Nom && m.Prenom && isActive_(m.Actif) && eventForMember_(event, m) && (!memberAllowed || memberAllowed(m));
   }).map(function(m) {
     const key = memberKey_(m);
     const row = latest[eventId + '|' + key];
@@ -1223,7 +1223,7 @@ function getAttendance(eventId, token) {
 }
 function getYouthAttendance(eventId, token) {
   assertYouthAdmin_(token);
-  return attendanceRoster_(eventId, youthAttendanceEventAllowed_);
+  return attendanceRoster_(eventId, youthAttendanceEventAllowed_, youthMemberAllowed_);
 }
 function saveAttendanceRows_(payload, roster) {
   if (!roster.canEdit) throw new Error('Le pointage ouvre le jour de l’événement.');
@@ -1254,7 +1254,7 @@ function saveAttendance(payload, token) {
 function saveYouthAttendance(payload, token) {
   assertYouthAdmin_(token);
   if (!payload || !Array.isArray(payload.changes) || !payload.changes.length) throw new Error('Aucun pointage à enregistrer.');
-  return accessLocked_(function() { return saveAttendanceRows_(payload, attendanceRoster_(payload.eventId, youthAttendanceEventAllowed_)); });
+  return accessLocked_(function() { return saveAttendanceRows_(payload, attendanceRoster_(payload.eventId, youthAttendanceEventAllowed_, youthMemberAllowed_)); });
 }
 
 function attendanceSummary_(events, members) {
@@ -1267,29 +1267,45 @@ function attendanceSummary_(events, members) {
     if (!monthly[month]) monthly[month] = empty();
     members.filter(function(m) { return eventForMember_(event, m); }).forEach(function(m) {
       const key = memberKey_(m);
-      if (!byMember[key]) byMember[key] = Object.assign({name: m.Prenom + ' ' + m.Nom}, empty());
+      if (!byMember[key]) byMember[key] = Object.assign({name: m.Prenom + ' ' + m.Nom, statut: clean_(m.Statut)}, empty());
       const row = latest[event.ID_Evenement + '|' + key];
       const field = ({'Présent': 'present', 'Absent': 'absent', 'Excusé': 'excused'})[row && row.Presence_Reelle] || 'unmarked';
       total[field]++; monthly[month][field]++; byMember[key][field]++;
     });
   });
-  return {total: total, monthly: Object.keys(monthly).map(function(month) { return Object.assign({month: Number(month)}, monthly[month]); }), members: Object.keys(byMember).map(function(key) { return Object.assign({key: key}, byMember[key]); })};
+  return {total: total, monthly: Object.keys(monthly).map(function(month) { return Object.assign({month: Number(month)}, monthly[month]); }), members: Object.keys(byMember).map(function(key) { return Object.assign({key: key}, byMember[key]); }).sort(attendanceMemberCompare_)};
 }
 
-function getEventConfidentialDetails(eventId, adminPin) {
-  assertAdmin_(adminPin);
+function eventResponseDetails_(eventId, memberAllowed, includePrivate) {
   eventId = clean_(eventId);
   if (!calendarRows_().some(function(e) { return e.ID_Evenement === eventId; })) throw new Error('Événement introuvable.');
-  return buildEventRows_(eventId).map(function(row) {
-    return {
+  return buildEventRows_(eventId).filter(function(row) {
+    return !memberAllowed || memberAllowed(row);
+  }).map(function(row) {
+    const item = {
       name: clean_(row.prenom + ' ' + row.nom),
       statut: clean_(row.statut),
-      response: clean_(row.reponse),
-      causes: clean_(row.causes),
-      precision: clean_(row.precision),
-      comment: clean_(row.commentaire)
+      response: clean_(row.reponse)
     };
+    if (includePrivate) {
+      item.causes = clean_(row.causes);
+      item.precision = clean_(row.precision);
+      item.comment = clean_(row.commentaire);
+    }
+    return item;
   });
+}
+function getEventConfidentialDetails(eventId, adminPin) {
+  assertAdmin_(adminPin);
+  return eventResponseDetails_(eventId, null, true);
+}
+function getYouthEventResponseDetails(eventId, token) {
+  assertYouthAdmin_(token);
+  const event = calendarRows_().find(function(e) { return e.ID_Evenement === clean_(eventId) && isActive_(e.Actif); });
+  if (!event || !youthAttendanceEventAllowed_(event)) throw new Error('Événement inaccessible dans cet espace.');
+  return eventResponseDetails_(eventId, function(row) {
+    return ['Aspirant', 'Sociétaire'].includes(clean_(row.statut));
+  }, false);
 }
 
 function buildEventRows_(eventId) {
