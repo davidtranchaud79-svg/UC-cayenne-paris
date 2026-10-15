@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.10.14.12',
+  version: '2026.10.15.13',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -1177,56 +1177,84 @@ function attendanceLatest_() {
   return latest;
 }
 
-function getAttendance(eventId, token) {
-  assertAdmin_(token);
+function attendanceMemberCompare_(a, b) {
+  return memberRankOrder_(a.statut) - memberRankOrder_(b.statut) ||
+    memberSortText_(a.name).localeCompare(memberSortText_(b.name), 'fr');
+}
+function youthAttendanceEventAllowed_(event) {
+  if (!event || clean_(event.Type_Evenement) === 'Réunion compagnon') return false;
+  const youthMembers = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(member) {
+    return member.Nom && member.Prenom && isActive_(member.Actif) && youthMemberAllowed_(member);
+  });
+  return youthMembers.some(function(member) { return eventForMember_(event, member); });
+}
+function attendanceRoster_(eventId, eventAllowed) {
   setupSystemIfMissing_();
+  eventId = clean_(eventId);
   const event = calendarRows_().find(function(e) { return e.ID_Evenement === eventId && isActive_(e.Actif); });
   if (!event) throw new Error('Événement introuvable ou inactif.');
+  if (eventAllowed && !eventAllowed(event)) throw new Error('Événement inaccessible dans cet espace.');
   const canEdit = formatDate_(event.Date) <= formatDate_(new Date());
   const latest = attendanceLatest_();
   const answers = {};
   responseRows_().filter(function(r) { return r.ID_Evenement === eventId; }).forEach(function(r) {
     if (!answers[r.Cle_Personne] || asDate_(r.Horodatage) >= asDate_(answers[r.Cle_Personne].Horodatage)) answers[r.Cle_Personne] = r;
   });
-  const members = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) { return m.Nom && m.Prenom && isActive_(m.Actif) && eventForMember_(event, m); }).map(function(m) {
+  const members = getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m) {
+    return m.Nom && m.Prenom && isActive_(m.Actif) && eventForMember_(event, m);
+  }).map(function(m) {
     const key = memberKey_(m);
     const row = latest[eventId + '|' + key];
-    return {key: key, name: m.Prenom + ' ' + m.Nom, announced: answers[key] ? answers[key].Reponse : 'Sans réponse', actual: row ? row.Presence_Reelle : 'Non pointé', version: row ? row.ID_Pointage : ''};
-  });
+    return {key:key, name:clean_(m.Prenom + ' ' + m.Nom), statut:clean_(m.Statut), cayenne:clean_(m.Cayenne),
+      announced:answers[key] ? answers[key].Reponse : 'Sans réponse', actual:row ? row.Presence_Reelle : 'Non pointé', version:row ? row.ID_Pointage : ''};
+  }).sort(attendanceMemberCompare_);
   const groups = {'Présent':[], 'Absent':[], 'Excusé':[], 'Non pointé':[]};
-  members.forEach(function(m) { (groups[m.actual] || groups['Non pointé']).push(m.name); });
-  Object.keys(groups).forEach(function(k) { groups[k].sort(function(a,b){ return a.localeCompare(b,'fr'); }); });
+  members.forEach(function(m) { (groups[m.actual] || groups['Non pointé']).push({name:m.name,statut:m.statut,key:m.key}); });
+  Object.keys(groups).forEach(function(k) { groups[k].sort(attendanceMemberCompare_); });
+  function names(key) { return groups[key].map(function(m) { return m.name; }); }
   return {eventId:eventId, eventTitle:clean_(event.Titre), eventDate:formatDate_(event.Date), canEdit:canEdit, members:members,
     counts:{present:groups['Présent'].length,absent:groups['Absent'].length,excused:groups['Excusé'].length,unmarked:groups['Non pointé'].length},
-    groups:{present:groups['Présent'],absent:groups['Absent'],excused:groups['Excusé'],unmarked:groups['Non pointé']}};
+    groups:{present:names('Présent'),absent:names('Absent'),excused:names('Excusé'),unmarked:names('Non pointé')},
+    groupMembers:{present:groups['Présent'],absent:groups['Absent'],excused:groups['Excusé'],unmarked:groups['Non pointé']}};
 }
-
+function getAttendance(eventId, token) {
+  assertAdmin_(token);
+  return attendanceRoster_(eventId);
+}
+function getYouthAttendance(eventId, token) {
+  assertYouthAdmin_(token);
+  return attendanceRoster_(eventId, youthAttendanceEventAllowed_);
+}
+function saveAttendanceRows_(payload, roster) {
+  if (!roster.canEdit) throw new Error('Le pointage ouvre le jour de l’événement.');
+  const seen = new Set();
+  const rows = payload.changes.map(function(change) {
+    const member = roster.members.find(function(m) { return m.key === change.key; });
+    if (!member || seen.has(change.key)) throw new Error('Membre introuvable ou en double.');
+    seen.add(change.key);
+    if (!['Présent', 'Absent', 'Excusé', 'Non pointé'].includes(change.actual)) throw new Error('Pointage invalide.');
+    if (member.actual === change.actual) return null;
+    if (member.version !== change.version) throw new Error('Pointage modifié entre-temps. Rechargez la liste avant de corriger.');
+    return [Utilities.getUuid(), new Date(), payload.eventId, change.key, change.actual];
+  }).filter(Boolean);
+  if (rows.length) {
+    queueFollowup_([payload.eventId]);
+    const sheet = ensureSheet_(getSpreadsheet_(), UC_APP.sheets.pointages);
+    if (!sheet.getLastRow()) sheet.getRange(1, 1, 1, UC_APP.headers.pointages.length).setValues([UC_APP.headers.pointages]);
+    getTableData_(UC_APP.sheets.pointages);
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 5).setValues(rows.map(function(row) { return row.map(sheetLiteral_); }));
+  }
+  return {ok:true,warning:''};
+}
 function saveAttendance(payload, token) {
   assertAdmin_(token);
   if (!payload || !Array.isArray(payload.changes) || !payload.changes.length) throw new Error('Aucun pointage à enregistrer.');
-  return accessLocked_(function() {
-    const roster = getAttendance(payload.eventId, token);
-    if (!roster.canEdit) throw new Error('Le pointage ouvre le jour de l’événement.');
-    const seen = new Set();
-    const rows = payload.changes.map(function(change) {
-      const member = roster.members.find(function(m) { return m.key === change.key; });
-      if (!member || seen.has(change.key)) throw new Error('Membre introuvable ou en double.');
-      seen.add(change.key);
-      if (!['Présent', 'Absent', 'Excusé', 'Non pointé'].includes(change.actual)) throw new Error('Pointage invalide.');
-      // A retry of an already saved value is harmless; competing corrections are not.
-      if (member.actual === change.actual) return null;
-      if (member.version !== change.version) throw new Error('Pointage modifié par le bureau. Rechargez la liste avant de corriger.');
-      return [Utilities.getUuid(), new Date(), payload.eventId, change.key, change.actual];
-    }).filter(Boolean);
-    if (rows.length) {
-      queueFollowup_([payload.eventId]);
-      const sheet = ensureSheet_(getSpreadsheet_(), UC_APP.sheets.pointages);
-      if (!sheet.getLastRow()) sheet.getRange(1, 1, 1, UC_APP.headers.pointages.length).setValues([UC_APP.headers.pointages]);
-      getTableData_(UC_APP.sheets.pointages);
-      sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 5).setValues(rows.map(function(row) { return row.map(sheetLiteral_); }));
-    }
-    return {ok: true, warning: ''};
-  });
+  return accessLocked_(function() { return saveAttendanceRows_(payload, attendanceRoster_(payload.eventId)); });
+}
+function saveYouthAttendance(payload, token) {
+  assertYouthAdmin_(token);
+  if (!payload || !Array.isArray(payload.changes) || !payload.changes.length) throw new Error('Aucun pointage à enregistrer.');
+  return accessLocked_(function() { return saveAttendanceRows_(payload, attendanceRoster_(payload.eventId, youthAttendanceEventAllowed_)); });
 }
 
 function attendanceSummary_(events, members) {
@@ -1255,6 +1283,7 @@ function getEventConfidentialDetails(eventId, adminPin) {
   return buildEventRows_(eventId).map(function(row) {
     return {
       name: clean_(row.prenom + ' ' + row.nom),
+      statut: clean_(row.statut),
       response: clean_(row.reponse),
       causes: clean_(row.causes),
       precision: clean_(row.precision),
@@ -1301,7 +1330,10 @@ function buildEventRows_(eventId) {
 
   const order = { 'Présent': 1, 'Je ne sais pas encore': 2, 'Absent excusé': 3, 'Absent': 4, 'Sans réponse': 5 };
   return rows.sort(function(a, b) {
-    return (order[a.reponse] || 9) - (order[b.reponse] || 9) || String(a.nom).localeCompare(String(b.nom));
+    return (order[a.reponse] || 9) - (order[b.reponse] || 9) ||
+      memberRankOrder_(a.statut) - memberRankOrder_(b.statut) ||
+      memberSortText_(a.nom).localeCompare(memberSortText_(b.nom), 'fr') ||
+      memberSortText_(a.prenom).localeCompare(memberSortText_(b.prenom), 'fr');
   });
 }
 
