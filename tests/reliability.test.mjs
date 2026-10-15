@@ -254,6 +254,27 @@ test('Youth Bureau overview and events contain only Sociétaires/Aspirants and e
   assert.throws(()=>f.c.getYouthDashboardData(2026,f.bureau),/SESSION_EXPIRED/);
 });
 
+test('Youth Bureau pointage is limited to Aspirants and Sociétaires and keeps status order',()=>{
+  const f=fixture();
+  f.members.grid.push(['Zed','Zoé','Sociétaire','Paris','zoe@example.test','','Oui','']);
+  f.calendar.grid.push(['EVT-YOUTH-POINTAGE',2020,new Date('2020-10-07T12:00:00Z'),'Événement jeunes','Réunion des jeunes','19:00','21:00','Cayenne de Paris','Paris','Réunion','Oui','','Standard']);
+  f.appendResponse({ID_Evenement:'EVT-YOUTH-POINTAGE',Cle_Personne:'alex@example.test',Nom:'Autre',Prenom:'Alex',Email:'alex@example.test',Reponse:'Présent'});
+  f.appendResponse({ID_Evenement:'EVT-YOUTH-POINTAGE',Cle_Personne:'zoe@example.test',Nom:'Zed',Prenom:'Zoé',Email:'zoe@example.test',Reponse:'Présent'});
+  f.appendResponse({ID_Evenement:'EVT-YOUTH-POINTAGE',Cle_Personne:'camille@example.test',Nom:'Exemple',Prenom:'Camille',Email:'camille@example.test',Reponse:'Présent'});
+  f.c.ensureAuditSchema_();
+  const roster=f.c.getYouthAttendance('EVT-YOUTH-POINTAGE',f.youth);
+  assert.deepEqual(Array.from(roster.members,m=>m.statut),['Aspirant','Sociétaire']);
+  assert.equal(roster.members.some(m=>m.statut==='Compagnon'),false);
+  const details=f.c.getYouthEventResponseDetails('EVT-YOUTH-POINTAGE',f.youth);
+  assert.deepEqual(Array.from(details,m=>m.statut),['Aspirant','Sociétaire']);
+  assert.equal(details.some(m=>m.statut==='Compagnon'),false);
+  const alex=roster.members.find(m=>m.statut==='Aspirant');
+  f.c.saveYouthAttendance({eventId:'EVT-YOUTH-POINTAGE',changes:[{key:alex.key,version:alex.version,actual:'Présent'}]},f.youth);
+  assert.equal(f.c.getYouthAttendance('EVT-YOUTH-POINTAGE',f.youth).members.find(m=>m.key===alex.key).actual,'Présent');
+  const companion=f.c.getRowsAsObjects_('MEMBRES').find(m=>m.Statut==='Compagnon');
+  assert.throws(()=>f.c.saveYouthAttendance({eventId:'EVT-YOUTH-POINTAGE',changes:[{key:f.c.memberKey_(companion),version:'',actual:'Présent'}]},f.youth),/introuvable/);
+});
+
 test('Youth Bureau can create and modify youth events but never companion meetings or event audience',()=>{
   const f=fixture();f.c.ensureAuditSchema_();
   assert.throws(()=>f.c.createYouthEvent({date:'2026-10-07',title:'Interdit',type:'Réunion compagnon',cayenne:'Paris'},f.youth),/ne peut pas créer/);
