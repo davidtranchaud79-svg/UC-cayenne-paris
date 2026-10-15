@@ -16,7 +16,7 @@ const youthDashboard = {year:2026,kpis:{events:3,members:2,presents:2,excused:1,
   {...events[0],presents:2,excused:0,absent:0,noResponse:0,aids:1,missingMembers:[]},
   {...events[1],presents:0,excused:1,absent:0,noResponse:1,aids:0,missingMembers:[{nom:'Autre',prenom:'Alex',statut:'Sociétaire',cayenne:'Paris'}]},
   {...youthMeeting,presents:0,excused:0,absent:0,noResponse:0,aids:0,missingMembers:[]}
-],calendar:[...events.map((e,i)=>({...e,version:'YV'+i,cayenne:'Paris',modalites:'Standard',comment:'',agenda:{eligible:false,available:false},report:{eligible:false,available:false}})),youthMeeting],followUps:[{eventId:'evt-2',title:'Fête de novembre',date:'21/11/2026',noResponse:1,missingMembers:[{nom:'Autre',prenom:'Alex'}]}],members:[],causes:[]};
+],calendar:[...events.map((e,i)=>({...e,version:'YV'+i,cayenne:'Paris',modalites:'Standard',comment:'',agenda:{eligible:false,available:false},report:{eligible:false,available:false}})),youthMeeting],followUps:[{eventId:'evt-2',title:'Fête de novembre',date:'21/11/2026',noResponse:1,missingMembers:[{nom:'Autre',prenom:'Alex'}]}],members:[],causes:[],attendance:{total:{present:1,absent:0,excused:0,unmarked:1},monthly:[],members:[{key:'MEM-ALEX',name:'Alex Autre',statut:'Sociétaire',present:0,absent:0,excused:0,unmarked:1},{key:'MEM-ZOE',name:'Zoé Aardvark',statut:'Aspirant',present:1,absent:0,excused:0,unmarked:0}]}};
 function render(file) {
   return readFileSync(new URL(file,src),'utf8').replace(/<\?!= include\('([A-Za-z]+)'\); \?>/g,(_,name)=>readFileSync(new URL(name+'.html',src),'utf8')).replaceAll('<?= appVersion ?>','2026.09.23.2').replaceAll('<?= publicUrl ?>',publicUrl).replaceAll('<?= adminUrl ?>',publicUrl+'?page=admin').replaceAll('<?= youthUrl ?>',publicUrl+'?page=jeunes');
 }
@@ -56,6 +56,9 @@ function app(file, overrides={}) {
         else if(method==='deleteMember')success({ok:true,deletedResponses:2,message:'Membre supprimé définitivement avec 2 réponse(s) associée(s).'});
         else if(method==='getDashboardData')success(structuredClone(dashboard));
         else if(method==='getYouthDashboardData')success(structuredClone(youthDashboard));
+        else if(method==='getYouthAttendance')success({eventId:args[0],canEdit:true,counts:{present:1,absent:0,excused:0,unmarked:1},groupMembers:{present:[{key:'MEM-ZOE',name:'Zoé Aardvark',statut:'Aspirant'}],absent:[],excused:[],unmarked:[{key:'MEM-ALEX',name:'Alex Autre',statut:'Sociétaire'}]},members:[{key:'MEM-ALEX',name:'Alex Autre',statut:'Sociétaire',announced:'Sans réponse',actual:'Non pointé',version:''},{key:'MEM-ZOE',name:'Zoé Aardvark',statut:'Aspirant',announced:'Présent',actual:'Présent',version:'P1'}]});
+        else if(method==='saveYouthAttendance')success({ok:true,warning:''});
+        else if(method==='getYouthEventResponseDetails')success([{name:'Alex Autre',statut:'Sociétaire',response:'Présent'},{name:'Zoé Aardvark',statut:'Aspirant',response:'Présent'}]);
         else if(method==='createYouthEvent')success({ok:true,event:{id:'evt-new'},message:'Événement créé : Réunion jeunes'});
         else if(method==='updateYouthEvent')success({ok:true,message:'Événement mis à jour.'});
         else if(method==='saveYouthAgendaPdf')success({ok:true,message:'Ordre du jour enregistré.'});
@@ -382,6 +385,26 @@ test('first access requires choosing a personal password before event responses 
  assert.equal(a.doc.getElementById('formContent').hidden,true);
  a.fill('memberNewPassword','MonMotDePasse2026');a.fill('memberNewPasswordConfirm','MonMotDePasse2026');a.submit('memberPasswordForm');a.flush();
  assert.ok(a.calls.find(c=>c.method==='setMemberPassword'));a.dom.window.close();
+});
+
+test('Youth Bureau pointage and event rosters are visible and sorted by status',()=>{
+  const a=app('Youth.html',{});
+  a.fill('youthPin','JEUNES-TEST');a.submit('youthAccessForm');a.flush();
+  a.doc.querySelector('[data-youth-screen="attendance"]').click();
+  assert.equal(a.doc.getElementById('youthAttendanceScreen').hidden,false);
+  a.fill('youthAttendanceEvent','evt-1','change');a.doc.getElementById('loadYouthAttendance').click();a.flush();
+  assert.ok(a.calls.find(c=>c.method==='getYouthAttendance'&&c.args[1]==='YOUTH_SESSION'));
+  const attendanceNames=Array.from(a.doc.querySelectorAll('#youthAttendanceRoster .attendance-row strong')).map(n=>n.textContent);
+  assert.deepEqual(attendanceNames,['Zoé Aardvark','Alex Autre']);
+  const editable=Array.from(a.doc.querySelectorAll('[data-youth-attendance-index]'));assert.equal(editable.length,2);
+  editable[1].value='Absent';a.doc.getElementById('saveYouthAttendance').click();a.flush();
+  assert.ok(a.calls.find(c=>c.method==='saveYouthAttendance'));
+  a.doc.querySelector('[data-youth-screen="events"]').click();
+  a.doc.querySelector('[data-youth-show-details="evt-1"]').click();a.flush();
+  assert.ok(a.calls.find(c=>c.method==='getYouthEventResponseDetails'));
+  const eventNames=Array.from(a.doc.querySelectorAll('[data-youth-event-details="evt-1"] .detail-list li strong')).map(n=>n.textContent);
+  assert.deepEqual(eventNames,['Zoé Aardvark','Alex Autre']);
+  a.dom.window.close();
 });
 
 test('Youth Bureau has overview, editable non-companion events, documents and youth-member management without general settings or access controls',()=>{
