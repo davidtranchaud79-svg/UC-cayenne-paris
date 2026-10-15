@@ -92,10 +92,31 @@ function writeRecord_(sheetName, rowNumber, record) {
   if (rowNumber > sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(), rowNumber - sheet.getMaxRows());
   const range = sheet.getRange(rowNumber, 1, 1, headers.length), values = range.getValues()[0], formulas = range.getFormulas()[0];
   formulas.forEach(function(formula, i) { if (formula) values[i] = formula; });
+
+  // Google Sheets time cells have an 1899/1900 anchor date. With the Paris
+  // historical UTC offset, a time typed as 19:00 can round-trip as 19:09
+  // (or be written back as 18:51). Store calendar dates and clock times as
+  // ISO text instead of re-parsing them through spreadsheet time zones.
+  const calendar = sheetName === UC_APP.sheets.calendrier;
   Object.keys(record).forEach(function(key) {
     const column = headers.indexOf(key); if (column < 0) throw new Error('Colonne manquante : ' + key);
-    values[column] = sheetLiteral_(record[key]);
+    let value = record[key];
+    if (calendar && key === 'Date' && value instanceof Date) value = formatDate_(value);
+    if (calendar && (key === 'Heure_Debut' || key === 'Heure_Fin')) value = formatEventTime_(value);
+    values[column] = sheetLiteral_(value);
   });
+  if (calendar) {
+    if (Object.prototype.hasOwnProperty.call(record, 'Date')) {
+      const column = headers.indexOf('Date') + 1;
+      sheet.getRange(rowNumber, column).setNumberFormat('@');
+    }
+    ['Heure_Debut','Heure_Fin'].forEach(function(key) {
+      if (Object.prototype.hasOwnProperty.call(record, key)) {
+        const column = headers.indexOf(key) + 1;
+        sheet.getRange(rowNumber, column).setNumberFormat('@');
+      }
+    });
+  }
   range.setValues([values]);
 }
 
