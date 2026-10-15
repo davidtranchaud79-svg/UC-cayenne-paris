@@ -312,3 +312,22 @@ test('Youth Bureau can attach agenda and report PDFs only to meetings',()=>{
   assert.equal(f.c.deleteYouthAgendaPdf(id,f.youth).deleted,true);
   assert.equal(f.c.deleteYouthReportPdf(id,f.youth).deleted,true);
 });
+
+
+test('mass event import applies templates, audience and duplicate protection without sending mail',()=>{
+  const f=fixture();
+  const headers=f.c.eventImportHeaders_();
+  const importSheet=f.makeSheet('IMPORT_EVENEMENTS',[
+    ['IMPORT MASSIF DES ÉVÉNEMENTS'],[],[],[],[],headers,
+    [true,'Réunion des jeunes — 19 h à confirmer','2026-10-08','Réunion importée','','','','','','','',true,true,true,false,false,'Import test','Oui','','','','']
+  ]);
+  const first=f.c.importEventsFromSheet();
+  assert.equal(first.imported,1);assert.equal(first.errors,0);assert.equal(f.sent.length,0);
+  const created=f.c.calendarRows_().find(e=>e.Titre==='Réunion importée');
+  assert.ok(created);assert.equal(f.c.formatEventTime_(created.Heure_Debut),'19:00');assert.equal(created.Type_Evenement,'Réunion des jeunes');
+  assert.equal(created.Public_Statuts,'Sociétaire ; Aspirant ; Compagnon');assert.equal(created.Public_Cayennes,'');
+  importSheet.grid[6][0]=true;importSheet.grid[6][20]='';
+  const retry=f.c.importEventsFromSheet();
+  assert.equal(retry.imported,0);assert.equal(retry.skipped,1);assert.equal(f.c.calendarRows_().filter(e=>e.Titre==='Réunion importée').length,1);
+  assert.equal(f.sent.length,0);
+});

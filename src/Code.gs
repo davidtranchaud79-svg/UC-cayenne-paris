@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.10.15.14',
+  version: '2026.10.15.15',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -11,7 +11,8 @@ const UC_APP = {
     suivi: 'SUIVI_ANNUEL',
     dashboard: 'DASHBOARD',
     modeleCr: 'MODELE_CR_EVENEMENT',
-    eventBase: 'BASE_EVENEMENTS'
+    eventBase: 'BASE_EVENEMENTS',
+    importEvents: 'IMPORT_EVENEMENTS'
   },
   headers: {
     mails: ['ID_Notification', 'Type', 'ID_Evenement', 'ID_Reponse', 'Cle_Personne', 'Destinataire', 'Etat', 'Cree_Le', 'Envoye_Le', 'Detail'],
@@ -94,6 +95,8 @@ function onOpen() {
     .addItem('Installer / réparer le classeur', 'setupSystem_')
     .addItem('Actualiser le dashboard', 'refreshDashboardFromMenu_')
     .addItem('Générer les feuilles événement', 'generateAllEventSheetsForActiveYear_')
+    .addSeparator()
+    .addItem('Importer les événements en masse', 'importEventsFromSheet')
     .addItem('Exporter la feuille active en PDF', 'exportActiveSheetPdf_')
     .addItem('Activer les confirmations et rappels mail', 'activerNotifications_')
     .addItem('Désactiver les mails automatiques', 'desactiverNotifications_')
@@ -131,6 +134,7 @@ function setupSystem_() {
   ensureSheet_(ss, UC_APP.sheets.dashboard);
   ensureSheet_(ss, UC_APP.sheets.modeleCr);
   ensureSheet_(ss, UC_APP.sheets.eventBase);
+  ensureSheet_(ss, UC_APP.sheets.importEvents);
 
   setupParametres_(ss.getSheetByName(UC_APP.sheets.parametres));
   setupTable_(ss.getSheetByName(UC_APP.sheets.membres), UC_APP.headers.membres);
@@ -138,6 +142,7 @@ function setupSystem_() {
   setupTable_(ss.getSheetByName(UC_APP.sheets.reponses), UC_APP.headers.reponses);
   setupTable_(ss.getSheetByName(UC_APP.sheets.eventBase), UC_APP.headers.eventBase);
   seedEventBase_(ss.getSheetByName(UC_APP.sheets.eventBase));
+  setupEventImportSheet_();
   seedCalendar_(ss.getSheetByName(UC_APP.sheets.calendrier));
   setupSuiviSheet_(ss.getSheetByName(UC_APP.sheets.suivi));
   refreshDashboardSheet_();
@@ -252,6 +257,140 @@ function createEventFromTemplate(payload, adminPin) {
     message: 'Événement créé : ' + event.Titre
   };
   });
+}
+
+
+function eventImportHeaders_() {
+  return ['À importer','Modèle (optionnel)','Date','Titre','Type événement','Heure début','Heure fin','Lieu','Cayenne','Catégorie CR','Modalités','Sociétaire','Aspirant','Compagnon','Paris','Autre','Commentaire','Actif','Contrôle','Résultat import','ID créé','Importé le'];
+}
+
+function setupEventImportSheet_() {
+  const ss = getSpreadsheet_(), sheet = ensureSheet_(ss, UC_APP.sheets.importEvents);
+  if (sheet.getLastRow() === 0 || !clean_(sheet.getRange(1, 1).getValue())) {
+    sheet.getRange(1,1).setValue('IMPORT MASSIF DES ÉVÉNEMENTS');
+    sheet.getRange(2,1).setValue('1 ligne = 1 événement. Remplissez vos lignes, cochez « À importer », puis utilisez le menu Présences UC > Importer les événements en masse.');
+    sheet.getRange(3,1).setValue('Le modèle est optionnel : les champs laissés vides reprennent ses valeurs. Les champs saisis manuellement restent prioritaires.');
+    sheet.getRange(4,1).setValue('Public concerné : aucune case cochée = tout le monde, comme dans l’espace Bureau.');
+    sheet.getRange(6,1,1,eventImportHeaders_().length).setValues([eventImportHeaders_()]);
+  }
+  sheet.setFrozenRows(6);
+  try { sheet.setHiddenGridlines(true); } catch (_) {}
+  return sheet;
+}
+
+function eventImportSelected_(value) {
+  if (value === true) return true;
+  const text = clean_(value).toLowerCase();
+  return text === 'oui' || text === 'true' || text === '1' || text === 'x';
+}
+
+function eventImportDate_(value) {
+  if (value instanceof Date && !isNaN(value)) return parseInputDate_(Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd'));
+  return parseInputDate_(clean_(value));
+}
+
+function eventImportTime_(value) {
+  if (value instanceof Date && !isNaN(value)) return formatEventTime_(value);
+  return clean_(value);
+}
+
+function eventImportId_(date, title, used) {
+  const base = 'EVT-' + Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyyMMdd') + '-' + slug_(title).substring(0, 40);
+  let id = base, suffix = 2;
+  while (used.has(id)) id = base + '-' + suffix++;
+  used.add(id);
+  return id;
+}
+
+function importEventsFromSheet() {
+  setupSystemIfMissing_();
+  const result = accessLocked_(function() {
+    const ss = getSpreadsheet_(), importSheet = ss.getSheetByName(UC_APP.sheets.importEvents);
+    if (!importSheet) throw new Error('Onglet IMPORT_EVENEMENTS introuvable.');
+    const firstRow = 7, width = eventImportHeaders_().length, lastRow = importSheet.getLastRow();
+    if (lastRow < firstRow) return {ok:true, imported:0, skipped:0, errors:0, eventIds:[]};
+
+    const values = importSheet.getRange(firstRow,1,lastRow-firstRow+1,width).getValues();
+    const templates = getEventTemplates_(), allowedTypes = getOptionList_('H', UC_APP.defaults.eventTypes), allowedCayennes = getOptionList_('E', UC_APP.defaults.cayennes);
+    const calendarSheet = ss.getSheetByName(UC_APP.sheets.calendrier), table = getTableData_(UC_APP.sheets.calendrier);
+    const headers = calendarSheet.getRange(table.headerRow,1,1,calendarSheet.getLastColumn()).getValues()[0].map(clean_);
+    const existing = calendarRows_(), usedIds = new Set(existing.map(function(e){ return clean_(e.ID_Evenement); }).filter(Boolean));
+    const duplicateKeys = new Map();
+    existing.forEach(function(e){ duplicateKeys.set(formatDate_(e.Date)+'|'+slug_(e.Titre), clean_(e.ID_Evenement)); });
+
+    const records = [], importedIds = [];
+    let imported = 0, skipped = 0, errors = 0;
+    const now = new Date();
+
+    values.forEach(function(row, index) {
+      if (!eventImportSelected_(row[0])) return;
+      const line = firstRow + index;
+      try {
+        if (clean_(row[20])) {
+          row[0] = false; row[18] = 'OK'; row[19] = 'Déjà importé : ' + clean_(row[20]); skipped++; return;
+        }
+
+        const templateRef = clean_(row[1]);
+        const template = templates.filter(function(t){ return t.id === templateRef || t.name === templateRef; })[0] || {};
+        if (templateRef && !template.id) throw new Error('Modèle inconnu.');
+
+        const date = eventImportDate_(row[2]);
+        const title = clean_(row[3] || template.defaultTitle || template.name);
+        const type = clean_(row[4] || template.type || 'Autre');
+        const start = eventImportTime_(row[5]) || clean_(template.start);
+        const end = eventImportTime_(row[6]) || clean_(template.end);
+        const place = clean_(row[7] || template.place || 'Cayenne de Paris');
+        const cayenne = clean_(row[8] || template.cayenne || 'Paris');
+        const category = clean_(row[9] || template.category || 'Événement');
+        const modalites = clean_(row[10] || template.modalites || 'Standard');
+        const comment = clean_(row[16] || template.comment);
+        const active = clean_(row[17] || template.active || 'Oui');
+        const statuses = ['Sociétaire','Aspirant','Compagnon'].filter(function(_, i){ return eventImportSelected_(row[11+i]); });
+        const publicCayennes = ['Paris','Autre'].filter(function(_, i){ return eventImportSelected_(row[14+i]); });
+
+        if (!date) throw new Error('Date obligatoire au format AAAA-MM-JJ.');
+        if (!title) throw new Error('Titre obligatoire, directement ou via un modèle.');
+        if (!allowedTypes.includes(type)) throw new Error('Type d’événement invalide.');
+        if (!allowedCayennes.includes(cayenne)) throw new Error('Cayenne invalide.');
+        if (!['Standard','Repas et aide','Réception'].includes(modalites)) throw new Error('Modalités invalides.');
+        if (!['Oui','Non'].includes(active)) throw new Error('Actif doit être Oui ou Non.');
+        if (title.length > 200 || comment.length > 2000 || place.length > 300) throw new Error('Texte trop long.');
+        [start,end].forEach(function(time){ if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Horaire invalide.'); });
+
+        const duplicateKey = formatDate_(date)+'|'+slug_(title);
+        if (duplicateKeys.has(duplicateKey)) {
+          const existingId = duplicateKeys.get(duplicateKey);
+          row[0] = false; row[18] = 'OK'; row[19] = 'Déjà présent dans CALENDRIER'; row[20] = existingId; skipped++; return;
+        }
+
+        const event = {
+          ID_Evenement:eventImportId_(date,title,usedIds), Annee:date.getFullYear(), Date:date, Titre:title, Type_Evenement:type,
+          Heure_Debut:start, Heure_Fin:end, Lieu:place, Cayenne:cayenne, Categorie_CR:category, Actif:active,
+          Commentaire:comment, Modalites:modalites, Public_Statuts:statuses.join(' ; '), Public_Cayennes:publicCayennes.join(' ; '),
+          Version:Utilities.getUuid(), Modifie_Le:now
+        };
+        const recordRow = headers.map(function(header){ return Object.prototype.hasOwnProperty.call(event,header) ? sheetLiteral_(event[header]) : ''; });
+        records.push(recordRow); importedIds.push(event.ID_Evenement); duplicateKeys.set(duplicateKey,event.ID_Evenement);
+        row[0] = false; row[18] = 'OK'; row[19] = 'Importé : ' + title; row[20] = event.ID_Evenement; row[21] = now; imported++;
+      } catch (error) {
+        row[18] = 'ERREUR'; row[19] = 'Ligne ' + line + ' · ' + clean_(error.message || error).slice(0, 240); errors++;
+      }
+    });
+
+    if (records.length) {
+      const start = calendarSheet.getLastRow()+1;
+      calendarSheet.getRange(start,1,records.length,headers.length).setValues(records);
+      calendarSheet.getRange(start,3,records.length,1).setNumberFormat('yyyy-mm-dd');
+    }
+    importSheet.getRange(firstRow,1,values.length,width).setValues(values);
+    return {ok:errors===0, imported:imported, skipped:skipped, errors:errors, eventIds:importedIds};
+  });
+
+  if (result.eventIds.length) queueFollowup_(result.eventIds);
+  try {
+    if (SpreadsheetApp.getUi) SpreadsheetApp.getUi().alert('Import massif terminé', result.imported + ' événement(s) importé(s), ' + result.skipped + ' ignoré(s), ' + result.errors + ' erreur(s).', SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (_) {}
+  return result;
 }
 
 function submitResponses(payload, token) {
@@ -647,6 +786,7 @@ function exportActiveSheetPdf_() {
 function setupSystemIfMissing_() {
   const ss = getSpreadsheet_();
   if (!ss.getSheetByName(UC_APP.sheets.reponses) || !ss.getSheetByName(UC_APP.sheets.eventBase)) setupSystem_();
+  if (!ss.getSheetByName(UC_APP.sheets.importEvents)) setupEventImportSheet_();
   ensureYouthSetting_();
   ensureParticipationSchema_();
   ensureAuditSchema_();
