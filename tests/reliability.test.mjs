@@ -332,20 +332,21 @@ test('mass event import applies templates, audience and duplicate protection wit
   assert.equal(f.sent.length,0);
 });
 
-test('Youth bulk event import uses a separate sheet, enforces Youth permissions and writes only to the main calendar',()=>{
-  const f=fixture(),headers=f.c.eventImportHeaders_();
+test('Youth bulk event import mirrors the Youth event form, enforces permissions and writes only to the main calendar',()=>{
+  const f=fixture(),headers=f.c.youthEventImportHeaders_();
   const external=f.makeSheet('IMPORT_JEUNES',[
     ['IMPORT ÉVÉNEMENTS — BUREAU DES JEUNES'],[],[],[],[],headers,
-    [true,'Réunion des jeunes — 19 h à confirmer','2026-10-09','Réunion jeunes importée','','','','','','','',false,false,false,false,false,'Depuis le fichier jeunes','','','','',''],
-    [true,'','2026-10-10','Réunion interdite','Réunion compagnon','19:00','','Cayenne de Paris','Paris','Réunion','Standard',false,false,false,false,false,'','','','','','']
+    [true,'Réunion des jeunes — 19 h à confirmer','2026-10-09','Réunion jeunes importée','','','','','','','Depuis le fichier jeunes','','','',''],
+    [true,'','2026-10-10','Réunion interdite','19:00','','Cayenne de Paris','Standard','Réunion compagnon','Paris','','','','','']
   ]);
   f.c.getYouthImportSheet_=()=>external;
   const result=f.c.importYouthEventsFromSheet(f.youth);
   assert.equal(result.imported,1);assert.equal(result.errors,1);assert.equal(f.sent.length,0);
   const created=f.c.calendarRows_().find(e=>e.Titre==='Réunion jeunes importée');
-  assert.ok(created);assert.equal(created.Type_Evenement,'Réunion des jeunes');
+  assert.ok(created);assert.equal(f.c.formatEventTime_(created.Heure_Debut),'19:00');assert.equal(created.Type_Evenement,'Réunion des jeunes');
   assert.equal(created.Public_Statuts,'Sociétaire ; Aspirant ; Compagnon');assert.equal(created.Public_Cayennes,'');
   assert.equal(f.c.calendarRows_().some(e=>e.Titre==='Réunion interdite'),false);
-  assert.match(external.grid[7][19],/Bureau des jeunes/);
+  assert.match(external.grid[7][12],/Bureau des jeunes/);
+  assert.deepEqual(Array.from(headers.slice(2,11)),['Date','Nom de l’événement','Début','Fin','Lieu','Choix proposés aux membres','Type','Cayenne','Commentaire']);
 });
 
