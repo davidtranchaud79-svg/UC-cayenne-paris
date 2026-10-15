@@ -36,7 +36,7 @@ function fixture(){
     CacheService:{getScriptCache:()=>({get:k=>cache.get(k)||null,put:(k,v)=>cache.set(k,v),remove:k=>cache.delete(k)})},
     LockService:{getScriptLock:()=>({waitLock(){assert.equal(locked,false);locked=true;},releaseLock(){locked=false;}})},
     Utilities:{getUuid:randomUUID,computeDigest:(_,s)=>Array.from(createHash('sha256').update(s).digest()),DigestAlgorithm:{SHA_256:'sha256'},Charset:{UTF_8:'utf8'},formatDate:(d,z,p)=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:z,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d).map(p=>[p.type,p.value]));return p.replace(/yyyy|MM|dd|HH|mm/g,k=>parts[{yyyy:'year',MM:'month',dd:'day',HH:'hour',mm:'minute'}[k]]);},base64Decode:s=>Array.from(Buffer.from(s,'base64')),base64Encode:b=>Buffer.from(Array.from(b)).toString('base64'),newBlob:(bytes,type,name)=>({getBytes:()=>Array.from(bytes),getContentType:()=>type,getName:()=>name})},
-    Session:{getScriptTimeZone:()=> 'Europe/Paris'},SpreadsheetApp:{flush(){}},
+    Session:{getScriptTimeZone:()=> 'Europe/Paris'},SpreadsheetApp:{flush(){},newDataValidation:()=>({requireValueInList(){return this;},setAllowInvalid(){return this;},build(){return {};}})},
     ScriptApp:{getService:()=>({getUrl:()=> 'https://script.google.com/macros/s/TEST/exec'}),getProjectTriggers:()=>[],newTrigger:()=>({timeBased(){return this;},everyMinutes(){return this;},create(){}})},
     MailApp:{getRemainingDailyQuota:()=>100,sendEmail:m=>{assert.equal(locked,false);sent.push(m);}},
     DriveApp:{
