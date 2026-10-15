@@ -380,11 +380,39 @@ test('bureau can edit the complete member profile and permanently delete a membe
  a.doc.querySelector('[data-email-member]').click();a.doc.getElementById('deleteMemberBtn').click();a.flush();
  assert.equal(a.calls.find(c=>c.method==='deleteMember').args[0],'camille@example.test');a.dom.window.close();
 });
-test('first access requires choosing a personal password before event responses are shown',()=>{
- const data={...structuredClone(config),mustChoosePassword:true};const a=app('Public.html',{getPublicConfig:()=>data});
- assert.equal(a.doc.getElementById('formContent').hidden,true);
- a.fill('memberNewPassword','MonMotDePasse2026');a.fill('memberNewPasswordConfirm','MonMotDePasse2026');a.submit('memberPasswordForm');a.flush();
- assert.ok(a.calls.find(c=>c.method==='setMemberPassword'));a.dom.window.close();
+test('first access forces the Settings tab until a personal password is chosen',()=>{
+  let first=true;
+  const a=app('Public.html',{getPublicConfig:()=>({...structuredClone(config),mustChoosePassword:first?(first=false,true):false})});
+  assert.equal(a.doc.getElementById('memberSettingsPanel').hidden,false);
+  assert.equal(a.doc.getElementById('memberMainPanel').hidden,true);
+  assert.equal(a.doc.getElementById('formContent').hidden,true);
+  assert.equal(a.doc.getElementById('memberTabMain').disabled,true);
+  a.doc.getElementById('memberTabMain').click();
+  assert.equal(a.doc.getElementById('memberSettingsPanel').hidden,false);
+  assert.match(a.doc.getElementById('publicNotice').textContent,/première connexion/i);
+  a.fill('memberNewPassword','MonMotDePasse2026');a.fill('memberNewPasswordConfirm','MonMotDePasse2026');a.submit('memberPasswordForm');a.flush();
+  assert.ok(a.calls.find(c=>c.method==='setMemberPassword'));
+  assert.equal(a.doc.getElementById('memberSettingsPanel').hidden,true);
+  assert.equal(a.doc.getElementById('memberMainPanel').hidden,false);
+  assert.equal(a.doc.getElementById('formContent').hidden,false);
+  assert.equal(a.doc.getElementById('memberTabMain').disabled,false);
+  a.dom.window.close();
+});
+
+test('returning members see password controls only inside the Settings tab',()=>{
+  const a=app('Public.html',{getPublicConfig:()=>({...structuredClone(config),mustChoosePassword:false})});
+  assert.equal(a.doc.getElementById('memberSettingsPanel').hidden,true);
+  assert.equal(a.doc.getElementById('memberMainPanel').hidden,false);
+  assert.equal(a.doc.getElementById('formContent').hidden,false);
+  a.doc.getElementById('memberTabSettings').click();
+  assert.equal(a.doc.getElementById('memberSettingsPanel').hidden,false);
+  assert.equal(a.doc.getElementById('memberMainPanel').hidden,true);
+  assert.equal(a.doc.getElementById('formContent').hidden,true);
+  assert.match(a.doc.getElementById('memberSettingsPanel').textContent,/Modifier mon mot de passe/);
+  a.doc.getElementById('memberTabMain').click();
+  assert.equal(a.doc.getElementById('memberSettingsPanel').hidden,true);
+  assert.equal(a.doc.getElementById('formContent').hidden,false);
+  a.dom.window.close();
 });
 
 test('Youth Bureau pointage and event rosters are visible and sorted by status',()=>{

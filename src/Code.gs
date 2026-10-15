@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.10.15.13',
+  version: '2026.10.15.14',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
