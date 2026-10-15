@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.10.15.19',
+  version: '2026.10.15.20',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -396,7 +396,10 @@ function importEventsFromSheet() {
           Commentaire:comment, Modalites:modalites, Public_Statuts:statuses.join(' ; '), Public_Cayennes:publicCayennes.join(' ; '),
           Version:Utilities.getUuid(), Modifie_Le:now
         };
-        const recordRow = headers.map(function(header){ return Object.prototype.hasOwnProperty.call(event,header) ? sheetLiteral_(event[header]) : ''; });
+        const recordRow = headers.map(function(header){
+          if (header === 'Date') return formatDate_(date);
+          return Object.prototype.hasOwnProperty.call(event,header) ? sheetLiteral_(event[header]) : '';
+        });
         records.push(recordRow); importedIds.push(event.ID_Evenement); duplicateKeys.set(duplicateKey,event.ID_Evenement);
         row[0] = false; row[18] = 'OK'; row[19] = 'Importé : ' + title; row[20] = event.ID_Evenement; row[21] = now; imported++;
       } catch (error) {
@@ -406,8 +409,11 @@ function importEventsFromSheet() {
 
     if (records.length) {
       const start = calendarSheet.getLastRow()+1;
+      // Prevent Google Sheets from converting a literal 19:00 into a
+      // time-only Date anchored in 1899 (Paris had a +00:09:21 offset).
+      calendarSheet.getRange(start,3,records.length,1).setNumberFormat('@');
+      calendarSheet.getRange(start,6,records.length,2).setNumberFormat('@');
       calendarSheet.getRange(start,1,records.length,headers.length).setValues(records);
-      calendarSheet.getRange(start,3,records.length,1).setNumberFormat('yyyy-mm-dd');
     }
     importSheet.getRange(firstRow,1,values.length,width).setValues(values);
     return {ok:errors===0, imported:imported, skipped:skipped, errors:errors, eventIds:importedIds};
@@ -673,7 +679,10 @@ function importYouthEventsFromSheet(token) {
           Commentaire:comment, Modalites:modalites, Public_Statuts:'Sociétaire ; Aspirant ; Compagnon', Public_Cayennes:'',
           Version:Utilities.getUuid(), Modifie_Le:now
         };
-        const recordRow = headers.map(function(header){ return Object.prototype.hasOwnProperty.call(event,header) ? sheetLiteral_(event[header]) : ''; });
+        const recordRow = headers.map(function(header){
+          if (header === 'Date') return formatDate_(date);
+          return Object.prototype.hasOwnProperty.call(event,header) ? sheetLiteral_(event[header]) : '';
+        });
         records.push(recordRow); importedIds.push(event.ID_Evenement); duplicateKeys.set(duplicateKey,event.ID_Evenement);
         row[0] = false; row[11] = 'OK'; row[12] = 'Importé : ' + title; row[13] = event.ID_Evenement; row[14] = now; imported++;
       } catch (error) {
@@ -683,8 +692,11 @@ function importYouthEventsFromSheet(token) {
 
     if (records.length) {
       const start = calendarSheet.getLastRow()+1;
+      // Prevent Google Sheets from converting a literal 19:00 into a
+      // time-only Date anchored in 1899 (Paris had a +00:09:21 offset).
+      calendarSheet.getRange(start,3,records.length,1).setNumberFormat('@');
+      calendarSheet.getRange(start,6,records.length,2).setNumberFormat('@');
       calendarSheet.getRange(start,1,records.length,headers.length).setValues(records);
-      calendarSheet.getRange(start,3,records.length,1).setNumberFormat('yyyy-mm-dd');
     }
     importSheet.getRange(firstRow,1,values.length,width).setValues(values);
     return {ok:errors===0, imported:imported, skipped:skipped, errors:errors, eventIds:importedIds};
