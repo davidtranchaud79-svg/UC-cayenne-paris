@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.10.15.15',
+  version: '2026.10.15.16',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -266,15 +266,40 @@ function eventImportHeaders_() {
 
 function setupEventImportSheet_() {
   const ss = getSpreadsheet_(), sheet = ensureSheet_(ss, UC_APP.sheets.importEvents);
-  if (sheet.getLastRow() === 0 || !clean_(sheet.getRange(1, 1).getValue())) {
-    sheet.getRange(1,1).setValue('IMPORT MASSIF DES ÉVÉNEMENTS');
-    sheet.getRange(2,1).setValue('1 ligne = 1 événement. Remplissez vos lignes, cochez « À importer », puis utilisez le menu Présences UC > Importer les événements en masse.');
-    sheet.getRange(3,1).setValue('Le modèle est optionnel : les champs laissés vides reprennent ses valeurs. Les champs saisis manuellement restent prioritaires.');
-    sheet.getRange(4,1).setValue('Public concerné : aucune case cochée = tout le monde, comme dans l’espace Bureau.');
-    sheet.getRange(6,1,1,eventImportHeaders_().length).setValues([eventImportHeaders_()]);
-  }
+  const width = eventImportHeaders_().length;
+
+  sheet.getRange(1,1).setValue('IMPORT MASSIF DES ÉVÉNEMENTS');
+  sheet.getRange(2,1).setValue('1 ligne = 1 événement. Remplissez les lignes, cochez « À importer », puis utilisez Présences UC > Importer les événements en masse.');
+  sheet.getRange(3,1).setValue('Le modèle est optionnel : s’il est choisi, les champs laissés vides reprennent ses valeurs. Vos saisies manuelles restent prioritaires.');
+  sheet.getRange(4,1).setValue('Public concerné : cochez les statuts et/ou Cayennes voulus. Aucune case cochée = événement visible par tout le monde.');
+  sheet.getRange(5,1).setValue('Fonctionnement Cayenne : Réunions = agapes proposées automatiquement ; « Repas et aide » = repas/aide jour J ; « Réception » = créneaux matin/soir. Les doublons date + titre sont ignorés.');
+  sheet.getRange(6,1,1,width).setValues([eventImportHeaders_()]);
+
   sheet.setFrozenRows(6);
   try { sheet.setHiddenGridlines(true); } catch (_) {}
+
+  sheet.getRange(1,1,1,width).setBackground('#72111E').setFontColor('#FFFFFF').setFontWeight('bold').setFontSize(14);
+  sheet.getRange(2,1,4,width).setWrap(true).setFontColor('#4B5563');
+  sheet.getRange(6,1,1,width).setBackground('#72111E').setFontColor('#FFFFFF').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle').setWrap(true);
+  sheet.getRange('A7:V500').setVerticalAlignment('middle').setWrap(true);
+  sheet.getRange('A7:A500').insertCheckboxes();
+  sheet.getRange('L7:P500').insertCheckboxes();
+  sheet.getRange('C7:C500').setNumberFormat('yyyy-mm-dd');
+  sheet.getRange('F7:G500').setNumberFormat('hh:mm');
+  sheet.getRange('V7:V500').setNumberFormat('yyyy-mm-dd hh:mm');
+  sheet.getRange('S7:V500').setBackground('#F7F7F7').setFontColor('#595959').setFontStyle('italic');
+
+  const templates = getEventTemplates_().map(function(t){ return clean_(t.name); }).filter(Boolean);
+  if (templates.length) setListValidation_(sheet.getRange('B7:B500'), templates);
+  setListValidation_(sheet.getRange('E7:E500'), getOptionList_('H', UC_APP.defaults.eventTypes));
+  setListValidation_(sheet.getRange('I7:I500'), getOptionList_('E', UC_APP.defaults.cayennes));
+  setListValidation_(sheet.getRange('J7:J500'), ['Réunion','Cours','Événement','Travail']);
+  setListValidation_(sheet.getRange('K7:K500'), ['Standard','Repas et aide','Réception']);
+  setListValidation_(sheet.getRange('R7:R500'), ['Oui','Non']);
+
+  const widths = [85,220,105,220,175,90,90,190,100,120,130,85,85,85,75,75,270,80,95,270,190,145];
+  widths.forEach(function(value,index){ sheet.setColumnWidth(index+1,value); });
+  sheet.setRowHeight(6,42);
   return sheet;
 }
 
