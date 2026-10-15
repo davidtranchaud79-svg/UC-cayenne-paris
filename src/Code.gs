@@ -1,5 +1,5 @@
 const UC_APP = {
-  version: '2026.10.15.17',
+  version: '2026.10.15.18',
   spreadsheetId: '1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4',
   sheets: {
     parametres: 'PARAMETRES',
@@ -585,13 +585,17 @@ function getYouthDashboardData(year, token) {
 }
 
 
+function youthEventImportHeaders_() {
+  return ['À importer','Modèle (optionnel)','Date','Nom de l’événement','Début','Fin','Lieu','Choix proposés aux membres','Type','Cayenne','Commentaire','Contrôle','Résultat import','ID créé','Importé le'];
+}
+
 function getYouthEventImportInfo(token) {
   assertYouthAdmin_(token);
   return {
     url: UC_APP.defaults.youthImportSpreadsheetUrl,
     spreadsheetId: UC_APP.defaults.youthImportSpreadsheetId,
     sheetName: 'IMPORT_JEUNES',
-    note: 'Les lignes cochées sont importées dans le calendrier principal sans donner accès au classeur maître.'
+    note: 'Le tableau reprend les mêmes champs que la création d’un événement dans le Bureau des jeunes.'
   };
 }
 
@@ -607,7 +611,7 @@ function importYouthEventsFromSheet(token) {
   setupSystemIfMissing_();
   const result = accessLocked_(function() {
     const importSheet = getYouthImportSheet_();
-    const firstRow = 7, width = eventImportHeaders_().length, lastRow = importSheet.getLastRow();
+    const firstRow = 7, width = youthEventImportHeaders_().length, lastRow = importSheet.getLastRow();
     if (lastRow < firstRow) return {ok:true, imported:0, skipped:0, errors:0, eventIds:[]};
 
     const values = importSheet.getRange(firstRow,1,lastRow-firstRow+1,width).getValues();
@@ -630,8 +634,8 @@ function importYouthEventsFromSheet(token) {
       if (!eventImportSelected_(row[0])) return;
       const line = firstRow + index;
       try {
-        if (clean_(row[20])) {
-          row[0] = false; row[18] = 'OK'; row[19] = 'Déjà importé : ' + clean_(row[20]); skipped++; return;
+        if (clean_(row[13])) {
+          row[0] = false; row[11] = 'OK'; row[12] = 'Déjà importé : ' + clean_(row[13]); skipped++; return;
         }
 
         const templateRef = clean_(row[1]);
@@ -640,41 +644,40 @@ function importYouthEventsFromSheet(token) {
 
         const date = eventImportDate_(row[2]);
         const title = clean_(row[3] || template.defaultTitle || template.name);
-        const type = clean_(row[4] || template.type || 'Autre');
-        const start = eventImportTime_(row[5]) || clean_(template.start);
-        const end = eventImportTime_(row[6]) || clean_(template.end);
-        const place = clean_(row[7] || template.place || 'Cayenne de Paris');
-        const cayenne = clean_(row[8] || template.cayenne || 'Paris');
-        const category = clean_(row[9] || template.category || 'Événement');
-        const modalites = clean_(row[10] || template.modalites || 'Standard');
-        const comment = clean_(row[16] || template.comment);
+        const start = eventImportTime_(row[4]) || clean_(template.start);
+        const end = eventImportTime_(row[5]) || clean_(template.end);
+        const place = clean_(row[6] || template.place || 'Cayenne de Paris');
+        const modalites = clean_(row[7] || template.modalites || 'Standard');
+        const type = clean_(row[8] || template.type || 'Autre');
+        const cayenne = clean_(row[9] || template.cayenne || 'Paris');
+        const comment = clean_(row[10] || template.comment);
 
         if (!date) throw new Error('Date obligatoire au format AAAA-MM-JJ.');
-        if (!title) throw new Error('Titre obligatoire, directement ou via un modèle.');
+        if (!title) throw new Error('Nom de l’événement obligatoire, directement ou via un modèle.');
         if (type === 'Réunion compagnon') throw new Error('Le Bureau des jeunes ne peut pas importer une Réunion compagnon.');
         if (!allowedTypes.includes(type)) throw new Error('Type d’événement invalide pour le Bureau des jeunes.');
         if (!allowedCayennes.includes(cayenne)) throw new Error('Cayenne invalide.');
-        if (!['Standard','Repas et aide','Réception'].includes(modalites)) throw new Error('Modalités invalides.');
+        if (!['Standard','Repas et aide','Réception'].includes(modalites)) throw new Error('Choix proposés aux membres invalide.');
         if (title.length > 200 || comment.length > 2000 || place.length > 300) throw new Error('Texte trop long.');
         [start,end].forEach(function(time){ if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Horaire invalide.'); });
 
         const duplicateKey = formatDate_(date)+'|'+slug_(title);
         if (duplicateKeys.has(duplicateKey)) {
           const existingId = duplicateKeys.get(duplicateKey);
-          row[0] = false; row[18] = 'OK'; row[19] = 'Déjà présent dans CALENDRIER'; row[20] = existingId; skipped++; return;
+          row[0] = false; row[11] = 'OK'; row[12] = 'Déjà présent dans CALENDRIER'; row[13] = existingId; skipped++; return;
         }
 
         const event = {
           ID_Evenement:eventImportId_(date,title,usedIds), Annee:date.getFullYear(), Date:date, Titre:title, Type_Evenement:type,
-          Heure_Debut:start, Heure_Fin:end, Lieu:place, Cayenne:cayenne, Categorie_CR:category, Actif:'Oui',
+          Heure_Debut:start, Heure_Fin:end, Lieu:place, Cayenne:cayenne, Categorie_CR:'Événement', Actif:'Oui',
           Commentaire:comment, Modalites:modalites, Public_Statuts:'Sociétaire ; Aspirant ; Compagnon', Public_Cayennes:'',
           Version:Utilities.getUuid(), Modifie_Le:now
         };
         const recordRow = headers.map(function(header){ return Object.prototype.hasOwnProperty.call(event,header) ? sheetLiteral_(event[header]) : ''; });
         records.push(recordRow); importedIds.push(event.ID_Evenement); duplicateKeys.set(duplicateKey,event.ID_Evenement);
-        row[0] = false; row[18] = 'OK'; row[19] = 'Importé : ' + title; row[20] = event.ID_Evenement; row[21] = now; imported++;
+        row[0] = false; row[11] = 'OK'; row[12] = 'Importé : ' + title; row[13] = event.ID_Evenement; row[14] = now; imported++;
       } catch (error) {
-        row[18] = 'ERREUR'; row[19] = 'Ligne ' + line + ' · ' + clean_(error.message || error).slice(0, 240); errors++;
+        row[11] = 'ERREUR'; row[12] = 'Ligne ' + line + ' · ' + clean_(error.message || error).slice(0, 240); errors++;
       }
     });
 
