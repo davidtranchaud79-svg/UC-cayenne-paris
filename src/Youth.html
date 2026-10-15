@@ -75,7 +75,7 @@
           </div>
           <div class="event-management">
             <form id="youthEventForm" class="panel panel-pad event-form">
-              <div class="event-form-head"><span class="tag wine" style="margin-bottom:12px"><span data-icon="plus"></span>Calendrier</span><h2 id="youthEventFormTitle">Un événement, une date.</h2><p>Les événements créés ici sont visibles par les Sociétaires, Aspirants et Compagnons. Les Réunions compagnon restent réservées au bureau principal.</p></div>
+              <div class="event-form-head"><span class="tag wine" id="youthEventMode" style="margin-bottom:12px"><span data-icon="plus"></span>Création d’un événement</span><h2 id="youthEventFormTitle">Créer un nouvel événement</h2><p id="youthEventFormHelp">Saisissez les informations d’un nouvel événement. Pour modifier un rendez-vous existant, cliquez sur « Modifier » dans le calendrier.</p><button id="youthCreateNewEvent" class="btn secondary compact" type="button" style="margin-top:12px">Créer un autre événement</button></div>
               <input id="youthEventId" type="hidden"><input id="youthEventVersion" type="hidden">
               <div class="fields">
                 <div class="field full"><label for="youthEventDate">Date de l’événement *</label><input id="youthEventDate" type="date" required></div>
@@ -263,8 +263,47 @@ function renderMembers(){
 }
 function finishAction(){youth.busy=false;Ui.loading('youthNewBtn',false);Ui.loading('youthEditSave',false);Ui.loading('saveYouthEvent',false);}
 function isoDate(value){const p=String(value||'').split('/');return p.length===3?p[2]+'-'+p[1]+'-'+p[0]:String(value||'');}
-function clearYouthEventForm(){youth.eventEditing=null;document.getElementById('youthEventForm').reset();document.getElementById('youthEventId').value='';document.getElementById('youthEventVersion').value='';document.getElementById('youthEventFormTitle').textContent='Un événement, une date.';renderEventSelectors();document.getElementById('youthEventPlace').value='Cayenne de Paris';if(document.getElementById('youthEventType').options.length)document.getElementById('youthEventType').value='Réunion des jeunes';document.getElementById('cancelYouthEvent').hidden=true;document.getElementById('saveYouthEvent').innerHTML=Ui.icon('plus')+' Ajouter au calendrier';}
-function openYouthEventForm(event){clearYouthEventForm();setScreen('events');if(event){youth.eventEditing=event;document.getElementById('youthEventFormTitle').textContent='Modifier '+event.title;document.getElementById('cancelYouthEvent').hidden=false;document.getElementById('saveYouthEvent').textContent='Enregistrer les modifications';document.getElementById('youthEventId').value=event.id;document.getElementById('youthEventVersion').value=event.version||'';document.getElementById('youthEventDate').value=isoDate(event.date);document.getElementById('youthEventTitle').value=event.title||'';document.getElementById('youthEventType').value=event.type||'';document.getElementById('youthEventCayenne').value=event.cayenne||'Paris';document.getElementById('youthEventStart').value=event.start||'';document.getElementById('youthEventEnd').value=event.end||'';document.getElementById('youthEventPlace').value=event.place||'';document.getElementById('youthEventModalites').value=event.modalites||'Standard';document.getElementById('youthEventComment').value=event.comment||'';}document.getElementById('youthEventForm').hidden=false;document.getElementById('youthEventForm').scrollIntoView({block:'start'});}
+function clearYouthEventForm(){
+  youth.eventEditing=null;
+  document.getElementById('youthEventForm').reset();
+  document.getElementById('youthEventId').value='';
+  document.getElementById('youthEventVersion').value='';
+  document.getElementById('youthEventMode').textContent='Création d’un événement';
+  document.getElementById('youthEventFormTitle').textContent='Créer un nouvel événement';
+  document.getElementById('youthEventFormHelp').textContent='Saisissez les informations d’un nouvel événement. Pour modifier un rendez-vous existant, cliquez sur « Modifier » dans le calendrier.';
+  document.getElementById('youthCreateNewEvent').hidden=false;
+  renderEventSelectors();
+  document.getElementById('youthEventPlace').value='Cayenne de Paris';
+  if(document.getElementById('youthEventType').options.length)document.getElementById('youthEventType').value='Réunion des jeunes';
+  document.getElementById('cancelYouthEvent').hidden=true;
+  document.getElementById('saveYouthEvent').innerHTML=Ui.icon('plus')+' Ajouter au calendrier';
+}
+function openYouthEventForm(event){
+  clearYouthEventForm();
+  setScreen('events');
+  if(event){
+    youth.eventEditing=event;
+    document.getElementById('youthEventMode').textContent='Modification d’un événement existant';
+    document.getElementById('youthEventFormTitle').textContent='Modifier '+event.title;
+    document.getElementById('youthEventFormHelp').textContent='Attention : enregistrer ici met à jour cet événement existant. Pour en créer un nouveau, utilisez le bouton « Créer un nouvel événement ».';
+    document.getElementById('youthCreateNewEvent').hidden=false;
+    document.getElementById('cancelYouthEvent').hidden=false;
+    document.getElementById('saveYouthEvent').textContent='Enregistrer les modifications';
+    document.getElementById('youthEventId').value=event.id;
+    document.getElementById('youthEventVersion').value=event.version||'';
+    document.getElementById('youthEventDate').value=isoDate(event.date);
+    document.getElementById('youthEventTitle').value=event.title||'';
+    document.getElementById('youthEventType').value=event.type||'';
+    document.getElementById('youthEventCayenne').value=event.cayenne||'Paris';
+    document.getElementById('youthEventStart').value=event.start||'';
+    document.getElementById('youthEventEnd').value=event.end||'';
+    document.getElementById('youthEventPlace').value=event.place||'';
+    document.getElementById('youthEventModalites').value=event.modalites||'Standard';
+    document.getElementById('youthEventComment').value=event.comment||'';
+  }
+  document.getElementById('youthEventForm').hidden=false;
+  document.getElementById('youthEventForm').scrollIntoView({block:'start'});
+}
 function eventPayload(){return {id:document.getElementById('youthEventId').value,version:document.getElementById('youthEventVersion').value,date:document.getElementById('youthEventDate').value,title:document.getElementById('youthEventTitle').value,type:document.getElementById('youthEventType').value,cayenne:document.getElementById('youthEventCayenne').value,start:document.getElementById('youthEventStart').value,end:document.getElementById('youthEventEnd').value,place:document.getElementById('youthEventPlace').value,modalites:document.getElementById('youthEventModalites').value,comment:document.getElementById('youthEventComment').value};}
 function importYouthEvents(){
   if(!youth.token||document.getElementById('youthImportEvents').disabled)return;
@@ -289,7 +328,7 @@ document.getElementById('youthAccessForm').addEventListener('submit',e=>{e.preve
 document.getElementById('youthLogout').addEventListener('click',()=>lockYouth(true));
 document.getElementById('youthRefresh').addEventListener('click',loadYouth);
 document.getElementById('youthYear').addEventListener('change',e=>{youth.year=e.target.value;loadYouthDashboard();});
-document.querySelectorAll('[data-youth-screen]').forEach(button=>button.addEventListener('click',()=>setScreen(button.dataset.youthScreen)));
+document.querySelectorAll('[data-youth-screen]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.youthScreen==='events'&&youth.screen!=='events'){openYouthEventForm();return;}setScreen(button.dataset.youthScreen);}));
 document.getElementById('youthSearch').addEventListener('input',renderMembers);
 document.getElementById('youthStatus').addEventListener('change',renderMembers);
 document.getElementById('youthEventSearch').addEventListener('input',renderEvents);
@@ -299,6 +338,7 @@ document.getElementById('loadYouthAttendance').addEventListener('click',loadYout
 document.getElementById('saveYouthAttendance').addEventListener('click',saveYouthAttendance);
 document.getElementById('showYouthNewMember').addEventListener('click',()=>{const details=document.getElementById('youthNewMemberDetails');details.open=true;details.scrollIntoView({block:'start'});});
 document.querySelectorAll('[data-youth-go="events"]').forEach(button=>button.addEventListener('click',()=>{setScreen('events');clearYouthEventForm();document.getElementById('youthEventForm').scrollIntoView({block:'start'});}));
+document.getElementById('youthCreateNewEvent').addEventListener('click',()=>openYouthEventForm());
 document.getElementById('cancelYouthEvent').addEventListener('click',clearYouthEventForm);
 document.getElementById('youthEventForm').addEventListener('submit',e=>{e.preventDefault();if(youth.busy)return;const payload=eventPayload(),epoch=youth.epoch;youth.busy=true;Ui.loading('saveYouthEvent',true,'Enregistrement…');const success=result=>{if(epoch!==youth.epoch)return;finishAction();clearYouthEventForm();notice(result.message,'ok');loadYouthDashboard();};const failure=error=>{if(epoch!==youth.epoch)return;finishAction();notice(error.message||error);};const run=google.script.run.withSuccessHandler(success).withFailureHandler(failure);if(payload.id)run.updateYouthEvent(payload,youth.token);else run.createYouthEvent(payload,youth.token);});
 document.getElementById('youthEvents').addEventListener('click',e=>{const details=e.target.closest('[data-youth-show-details]'),edit=e.target.closest('[data-youth-event-edit]'),upload=e.target.closest('[data-youth-doc-upload]'),open=e.target.closest('[data-youth-doc-open]'),del=e.target.closest('[data-youth-doc-delete]');if(details){showYouthEventDetails(details.dataset.youthShowDetails);return;}if(edit){const event=(youth.dashboard&&youth.dashboard.calendar||[]).find(x=>x.id===edit.dataset.youthEventEdit);if(event)openYouthEventForm(event);return;}if(upload){const input=document.getElementById(upload.dataset.youthDocUpload==='agenda'?'youthAgendaInput':'youthReportInput');input.dataset.eventId=upload.dataset.eventId;input.value='';input.click();return;}if(open){openYouthDocument(open.dataset.youthDocOpen,open.dataset.eventId);return;}if(del)deleteYouthDocument(del.dataset.youthDocDelete,del.dataset.eventId);});
