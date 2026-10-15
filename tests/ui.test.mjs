@@ -389,7 +389,7 @@ test('first access forces the Settings tab until a personal password is chosen',
   assert.equal(a.doc.getElementById('memberTabMain').disabled,true);
   a.doc.getElementById('memberTabMain').click();
   assert.equal(a.doc.getElementById('memberSettingsPanel').hidden,false);
-  assert.match(a.doc.getElementById('publicNotice').textContent,/première connexion/i);
+  assert.match(a.doc.getElementById('memberIntro').textContent,/Première connexion.*obligatoirement/i);
   a.fill('memberNewPassword','MonMotDePasse2026');a.fill('memberNewPasswordConfirm','MonMotDePasse2026');a.submit('memberPasswordForm');a.flush();
   assert.ok(a.calls.find(c=>c.method==='setMemberPassword'));
   assert.equal(a.doc.getElementById('memberSettingsPanel').hidden,true);
