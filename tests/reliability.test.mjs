@@ -10,7 +10,7 @@ function fixture(){
   function makeSheet(name,grid=[]){
     const sheet={grid,getName:()=>name,getSheetId:()=>Array.from(sheets.keys()).indexOf(name)+1,
       getLastRow:()=>grid.length,getLastColumn:()=>Math.max(1,...grid.map(r=>r.length)),getMaxColumns:()=>50,getMaxRows:()=>1000,
-      insertColumnsAfter(){},insertRowsAfter(){},deleteRow(row){grid.splice(row-1,1);},setFrozenRows(){},setHiddenGridlines(){},autoResizeColumns(){},setConditionalFormatRules(){},
+      insertColumnsAfter(){},insertRowsAfter(){},deleteRow(row){grid.splice(row-1,1);},setFrozenRows(){},setHiddenGridlines(){},autoResizeColumns(){},setConditionalFormatRules(){},setColumnWidth(){},setRowHeight(){},
       clear(){grid.length=0;},clearContents(){grid.length=0;},getRange(row,col=1,n=1,m=1){
         if(typeof row==='string'){
           const match=row.match(/^([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?$/);
@@ -25,7 +25,7 @@ function fixture(){
             writes.push({name,row,col,values:structuredClone(values)});
             values.forEach((r,i)=>r.forEach((v,j)=>{grid[row-1+i]??=[];grid[row-1+i][col-1+j]=v;}));return range;
           },setValue:v=>(n===1&&m===1?range.setValues([[v]]):sheet.getRange(row,col,1,1).setValue(v)),clearContent:()=>range.setValues(Array.from({length:n},()=>Array(m).fill('')))};
-        for(const f of ['merge','setFontWeight','setFontColor','setBackground','setFontSize','setNumberFormat'])range[f]=()=>range;
+        for(const f of ['merge','setFontWeight','setFontColor','setBackground','setFontSize','setNumberFormat','setWrap','setVerticalAlignment','setHorizontalAlignment','setFontStyle','insertCheckboxes','setDataValidation'])range[f]=()=>range;
         return range;
       }
     };sheets.set(name,sheet);return sheet;
