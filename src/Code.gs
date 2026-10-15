@@ -24,8 +24,8 @@ const UC_APP = {
   defaults: {
     activeYear: 2026,
     adminPin: '1234',
-    webAppUrl: 'https://script.google.com/macros/s/AKfycbxrJrbGxoOtZib2yJyLh7cIGSnAPDYgwKssS51tLY2S7dLD_RYsWBqE072z-q8Urn8Pdw/exec',
-    adminAppUrl: 'https://script.google.com/macros/s/AKfycbxrJrbGxoOtZib2yJyLh7cIGSnAPDYgwKssS51tLY2S7dLD_RYsWBqE072z-q8Urn8Pdw/exec?page=admin',
+    webAppUrl: 'https://script.google.com/macros/s/AKfycbx1lvJ1X3P9luSlmibOo3E33mskuBPR7vBPHSlxrmGgbNDsY--T3NZYcMbRN4NY3lx7Vg/exec',
+    adminAppUrl: 'https://script.google.com/macros/s/AKfycbx1lvJ1X3P9luSlmibOo3E33mskuBPR7vBPHSlxrmGgbNDsY--T3NZYcMbRN4NY3lx7Vg/exec?page=admin',
     landingPageUrl: 'https://davidtranchaud79-svg.github.io/UC-cayenne-paris/',
     statuses: ['Sociétaire', 'Aspirant', 'Compagnon'],
     cayennes: ['Paris', 'Autre'],
