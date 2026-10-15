@@ -102,6 +102,33 @@ test('legacy code and remembered session survive migration and email correction;
   assert.throws(()=>f.c.loginMember(code),/incorrect/);
 });
 
+test('calendar event writes keep ISO dates and HH:mm text, even when modifying legacy Date cells',()=>{
+  const f=fixture();
+  const start=f.c.createYouthEvent({
+    date:'2026-11-02',title:'Nouvel événement à 19 heures',type:'Réunion des jeunes',
+    start:'19:00',end:'20:00',place:'Cayenne de Paris',cayenne:'Paris',modalites:'Standard'
+  },f.youth);
+  const event=f.c.calendarRows_().find(x=>x.ID_Evenement===start.event.id);
+  assert.equal(event.Date,'2026-11-02');
+  assert.equal(event.Heure_Debut,'19:00');
+  assert.equal(event.Heure_Fin,'20:00');
+  const edited=f.c.updateYouthEvent({
+    ...start.event, id:start.event.id,date:'2026-11-03',title:'Nouvel événement décalé',
+    type:'Réunion des jeunes',start:'19:00',end:'20:00',place:'Cayenne de Paris',cayenne:'Paris',modalites:'Standard',comment:''
+  },f.youth);
+  assert.equal(edited.ok,true);
+  const updated=f.c.calendarRows_().find(x=>x.ID_Evenement===start.event.id);
+  assert.equal(updated.Date,'2026-11-03');
+  assert.equal(updated.Heure_Debut,'19:00');
+  assert.equal(updated.Heure_Fin,'20:00');
+  assert.equal(f.c.formatEventForClient_(updated).start,'19:00');
+
+  // Existing time-only cells previously yielded Paris's historic +9 min.
+  const legacy=new Date('1899-12-30T19:00:00.000Z');
+  assert.equal(f.c.formatEventTime_(legacy),'19:00');
+  assert.equal(f.sent.length,0);
+});
+
 test('time-only spreadsheet values keep the exact entered hour and minute',()=>{
   const f=fixture();
   const sheetTime=new Date('1899-12-30T19:00:00.000Z');
