@@ -61,6 +61,7 @@ function app(file, overrides={}) {
         else if(method==='getYouthEventResponseDetails')success([{name:'Alex Autre',statut:'Sociétaire',response:'Présent'},{name:'Zoé Aardvark',statut:'Aspirant',response:'Présent'}]);
         else if(method==='createYouthEvent')success({ok:true,event:{id:'evt-new'},message:'Événement créé : Réunion jeunes'});
         else if(method==='updateYouthEvent')success({ok:true,message:'Événement mis à jour.'});
+        else if(method==='importYouthEventsFromSheet')success({ok:true,imported:2,skipped:1,errors:0,message:'2 événement(s) importé(s), 1 ignoré(s), 0 erreur(s).'});
         else if(method==='saveYouthAgendaPdf')success({ok:true,message:'Ordre du jour enregistré.'});
         else if(method==='saveYouthReportPdf')success({ok:true,message:'Compte rendu enregistré.'});
         else if(method==='getYouthAgendaPdf'||method==='getYouthReportPdf')success({name:'document.pdf',mimeType:'application/pdf',data:'JVBERi0xLjQ='});
@@ -449,6 +450,10 @@ test('Youth Bureau has overview, editable non-companion events, documents and yo
  assert.ok(a.doc.querySelector('[data-youth-event-edit="evt-1"]'));
  assert.equal(a.doc.querySelector('[data-youth-doc-upload="agenda"][data-event-id="evt-1"]'),null);
  assert.equal(a.doc.querySelector('[data-youth-doc-upload="report"][data-event-id="evt-1"]'),null);
+  assert.ok(a.doc.getElementById('youthImportLink').href.includes('1I3XwVdrc0K7XXkCtvA9E3rzjnhXIBADkA-oXOF9_eTc'));
+  a.doc.getElementById('youthImportEvents').click();a.flush();
+  assert.ok(a.calls.find(c=>c.method==='importYouthEventsFromSheet'&&c.args[0]==='YOUTH_SESSION'));
+  assert.match(a.doc.getElementById('youthImportNotice').textContent,/2 événement/);
  assert.ok(a.doc.querySelector('[data-youth-doc-upload="agenda"][data-event-id="evt-youth"]'));
  assert.ok(a.doc.querySelector('[data-youth-doc-upload="report"][data-event-id="evt-youth"]'));
  assert.doesNotMatch(a.doc.getElementById('youthEvents').textContent,/Supprimer l’événement/);
