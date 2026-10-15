@@ -79,7 +79,13 @@ function eventForMember_(event, member) {
   return (!statuses.length || statuses.includes(clean_(member.Statut))) && (!cayennes.length || cayennes.includes(clean_(member.Cayenne)));
 }
 function eventVersion_(event) {
-  return accessHash_(JSON.stringify(['Date','Titre','Type_Evenement','Heure_Debut','Heure_Fin','Lieu','Cayenne','Actif','Commentaire','Modalites','Public_Statuts','Public_Cayennes','Version'].map(function(k) { return String(event[k] || ''); })));
+  // A calendar event has the same version whether the cells are legacy
+  // Google Sheets Dates or the newer ISO/text clock values.
+  return accessHash_(JSON.stringify(['Date','Titre','Type_Evenement','Heure_Debut','Heure_Fin','Lieu','Cayenne','Actif','Commentaire','Modalites','Public_Statuts','Public_Cayennes','Version'].map(function(k) {
+    if (k === 'Date') return formatDate_(event[k]);
+    if (k === 'Heure_Debut' || k === 'Heure_Fin') return formatEventTime_(event[k]);
+    return String(event[k] || '');
+  })));
 }
 function validateAudience_(payload) {
   const statuses = Array.isArray(payload.statuses) ? payload.statuses : [], cayennes = Array.isArray(payload.cayennes) ? payload.cayennes : [];
