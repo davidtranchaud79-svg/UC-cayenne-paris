@@ -246,7 +246,7 @@ function youthEventForManagement_(eventId) {
   return event;
 }
 function saveYouthAgendaPdf(eventId,payload,token){
-  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId);
+  assertYouthRight_(token, 'documents');const event=youthEventForManagement_(eventId);
   if(clean_(event.Type_Evenement)==='Réunion compagnon')throw new Error('Les réunions de Compagnons ne sont pas accessibles au Bureau des jeunes.');
   return saveAgendaPdfForEvent_(event,payload,false);
 }
@@ -278,7 +278,7 @@ function getYouthAgendaPdf(eventId,token){
   return agendaPdfPayload_(meta);
 }
 function deleteYouthAgendaPdf(eventId,token){
-  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId);
+  assertYouthRight_(token, 'documents');const event=youthEventForManagement_(eventId);
   if(!agendaMeetingType_(event))throw new Error('Ordre du jour et compte rendu sont réservés aux réunions.');
   const meta=agendaMeta_(event.ID_Evenement);
   if(meta&&clean_(meta.visibility)==='companions')throw new Error('Cet ordre du jour est réservé aux Compagnons.');
@@ -305,7 +305,7 @@ function reportPdfPayload_(meta){
   const blob=file.getBlob();return {name:clean_(meta.name)||file.getName()||'compte-rendu.pdf',mimeType:'application/pdf',data:Utilities.base64Encode(blob.getBytes())};
 }
 function saveYouthReportPdf(eventId,payload,token){
-  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId);payload=payload||{};
+  assertYouthRight_(token, 'documents');const event=youthEventForManagement_(eventId);payload=payload||{};
   if(!agendaMeetingType_(event))throw new Error('Ordre du jour et compte rendu sont réservés aux réunions.');
   const originalName=clean_(payload.name);
   if(!/\.pdf$/i.test(originalName)||clean_(payload.mimeType)!=='application/pdf')throw new Error('Choisissez un fichier PDF.');
@@ -336,7 +336,7 @@ function deleteReportForEvent_(eventId){
   return !!meta;
 }
 function deleteYouthReportPdf(eventId,token){
-  assertYouthAdmin_(token);const event=youthEventForManagement_(eventId);
+  assertYouthRight_(token, 'documents');const event=youthEventForManagement_(eventId);
   if(!agendaMeetingType_(event))throw new Error('Ordre du jour et compte rendu sont réservés aux réunions.');
   const deleted=deleteReportForEvent_(event.ID_Evenement);
   return {ok:true,deleted:deleted,message:deleted?'Compte rendu supprimé.':'Aucun compte rendu n’était enregistré.'};
@@ -367,7 +367,7 @@ function updateEvent(payload, token) {
   });
 }
 function updateYouthEvent(payload, token) {
-  assertYouthAdmin_(token);setupSystemIfMissing_();
+  assertYouthRight_(token, 'events');setupSystemIfMissing_();
   return accessLocked_(function(){
     payload=payload||{};const table=getTableData_(UC_APP.sheets.calendrier);
     const index=table.rows.findIndex(function(e){return clean_(e.ID_Evenement)===clean_(payload.id);});
@@ -433,7 +433,7 @@ function deleteEvent(eventId, token) {
   return accessLocked_(function() { return deleteEventData_(eventId); });
 }
 function deleteYouthEvent(eventId, token) {
-  assertYouthAdmin_(token); setupSystemIfMissing_();
+  assertYouthRight_(token, 'delete'); setupSystemIfMissing_();
   return accessLocked_(function() {
     const id = clean_(eventId);
     youthEventForManagement_(id);
@@ -470,7 +470,7 @@ function updateMemberProfile(payload, token) {
   });
 }
 function updateYouthMemberProfile(payload, token) {
-  assertYouthAdmin_(token);ensureAuditSchema_();
+  assertYouthRight_(token, 'members');ensureAuditSchema_();
   return accessLocked_(function(){
     payload=payload||{};const table=getTableData_(UC_APP.sheets.membres),index=table.rows.findIndex(function(m){return memberKey_(m)===clean_(payload.key);});
     if(index<0)throw new Error('Membre introuvable.');
