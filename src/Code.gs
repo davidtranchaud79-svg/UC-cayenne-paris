@@ -1177,8 +1177,11 @@ function setLinkedText_(range, text, url) {
 }
 
 function assertAdmin_(pin) {
-  const session = accessSession_(pin, 'bureau');
-  if (session.version !== accessHash_(clean_(getSettings_().admin_pin))) throw new Error('SESSION_EXPIRED: Reconnectez-vous avec le code du bureau.');
+  const session = accessSession_(pin, 'bureau'), expected = clean_(getSettings_().admin_pin), testHash = bureauTestHash_();
+  const mainOk = expected && session.version === accessHash_(expected);
+  const testOk = session.test === true && testHash && session.version === testHash;
+  if (!mainOk && !testOk) throw new Error('SESSION_EXPIRED: Reconnectez-vous avec le code du bureau.');
+  return session;
 }
 
 function getEventsForYear_(year) {
