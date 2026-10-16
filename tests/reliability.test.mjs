@@ -335,6 +335,33 @@ test('Youth Bureau can delete only events in its management scope and cleans lin
   assert.throws(()=>f.c.deleteYouthEvent('EVT-1',f.youth),/Compagnons/);
 });
 
+test('personal Youth profiles authenticate with member credentials and enforce granted rights server-side',()=>{
+  const f=fixture();f.c.ensureAuditSchema_();
+  const alex=f.c.getRowsAsObjects_('MEMBRES').find(m=>m.Statut==='Aspirant'),key=f.c.memberKey_(alex);
+  const issued=f.c.manageMemberCode(key,'issue',f.bureau);
+  f.c.saveYouthProfile({key,enabled:true,rights:['attendance']},f.bureau);
+  const login=f.c.loginYouthBureau(issued.code);
+  assert.equal(login.shared,false);assert.deepEqual(Array.from(login.rights),['attendance']);assert.match(login.actor,/Alex/);
+  const created=f.c.createYouthEvent({date:'2026-10-20',title:'Cours profil jeunes',type:'Autre',cayenne:'Paris'},f.youth);
+  assert.ok(f.c.getYouthAttendance(created.event.id,login.token));
+  assert.throws(()=>f.c.createYouthEvent({date:'2026-10-21',title:'Interdit',type:'Autre',cayenne:'Paris'},login.token),/Droit insuffisant/);
+  f.c.saveYouthProfile({key,enabled:true,rights:['attendance','events']},f.bureau);
+  assert.equal(f.c.createYouthEvent({date:'2026-10-21',title:'Autorisé',type:'Autre',cayenne:'Paris'},login.token).ok,true);
+  f.c.saveYouthProfile({key,enabled:false,rights:[]},f.bureau);
+  assert.throws(()=>f.c.getYouthDashboardData(2026,login.token),/SESSION_EXPIRED/);
+});
+
+test('bureau test profile has the same admin rights but can be revoked independently',()=>{
+  const f=fixture();
+  const created=f.c.createBureauTestAccess(f.bureau);
+  assert.match(created.code,/^[A-F0-9]{4}(?:-[A-F0-9]{4}){3}$/);
+  const login=f.c.loginBureau(created.code);assert.equal(login.test,true);
+  assert.ok(f.c.getDashboardData(2026,login.token));
+  f.c.revokeBureauTestAccess(f.bureau);
+  assert.throws(()=>f.c.getDashboardData(2026,login.token),/SESSION_EXPIRED/);
+  assert.ok(f.c.getDashboardData(2026,f.bureau),'main bureau session remains valid');
+});
+
 test('Youth Bureau can attach agenda and report PDFs only to meetings',()=>{
   const f=fixture();f.c.ensureAuditSchema_();
   const created=f.c.createYouthEvent({date:'2026-10-07',title:'Réunion jeunes documents',type:'Réunion des jeunes',cayenne:'Paris'},f.youth);
