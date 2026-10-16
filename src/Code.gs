@@ -596,7 +596,7 @@ function youthEventImportHeaders_() {
 }
 
 function getYouthEventImportInfo(token) {
-  assertYouthAdmin_(token);
+  assertYouthRight_(token, 'import');
   return {
     url: UC_APP.defaults.youthImportSpreadsheetUrl,
     spreadsheetId: UC_APP.defaults.youthImportSpreadsheetId,
@@ -613,7 +613,7 @@ function getYouthImportSheet_() {
 }
 
 function importYouthEventsFromSheet(token) {
-  assertYouthAdmin_(token);
+  assertYouthRight_(token, 'import');
   setupSystemIfMissing_();
   const result = accessLocked_(function() {
     const importSheet = getYouthImportSheet_();
@@ -710,7 +710,7 @@ function importYouthEventsFromSheet(token) {
 }
 
 function createYouthEvent(payload, token) {
-  assertYouthAdmin_(token); setupSystemIfMissing_();
+  assertYouthRight_(token, 'events'); setupSystemIfMissing_();
   return accessLocked_(function() {
     payload = payload || {};
     const date = parseInputDate_(payload.date), title = clean_(payload.title), type = clean_(payload.type || 'Réunion des jeunes');
@@ -1518,7 +1518,7 @@ function getAttendance(eventId, token) {
   return attendanceRoster_(eventId);
 }
 function getYouthAttendance(eventId, token) {
-  assertYouthAdmin_(token);
+  assertYouthRight_(token, 'attendance');
   return attendanceRoster_(eventId, youthAttendanceEventAllowed_, youthMemberAllowed_, 'Absent');
 }
 function saveAttendanceRows_(payload, roster) {
@@ -1548,7 +1548,7 @@ function saveAttendance(payload, token) {
   return accessLocked_(function() { return saveAttendanceRows_(payload, attendanceRoster_(payload.eventId)); });
 }
 function saveYouthAttendance(payload, token) {
-  assertYouthAdmin_(token);
+  assertYouthRight_(token, 'attendance');
   if (!payload || !Array.isArray(payload.changes) || !payload.changes.length) throw new Error('Aucun pointage à enregistrer.');
   return accessLocked_(function() { return saveAttendanceRows_(payload, attendanceRoster_(payload.eventId, youthAttendanceEventAllowed_, youthMemberAllowed_)); });
 }
