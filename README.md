@@ -1,6 +1,6 @@
 # Logiciel Présences, Engagements et Excuses - Cayenne
 
-Version **2026.10.15.20** : identifiants stables, événements modifiables et ciblés, traitements en arrière-plan, suivi des mails et comptes rendus sans motifs privés. Voir [les changements et la publication de cette version](docs/MISE_EN_OEUVRE_AUDIT.md).
+Version **2026.10.16.1** : identifiants stables, événements modifiables et ciblés, traitements en arrière-plan, suivi des mails et comptes rendus sans motifs privés. Voir [les changements et la publication de cette version](docs/MISE_EN_OEUVRE_AUDIT.md).
 
 Ce pack contient une base Google Sheets + Apps Script pour suivre les présences sur l'année :
 
