@@ -411,7 +411,7 @@ function listMemberAccess(token) {
 }
 
 function listYouthMemberAccess(token) {
-  assertYouthAdmin_(token);ensureAuditSchema_();
+  assertYouthRight_(token, 'members');ensureAuditSchema_();
   return sortMemberObjects_(getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m){return m.Nom&&m.Prenom&&youthMemberAllowed_(m);}))
     .map(function(m){return Object.assign(memberProfile_(m),{key:memberKey_(m)});});
 }
@@ -657,8 +657,9 @@ function sendAllMemberAccessCodes(token) {
 }
 
 function createYouthMemberProfile(payload, token) {
+  assertYouthRight_(token, 'members');
   return accessLocked_(function(){
-    assertYouthAdmin_(token);ensureAuditSchema_();payload=payload||{};
+    assertYouthRight_(token, 'members');ensureAuditSchema_();payload=payload||{};
     const member={Nom:clean_(payload.nom),Prenom:clean_(payload.prenom),Statut:clean_(payload.statut),Cayenne:clean_(payload.cayenne),Email:clean_(payload.email),Telephone:clean_(payload.telephone),Actif:'Oui'};
     if(!member.Nom||!member.Prenom)throw new Error('Nom et prénom obligatoires.');
     if(!['Sociétaire','Aspirant'].includes(member.Statut))throw new Error('Le Bureau des jeunes peut créer uniquement des Sociétaires ou Aspirants.');
