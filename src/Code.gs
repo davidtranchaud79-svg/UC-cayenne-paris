@@ -415,6 +415,13 @@ function importEventsFromSheet() {
       calendarSheet.getRange(start,6,records.length,2).setNumberFormat('@');
       calendarSheet.getRange(start,1,records.length,headers.length).setValues(records);
     }
+    values.sort(function(a,b){
+      const dateA=eventImportDate_(a[2]),dateB=eventImportDate_(b[2]);
+      if(dateA&&dateB){const delta=dateA-dateB;return delta||clean_(a[3]).localeCompare(clean_(b[3]),'fr');}
+      if(dateA)return -1;if(dateB)return 1;
+      const filledA=a.slice(1,11).some(function(value){return clean_(value);}),filledB=b.slice(1,11).some(function(value){return clean_(value);});
+      return filledA===filledB?0:filledA?-1:1;
+    });
     importSheet.getRange(firstRow,1,values.length,width).setValues(values);
     return {ok:errors===0, imported:imported, skipped:skipped, errors:errors, eventIds:importedIds};
   });
