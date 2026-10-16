@@ -61,6 +61,7 @@ function app(file, overrides={}) {
         else if(method==='getYouthEventResponseDetails')success([{name:'Alex Autre',statut:'Sociétaire',response:'Présent'},{name:'Zoé Aardvark',statut:'Aspirant',response:'Présent'}]);
         else if(method==='createYouthEvent')success({ok:true,event:{id:'evt-new'},message:'Événement créé : Réunion jeunes'});
         else if(method==='updateYouthEvent')success({ok:true,message:'Événement mis à jour.'});
+        else if(method==='deleteYouthEvent')success({ok:true,deletedResponses:1,message:'Événement supprimé définitivement avec 1 réponse(s) associée(s).'});
         else if(method==='importYouthEventsFromSheet')success({ok:true,imported:2,skipped:1,errors:0,message:'2 événement(s) importé(s), 1 ignoré(s), 0 erreur(s).'});
         else if(method==='saveYouthAgendaPdf')success({ok:true,message:'Ordre du jour enregistré.'});
         else if(method==='saveYouthReportPdf')success({ok:true,message:'Compte rendu enregistré.'});
@@ -448,6 +449,7 @@ test('Youth Bureau has overview, editable non-companion events, documents and yo
  assert.match(a.doc.getElementById('youthEvents').textContent,/Journées du patrimoine/);
  assert.match(a.doc.getElementById('youthEvents').textContent,/Fête de novembre/);
  assert.ok(a.doc.querySelector('[data-youth-event-edit="evt-1"]'));
+ assert.ok(a.doc.querySelector('[data-youth-event-delete="evt-1"]'));
  assert.equal(a.doc.querySelector('[data-youth-doc-upload="agenda"][data-event-id="evt-1"]'),null);
  assert.equal(a.doc.querySelector('[data-youth-doc-upload="report"][data-event-id="evt-1"]'),null);
   assert.ok(a.doc.getElementById('youthImportLink').href.includes('1I3XwVdrc0K7XXkCtvA9E3rzjnhXIBADkA-oXOF9_eTc'));
@@ -456,7 +458,8 @@ test('Youth Bureau has overview, editable non-companion events, documents and yo
   assert.match(a.doc.getElementById('youthImportNotice').textContent,/2 événement/);
  assert.ok(a.doc.querySelector('[data-youth-doc-upload="agenda"][data-event-id="evt-youth"]'));
  assert.ok(a.doc.querySelector('[data-youth-doc-upload="report"][data-event-id="evt-youth"]'));
- assert.doesNotMatch(a.doc.getElementById('youthEvents').textContent,/Supprimer l’événement/);
+ a.doc.querySelector('[data-youth-event-delete="evt-1"]').click();a.flush();
+ assert.ok(a.calls.find(c=>c.method==='deleteYouthEvent'&&c.args[0]==='evt-1'&&c.args[1]==='YOUTH_SESSION'));
  a.doc.getElementById('newYouthEvent').click();
  a.fill('youthEventDate','2026-10-07','change');a.fill('youthEventTitle','Réunion jeunes');
  a.submit('youthEventForm');a.flush();
