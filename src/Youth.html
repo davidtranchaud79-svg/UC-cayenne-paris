@@ -218,7 +218,7 @@ function loadYouthAttendance(){
 }
 function saveYouthAttendance(){
   const roster=youth.attendanceRoster;if(!roster||roster.canEdit===false)return;
-  const changes=Array.from(document.querySelectorAll('[data-youth-attendance-index]')).map(select=>{const m=roster.members[Number(select.dataset.youthAttendanceIndex)];return {key:m.key,version:m.version,actual:select.value,previous:m.actual};}).filter(m=>m.actual!==m.previous);
+  const changes=Array.from(document.querySelectorAll('[data-youth-attendance-index]')).map(select=>{const m=roster.members[Number(select.dataset.youthAttendanceIndex)];return {key:m.key,version:m.version,actual:select.value,previous:m.storedActual||m.actual};}).filter(m=>m.actual!==m.previous);
   if(!changes.length){Ui.notice('youthAttendanceNotice','Aucune modification.','ok');return;}
   const request=youth.attendanceRequest,epoch=youth.epoch;document.getElementById('saveYouthAttendance').disabled=true;document.querySelectorAll('[data-youth-attendance-index]').forEach(s=>s.disabled=true);
   google.script.run.withSuccessHandler(result=>{if(request!==youth.attendanceRequest||epoch!==youth.epoch)return;Ui.notice('youthAttendanceNotice',result.warning||'Pointage enregistré.','ok');loadYouthAttendance();loadYouthDashboard();}).withFailureHandler(error=>{if(request!==youth.attendanceRequest||epoch!==youth.epoch)return;document.getElementById('saveYouthAttendance').disabled=false;document.querySelectorAll('[data-youth-attendance-index]').forEach(s=>s.disabled=false);Ui.notice('youthAttendanceNotice',error.message||error);}).saveYouthAttendance({eventId:roster.eventId,changes},youth.token);
