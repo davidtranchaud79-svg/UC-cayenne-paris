@@ -357,7 +357,7 @@ document.getElementById('youthYear').addEventListener('change',e=>{youth.year=e.
 document.querySelectorAll('[data-youth-screen]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.youthScreen==='events'&&youth.screen!=='events'&&canYouth('events')){openYouthEventForm();return;}setScreen(button.dataset.youthScreen);}));
 document.getElementById('youthSearch').addEventListener('input',renderMembers);
 document.getElementById('youthStatus').addEventListener('change',renderMembers);
-document.getElementById('youthEventSearch').addEventListener('input',renderEvents);
+document.getElementById('youthEventSearch').addEventListener('input',()=>{renderEvents();applyYouthPermissions();});
 document.getElementById('youthImportEvents').addEventListener('click',importYouthEvents);
 document.getElementById('youthAttendanceEvent').addEventListener('change',clearYouthAttendance);
 document.getElementById('loadYouthAttendance').addEventListener('click',loadYouthAttendance);
