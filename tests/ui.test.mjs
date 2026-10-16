@@ -518,6 +518,41 @@ test('Bureau des jeunes: new-event action clears a previously selected event ins
   a.dom.window.close();
 });
 
+test('personal Youth profile exposes only its granted advanced rights',()=>{
+  const a=app('Youth.html',{loginYouthBureau:()=>({token:'YOUTH-LIMITED',shared:false,actor:'Alex Autre',profile:{prenom:'Alex',nom:'Autre'},rights:['attendance']})});
+  a.fill('youthPin','alex-password');a.submit('youthAccessForm');a.flush();
+  assert.equal(a.calls.some(call=>call.method==='listYouthMemberAccess'),false,'member management is not loaded without the members right');
+  assert.match(a.doc.getElementById('youthSessionStatus').textContent,/Alex Autre/);
+  assert.equal(a.doc.querySelector('[data-youth-screen="attendance"]').hidden,false);
+  assert.equal(a.doc.querySelector('[data-youth-screen="members"]').hidden,true);
+  assert.equal(a.doc.getElementById('newYouthEvent').hidden,true);
+  assert.equal(a.doc.getElementById('youthEventForm').hidden,true);
+  assert.equal(a.doc.getElementById('youthImportPanel').hidden,true);
+  assert.equal(a.doc.querySelector('[data-youth-event-edit="evt-1"]').hidden,true);
+  assert.equal(a.doc.querySelector('[data-youth-event-delete="evt-1"]').hidden,true);
+  a.doc.querySelector('[data-youth-screen="attendance"]').click();
+  assert.equal(a.doc.getElementById('youthAttendanceScreen').hidden,false);
+  a.dom.window.close();
+});
+
+test('admin can configure Youth profiles and create a separate full-rights test access',()=>{
+  const a=app('Admin.html',{});
+  a.login();
+  a.doc.querySelector('[data-screen="settings"]').click();a.flush();
+  assert.ok(a.calls.find(call=>call.method==='listYouthProfiles'));
+  assert.ok(a.calls.find(call=>call.method==='getBureauTestStatus'));
+  const profile=a.doc.querySelector('[data-youth-profile="MEM-ALEX"]');
+  assert.ok(profile);
+  profile.querySelector('[data-youth-enabled]').checked=true;
+  profile.querySelector('[data-youth-right="events"]').checked=true;
+  profile.querySelector('[data-save-youth-profile]').click();a.flush();
+  assert.ok(a.calls.find(call=>call.method==='saveYouthProfile'&&call.args[0].key==='MEM-ALEX'));
+  a.doc.getElementById('createBureauTestAccess').click();a.flush();
+  assert.equal(a.doc.getElementById('bureauTestCode').value,'TEST-TEST-TEST-TEST');
+  assert.equal(a.doc.getElementById('bureauTestCodePanel').hidden,false);
+  a.dom.window.close();
+});
+
 test('future events can be selected for read-only attendance preview',()=>{
  const a=app('Admin.html',{getDashboardData:()=>({...structuredClone(dashboard),events:[{...events[1],date:'21/11/2099'}]}),getAttendance:()=>({eventId:'evt-2',canEdit:false,members:[{key:'m',name:'Camille',announced:'Présent',actual:'Non pointé',version:''}]})});
  a.login();a.fill('attendanceEvent','evt-2','change');assert.equal(a.doc.getElementById('attendanceEvent').value,'evt-2');
