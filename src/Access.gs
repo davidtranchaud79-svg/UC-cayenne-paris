@@ -57,6 +57,47 @@ function memberProfile_(member) {
     cayenne: clean_(member.Cayenne), email: clean_(member.Email), telephone: clean_(member.Telephone)};
 }
 
+function youthRightsCatalog_() {
+  return [
+    {id:'events',label:'Créer et modifier les événements'},
+    {id:'delete',label:'Supprimer des événements'},
+    {id:'attendance',label:'Faire le pointage réel'},
+    {id:'members',label:'Gérer les Sociétaires et Aspirants'},
+    {id:'documents',label:'Gérer les ordres du jour et comptes rendus PDF'},
+    {id:'import',label:'Importer des événements en masse'}
+  ];
+}
+function youthRightIds_() { return youthRightsCatalog_().map(function(item){ return item.id; }); }
+function youthGrantKey_(memberKey) { return 'uc.youth.profile.' + accessHash_(clean_(memberKey)); }
+function youthGrant_(memberKey) {
+  const raw = PropertiesService.getScriptProperties().getProperty(youthGrantKey_(memberKey));
+  if (!raw) return {enabled:false,rights:[]};
+  try {
+    const grant = JSON.parse(raw), allowed = youthRightIds_();
+    return {enabled:grant && grant.enabled === true, rights:Array.from(new Set((grant && grant.rights || []).map(clean_).filter(function(right){ return allowed.includes(right); })))};
+  } catch (_) { return {enabled:false,rights:[]}; }
+}
+function saveYouthGrant_(memberKey, enabled, rights) {
+  const allowed = youthRightIds_(), normalized = Array.from(new Set((rights || []).map(clean_).filter(function(right){ return allowed.includes(right); })));
+  const props = PropertiesService.getScriptProperties(), key = youthGrantKey_(memberKey);
+  if (!enabled) { props.deleteProperty(key); return {enabled:false,rights:[]}; }
+  const grant = {enabled:true,rights:normalized,updatedAt:new Date().toISOString()};
+  props.setProperty(key, JSON.stringify(grant));
+  return grant;
+}
+function youthSessionInfo_(session) {
+  if (session.shared) return {shared:true,actor:'Code commun du Bureau des jeunes',profile:null,rights:youthRightIds_()};
+  const member = memberByKey_(session.key), grant = youthGrant_(session.key);
+  return {shared:false,actor:clean_(member.Prenom + ' ' + member.Nom),profile:memberProfile_(member),rights:grant.rights};
+}
+function assertYouthRight_(token, right) {
+  const session = assertYouthAdmin_(token);
+  const info = youthSessionInfo_(session);
+  if (!info.shared && !info.rights.includes(clean_(right))) throw new Error('Droit insuffisant pour cette action. Le Bureau principal doit ajuster votre profil.');
+  return Object.assign({},session,{info:info});
+}
+function bureauTestHash_() { return clean_(PropertiesService.getScriptProperties().getProperty('uc.bureau.test.hash')); }
+
 function passwordResetMessage_() {
   return 'Si cette adresse correspond à un membre actif, un code de récupération a été envoyé. Vérifiez aussi vos courriers indésirables.';
 }
