@@ -605,11 +605,27 @@ function getYouthEventImportInfo(token) {
   };
 }
 
+function prepareYouthImportSheet_(sheet) {
+  if (!sheet) throw new Error('Onglet IMPORT_JEUNES introuvable dans le fichier du Bureau des jeunes.');
+  const width = youthEventImportHeaders_().length;
+  if (sheet.getMaxColumns() < width) sheet.insertColumnsAfter(sheet.getMaxColumns(), width - sheet.getMaxColumns());
+  if (sheet.getMaxColumns() > width) sheet.deleteColumns(width + 1, sheet.getMaxColumns() - width);
+  sheet.getRange(6,1,1,width).setValues([youthEventImportHeaders_()]);
+  sheet.getRange('A7:A600').insertCheckboxes();
+  const templates=getEventTemplates_().filter(function(t){return clean_(t.type)!=='Réunion compagnon';}).map(function(t){return clean_(t.name);}).filter(Boolean);
+  if(templates.length)setListValidation_(sheet.getRange('B7:B600'),templates);
+  const dateRule=SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(false).build();
+  sheet.getRange('C7:C600').setDataValidation(dateRule).setNumberFormat('yyyy-mm-dd');
+  sheet.getRange('E7:F600').setNumberFormat('hh:mm');
+  setListValidation_(sheet.getRange('H7:H600'),['Standard','Repas et aide','Réception']);
+  setListValidation_(sheet.getRange('I7:I600'),getOptionList_('H',UC_APP.defaults.eventTypes).filter(function(type){return clean_(type)!=='Réunion compagnon';}));
+  setListValidation_(sheet.getRange('J7:J600'),getOptionList_('E',UC_APP.defaults.cayennes));
+  sheet.getRange('O7:O600').setNumberFormat('yyyy-mm-dd hh:mm');
+  return sheet;
+}
 function getYouthImportSheet_() {
   const ss = SpreadsheetApp.openById(UC_APP.defaults.youthImportSpreadsheetId);
-  const sheet = ss.getSheetByName('IMPORT_JEUNES');
-  if (!sheet) throw new Error('Onglet IMPORT_JEUNES introuvable dans le fichier du Bureau des jeunes.');
-  return sheet;
+  return prepareYouthImportSheet_(ss.getSheetByName('IMPORT_JEUNES'));
 }
 
 function importYouthEventsFromSheet(token) {
