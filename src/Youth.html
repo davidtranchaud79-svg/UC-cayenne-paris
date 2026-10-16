@@ -322,6 +322,15 @@ function fileToPayload(file,done){if(!file)return;if(file.type!=='application/pd
 function openPdfPayload(payload,popup){try{const raw=atob(payload.data),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));if(popup){popup.location.href=url;popup.document.title=payload.name||'PDF';}else window.open(url,'_blank');setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(_){if(popup)popup.close();notice('Impossible d’ouvrir ce PDF.');}}
 function uploadYouthDocument(kind,eventId,file){if(youth.docBusy)return;fileToPayload(file,payload=>{youth.docBusy=true;const epoch=youth.epoch;const success=result=>{if(epoch!==youth.epoch)return;youth.docBusy=false;notice(result.message,'ok');loadYouthDashboard();};const failure=error=>{if(epoch!==youth.epoch)return;youth.docBusy=false;notice(error.message||error);};const run=google.script.run.withSuccessHandler(success).withFailureHandler(failure);if(kind==='agenda')run.saveYouthAgendaPdf(eventId,payload,youth.token);else run.saveYouthReportPdf(eventId,payload,youth.token);});}
 function openYouthDocument(kind,eventId){const popup=window.open('','_blank');const failure=error=>{if(popup)popup.close();notice(error.message||error);};const success=payload=>openPdfPayload(payload,popup);const run=google.script.run.withSuccessHandler(success).withFailureHandler(failure);if(kind==='agenda')run.getYouthAgendaPdf(eventId,youth.token);else run.getYouthReportPdf(eventId,youth.token);}
+function deleteYouthCalendarEvent(eventId){
+  if(!youth.token||youth.busy)return;
+  const event=(youth.dashboard&&youth.dashboard.calendar||[]).find(item=>item.id===eventId);
+  if(!event||!confirm('Supprimer « '+event.title+' » et ses données associées ?'))return;
+  const epoch=youth.epoch;youth.busy=true;
+  google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;youth.busy=false;clearYouthEventForm();notice(result.message,'ok');loadYouthDashboard();})
+    .withFailureHandler(error=>{if(epoch!==youth.epoch)return;youth.busy=false;notice(error.message||error);})
+    .deleteYouthEvent(eventId,youth.token);
+}
 function deleteYouthDocument(kind,eventId){if(!confirm('Supprimer ce PDF ?'))return;const success=result=>{notice(result.message,'ok');loadYouthDashboard();};const failure=error=>notice(error.message||error);const run=google.script.run.withSuccessHandler(success).withFailureHandler(failure);if(kind==='agenda')run.deleteYouthAgendaPdf(eventId,youth.token);else run.deleteYouthReportPdf(eventId,youth.token);}
 
 document.getElementById('youthAccessForm').addEventListener('submit',e=>{e.preventDefault();const epoch=++youth.epoch;Ui.loading('youthLoginBtn',true,'Connexion…');google.script.run.withSuccessHandler(result=>{if(epoch!==youth.epoch)return;youth.token=result.token;Ui.loading('youthLoginBtn',false);document.getElementById('youthPin').value='';loadYouth();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;Ui.loading('youthLoginBtn',false);notice(error.message||error);}).loginYouthBureau(document.getElementById('youthPin').value);});
