@@ -114,6 +114,7 @@ function doGet(e) {
   template.adminUrl = urls.adminUrl;
   template.youthUrl = urls.youthUrl;
   template.appVersion = UC_APP.version;
+  template.homeUrl = UC_APP.defaults.landingPageUrl;
 
   return template
     .evaluate()
@@ -702,7 +703,9 @@ function importYouthEventsFromSheet(token) {
   });
 
   if (result.eventIds.length) queueFollowup_(result.eventIds);
-  result.message = result.imported + ' événement(s) importé(s), ' + result.skipped + ' ignoré(s), ' + result.errors + ' erreur(s).';
+  result.message = result.imported + ' événement(s) importé(s), ' + result.skipped + ' ignoré(s), ' + result.errors + ' erreur(s).' +
+    (result.skipped ? ' Les lignes ignorées affichent maintenant leur motif dans « Résultat import » (déjà importé ou doublon date + titre).' : '') +
+    (result.errors ? ' Corrigez les lignes marquées ERREUR puis recochez-les.' : '');
   return result;
 }
 
@@ -1476,7 +1479,7 @@ function youthAttendanceEventAllowed_(event) {
   });
   return youthMembers.some(function(member) { return eventForMember_(event, member); });
 }
-function attendanceRoster_(eventId, eventAllowed, memberAllowed) {
+function attendanceRoster_(eventId, eventAllowed, memberAllowed, defaultActual) {
   setupSystemIfMissing_();
   eventId = clean_(eventId);
   const event = calendarRows_().find(function(e) { return e.ID_Evenement === eventId && isActive_(e.Actif); });
@@ -1493,8 +1496,10 @@ function attendanceRoster_(eventId, eventAllowed, memberAllowed) {
   }).map(function(m) {
     const key = memberKey_(m);
     const row = latest[eventId + '|' + key];
+    const storedActual = row ? row.Presence_Reelle : 'Non pointé';
+    const actual = !row && canEdit && defaultActual ? defaultActual : storedActual;
     return {key:key, name:clean_(m.Prenom + ' ' + m.Nom), statut:clean_(m.Statut), cayenne:clean_(m.Cayenne),
-      announced:answers[key] ? answers[key].Reponse : 'Sans réponse', actual:row ? row.Presence_Reelle : 'Non pointé', version:row ? row.ID_Pointage : ''};
+      announced:answers[key] ? answers[key].Reponse : 'Sans réponse', actual:actual, storedActual:storedActual, version:row ? row.ID_Pointage : ''};
   }).sort(attendanceMemberCompare_);
   const groups = {'Présent':[], 'Absent':[], 'Excusé':[], 'Non pointé':[]};
   members.forEach(function(m) { (groups[m.actual] || groups['Non pointé']).push({name:m.name,statut:m.statut,key:m.key}); });
@@ -1511,7 +1516,7 @@ function getAttendance(eventId, token) {
 }
 function getYouthAttendance(eventId, token) {
   assertYouthAdmin_(token);
-  return attendanceRoster_(eventId, youthAttendanceEventAllowed_, youthMemberAllowed_);
+  return attendanceRoster_(eventId, youthAttendanceEventAllowed_, youthMemberAllowed_, 'Absent');
 }
 function saveAttendanceRows_(payload, roster) {
   if (!roster.canEdit) throw new Error('Le pointage ouvre le jour de l’événement.');
