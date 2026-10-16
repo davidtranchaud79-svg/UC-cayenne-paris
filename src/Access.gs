@@ -416,6 +416,37 @@ function listYouthMemberAccess(token) {
     .map(function(m){return Object.assign(memberProfile_(m),{key:memberKey_(m)});});
 }
 
+function listYouthProfiles(token) {
+  assertAdmin_(token);ensureAuditSchema_();
+  return sortMemberObjects_(getRowsAsObjects_(UC_APP.sheets.membres).filter(function(m){return m.Nom&&m.Prenom&&isActive_(m.Actif)&&youthMemberAllowed_(m);}))
+    .map(function(m){
+      const key=memberKey_(m),grant=youthGrant_(key);
+      return Object.assign(memberProfile_(m),{key:key,enabled:grant.enabled,rights:grant.rights,hasAccess:!!memberCodeHash_(m),accessType:memberCredentialKind_(m)});
+    });
+}
+function saveYouthProfile(payload, token) {
+  assertAdmin_(token);ensureAuditSchema_();payload=payload||{};
+  const key=clean_(payload.key),member=getRowsAsObjects_(UC_APP.sheets.membres).find(function(m){return memberKey_(m)===key;});
+  if(!member||!isActive_(member.Actif)||!youthMemberAllowed_(member))throw new Error('Profil jeune introuvable ou non éligible.');
+  const grant=saveYouthGrant_(key,payload.enabled===true,Array.isArray(payload.rights)?payload.rights:[]);
+  return {ok:true,profile:Object.assign(memberProfile_(member),{key:key,enabled:grant.enabled,rights:grant.rights,hasAccess:!!memberCodeHash_(member)}),
+    message:grant.enabled?'Profil Bureau des jeunes activé pour '+clean_(member.Prenom+' '+member.Nom)+'.':'Profil Bureau des jeunes désactivé.'};
+}
+function createBureauTestAccess(token) {
+  assertAdmin_(token);
+  const raw=(Utilities.getUuid().replace(/-/g,'')+Utilities.getUuid().replace(/-/g,'')).slice(0,16).toUpperCase();
+  const code=raw.match(/.{4}/g).join('-'),hash=accessHash_(raw);
+  PropertiesService.getScriptProperties().setProperty('uc.bureau.test.hash',hash);
+  return {ok:true,code:code,message:'Profil de test administrateur créé. Ce code dispose des mêmes droits que le Bureau principal.'};
+}
+function revokeBureauTestAccess(token) {
+  assertAdmin_(token);PropertiesService.getScriptProperties().deleteProperty('uc.bureau.test.hash');
+  return {ok:true,message:'Profil de test administrateur révoqué.'};
+}
+function getBureauTestStatus(token) {
+  assertAdmin_(token);return {enabled:!!bureauTestHash_()};
+}
+
 function prepareMemberCode_(member) {
   const key = memberKey_(member), props = PropertiesService.getScriptProperties();
   let raw, hash;
