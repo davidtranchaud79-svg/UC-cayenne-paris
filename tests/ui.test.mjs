@@ -18,7 +18,7 @@ const youthDashboard = {year:2026,kpis:{events:3,members:2,presents:2,excused:1,
   {...youthMeeting,presents:0,excused:0,absent:0,noResponse:0,aids:0,missingMembers:[]}
 ],calendar:[...events.map((e,i)=>({...e,version:'YV'+i,cayenne:'Paris',modalites:'Standard',comment:'',agenda:{eligible:false,available:false},report:{eligible:false,available:false}})),youthMeeting],followUps:[{eventId:'evt-2',title:'Fête de novembre',date:'21/11/2026',noResponse:1,missingMembers:[{nom:'Autre',prenom:'Alex'}]}],members:[],causes:[],attendance:{total:{present:1,absent:0,excused:0,unmarked:1},monthly:[],members:[{key:'MEM-ALEX',name:'Alex Autre',statut:'Sociétaire',present:0,absent:0,excused:0,unmarked:1},{key:'MEM-ZOE',name:'Zoé Aardvark',statut:'Aspirant',present:1,absent:0,excused:0,unmarked:0}]}};
 function render(file) {
-  return readFileSync(new URL(file,src),'utf8').replace(/<\?!= include\('([A-Za-z]+)'\); \?>/g,(_,name)=>readFileSync(new URL(name+'.html',src),'utf8')).replaceAll('<?= appVersion ?>','2026.09.23.2').replaceAll('<?= publicUrl ?>',publicUrl).replaceAll('<?= adminUrl ?>',publicUrl+'?page=admin').replaceAll('<?= youthUrl ?>',publicUrl+'?page=jeunes');
+  return readFileSync(new URL(file,src),'utf8').replace(/<\?!= include\('([A-Za-z]+)'\); \?>/g,(_,name)=>readFileSync(new URL(name+'.html',src),'utf8')).replaceAll('<?= appVersion ?>','2026.10.16.2').replaceAll('<?= publicUrl ?>',publicUrl).replaceAll('<?= adminUrl ?>',publicUrl+'?page=admin').replaceAll('<?= youthUrl ?>',publicUrl+'?page=jeunes').replaceAll('<?= homeUrl ?>','https://davidtranchaud79-svg.github.io/UC-cayenne-paris/');
 }
 function app(file, overrides={}) {
   config.profile={nom:'Exemple',prenom:'Camille',statut:'Sociétaire',cayenne:'Paris',email:'camille@example.test',telephone:''};
@@ -39,11 +39,16 @@ function app(file, overrides={}) {
         if(overrides[method])success(overrides[method](...args));
         else if(method==='getPublicConfig'||method==='getBootstrapConfig')success(structuredClone(config));
         else if(method==='loginMember')success({token:'MEMBER_SESSION',remembered:args[1]===true});
-        else if(method==='loginBureau')success({token:'BUREAU_SESSION'});
-        else if(method==='loginYouthBureau')success({token:'YOUTH_SESSION'});
+        else if(method==='loginBureau')success({token:'BUREAU_SESSION',test:false});
+        else if(method==='loginYouthBureau')success({token:'YOUTH_SESSION',shared:true,actor:'Code commun du Bureau des jeunes',rights:['events','delete','attendance','members','documents','import']});
         else if(method==='logoutAccess')success({ok:true});
         else if(method==='listMemberAccess')success([{...config.profile,key:config.profile.email,active:true,hasCode:false}]);
         else if(method==='listYouthMemberAccess')success([{nom:'Aardvark',prenom:'Zoé',statut:'Aspirant',cayenne:'Paris',email:'zoe@example.test',telephone:'',key:'MEM-ZOE',active:true,hasCode:false},{nom:'Autre',prenom:'Alex',statut:'Sociétaire',cayenne:'Paris',email:'alex@example.test',telephone:'',key:'MEM-ALEX',active:true,hasCode:true,hasPassword:true}]);
+        else if(method==='listYouthProfiles')success([{nom:'Aardvark',prenom:'Zoé',statut:'Aspirant',cayenne:'Paris',email:'zoe@example.test',key:'MEM-ZOE',enabled:false,rights:[],hasAccess:true,accessType:'password'},{nom:'Autre',prenom:'Alex',statut:'Sociétaire',cayenne:'Paris',email:'alex@example.test',key:'MEM-ALEX',enabled:true,rights:['attendance'],hasAccess:true,accessType:'password'}]);
+        else if(method==='saveYouthProfile')success({ok:true,message:'Profil Bureau des jeunes enregistré.'});
+        else if(method==='getBureauTestStatus')success({enabled:false});
+        else if(method==='createBureauTestAccess')success({ok:true,code:'TEST-TEST-TEST-TEST',message:'Profil de test administrateur créé.'});
+        else if(method==='revokeBureauTestAccess')success({ok:true,message:'Profil de test administrateur révoqué.'});
         else if(method==='manageMemberCode'||method==='createMemberAccess')success({profile:config.profile,code:'1234-5678-90AB-CDEF'});
         else if(method==='sendAllMemberAccessCodes')success({ok:true,message:'1 accès envoyé.',summary:{sent:1,password:1,no_email:1,error:0,inactive:0,total:3}});
         else if(method==='manageYouthMemberCode'||method==='createYouthMemberAccess')throw Error('Youth Bureau must not manage access');
