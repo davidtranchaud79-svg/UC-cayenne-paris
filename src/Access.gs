@@ -435,7 +435,7 @@ function saveYouthProfile(payload, token) {
 function createBureauTestAccess(token) {
   assertAdmin_(token);
   const raw=(Utilities.getUuid().replace(/-/g,'')+Utilities.getUuid().replace(/-/g,'')).slice(0,16).toUpperCase();
-  const code=raw.match(/.{4}/g).join('-'),hash=accessHash_(raw);
+  const code=raw.match(/.{4}/g).join('-'),hash=accessHash_(code);
   PropertiesService.getScriptProperties().setProperty('uc.bureau.test.hash',hash);
   return {ok:true,code:code,message:'Profil de test administrateur créé. Ce code dispose des mêmes droits que le Bureau principal.'};
 }
