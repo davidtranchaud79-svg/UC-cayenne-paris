@@ -249,8 +249,58 @@
     const session=state.session;Ui.loading('changeYouthCodeBtn',true,'Modification…');
     google.script.run.withSuccessHandler(()=>{if(session!==state.session)return;Ui.loading('changeYouthCodeBtn',false);document.getElementById('youthCodeForm').reset();Ui.notice('adminNotice','Code du Bureau des jeunes enregistré.','ok');}).withFailureHandler(error=>{if(session!==state.session)return;Ui.loading('changeYouthCodeBtn',false);Ui.notice('adminNotice',error.message || error);}).changeYouthBureauCode(code,pin());
   });
+  function renderYouthProfiles(){
+    const root=document.getElementById('youthProfilesList'),catalog=[
+      ['events','Événements'],['delete','Suppression'],['attendance','Pointage'],['members','Membres'],['documents','PDF ODJ / CR'],['import','Import massif']
+    ];
+    root.innerHTML=state.youthProfiles.length?state.youthProfiles.map(profile=>{
+      const rights=new Set(profile.rights||[]);
+      return '<article class="profile-rights-card" data-youth-profile="'+Ui.escape(profile.key)+'"><div class="section-head"><div><strong>'+Ui.escape(profile.prenom+' '+profile.nom)+'</strong><p>'+Ui.escape(profile.statut+' · '+profile.cayenne)+'</p></div><label class="remember-choice compact-choice"><input type="checkbox" data-youth-enabled '+(profile.enabled?'checked':'')+'><span>Profil actif</span></label></div>'+
+        '<div class="rights-grid">'+catalog.map(([id,label])=>'<label><input type="checkbox" data-youth-right="'+id+'" '+(rights.has(id)?'checked':'')+' '+(!profile.enabled?'disabled':'')+'><span>'+Ui.escape(label)+'</span></label>').join('')+'</div>'+
+        (!profile.hasAccess?'<p class="small warning-text">Aucun accès membre actif : créez ou réinitialisez d’abord son accès dans « Membres ».</p>':'<p class="small">Accès membre : '+Ui.escape(profile.accessType==='password'?'mot de passe personnel':'code temporaire')+'.</p>')+
+        '<button class="btn secondary compact" type="button" data-save-youth-profile>Enregistrer ces droits</button></article>';
+    }).join(''):Ui.empty('Aucun profil éligible','Les Sociétaires et Aspirants actifs apparaîtront ici.','users');
+  }
+  function loadYouthProfiles(){
+    if(!state.token)return;const session=state.session;Ui.loading('refreshYouthProfiles',true,'Actualisation…');
+    google.script.run.withSuccessHandler(rows=>{if(session!==state.session)return;state.youthProfiles=rows||[];Ui.loading('refreshYouthProfiles',false);renderYouthProfiles();})
+      .withFailureHandler(error=>{if(session!==state.session)return;Ui.loading('refreshYouthProfiles',false);Ui.notice('adminNotice',error.message||error);}).listYouthProfiles(pin());
+  }
+  function loadBureauTestStatus(){
+    if(!state.token)return;const session=state.session;
+    google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;state.bureauTestEnabled=!!result.enabled;document.getElementById('bureauTestStatus').textContent=state.bureauTestEnabled?'Profil test actif. Vous pouvez le révoquer ou le remplacer.':'Aucun profil test actif.';document.getElementById('revokeBureauTestAccess').disabled=!state.bureauTestEnabled;})
+      .withFailureHandler(error=>{if(session===state.session)Ui.notice('adminNotice',error.message||error);}).getBureauTestStatus(pin());
+  }
+  document.getElementById('refreshYouthProfiles').addEventListener('click',loadYouthProfiles);
+  document.getElementById('youthProfilesList').addEventListener('change',event=>{
+    const card=event.target.closest('[data-youth-profile]');if(!card)return;
+    if(event.target.matches('[data-youth-enabled]'))card.querySelectorAll('[data-youth-right]').forEach(input=>input.disabled=!event.target.checked);
+  });
+  document.getElementById('youthProfilesList').addEventListener('click',event=>{
+    const button=event.target.closest('[data-save-youth-profile]');if(!button||!state.token)return;
+    const card=button.closest('[data-youth-profile]'),enabled=card.querySelector('[data-youth-enabled]').checked;
+    const rights=Array.from(card.querySelectorAll('[data-youth-right]:checked'),input=>input.dataset.youthRight);
+    const session=state.session;Ui.loading(button.id||'refreshYouthProfiles',false);
+    button.disabled=true;button.textContent='Enregistrement…';
+    google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;Ui.notice('adminNotice',result.message,'ok');loadYouthProfiles();})
+      .withFailureHandler(error=>{if(session!==state.session)return;button.disabled=false;button.textContent='Enregistrer ces droits';Ui.notice('adminNotice',error.message||error);}).saveYouthProfile({key:card.dataset.youthProfile,enabled:enabled,rights:rights},pin());
+  });
+  document.getElementById('createBureauTestAccess').addEventListener('click',()=>{
+    if(!state.token)return;const session=state.session;Ui.loading('createBureauTestAccess',true,'Création…');
+    google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;Ui.loading('createBureauTestAccess',false);state.bureauTestEnabled=true;document.getElementById('bureauTestCode').value=result.code;document.getElementById('bureauTestCodePanel').hidden=false;Ui.notice('adminNotice',result.message,'ok');loadBureauTestStatus();})
+      .withFailureHandler(error=>{if(session!==state.session)return;Ui.loading('createBureauTestAccess',false);Ui.notice('adminNotice',error.message||error);}).createBureauTestAccess(pin());
+  });
+  document.getElementById('revokeBureauTestAccess').addEventListener('click',()=>{
+    if(!state.token||!state.bureauTestEnabled||!confirm('Révoquer le profil test administrateur ?'))return;const session=state.session;
+    google.script.run.withSuccessHandler(result=>{if(session!==state.session)return;state.bureauTestEnabled=false;document.getElementById('bureauTestCode').value='';document.getElementById('bureauTestCodePanel').hidden=true;Ui.notice('adminNotice',result.message,'ok');loadBureauTestStatus();})
+      .withFailureHandler(error=>{if(session===state.session)Ui.notice('adminNotice',error.message||error);}).revokeBureauTestAccess(pin());
+  });
+  document.getElementById('copyBureauTestCode').addEventListener('click',async()=>{
+    const input=document.getElementById('bureauTestCode');input.select();try{await navigator.clipboard.writeText(input.value);Ui.notice('adminNotice','Code du profil test copié.','ok');}catch(_){Ui.notice('adminNotice','Code sélectionné : utilisez Copier.','ok');}
+  });
+
   function hideIssuedCode(){document.getElementById('issuedCodePanel').hidden=true;document.getElementById('issuedCode').value='';document.getElementById('issuedCodeLabel').textContent='Code personnel à transmettre';}
-  function clearMemberAccess(){clearAuditPanels();state.accessMembers=[];state.accessBusy=false;state.bulkAccessSummary=null;document.getElementById('memberAccessPanel').hidden=true;document.getElementById('memberAccessList').textContent='';document.getElementById('accessNotice').hidden=true;document.getElementById('bulkAccessSummary').hidden=true;hideIssuedCode();document.getElementById('newMemberForm').reset();document.getElementById('bureauCodeForm').reset();document.getElementById('youthCodeForm').reset();['newMemberBtn','changeBureauCodeBtn','changeYouthCodeBtn','sendAllAccessCodes'].forEach(id=>Ui.loading(id,false));}
+  function clearMemberAccess(){clearAuditPanels();state.accessMembers=[];state.youthProfiles=[];state.bureauTestEnabled=false;state.testSession=false;state.accessBusy=false;state.bulkAccessSummary=null;document.getElementById('memberAccessPanel').hidden=true;document.getElementById('memberAccessList').textContent='';document.getElementById('youthProfilesList').textContent='';document.getElementById('bureauTestStatus').textContent='Connectez-vous pour consulter l’état.';document.getElementById('bureauTestCode').value='';document.getElementById('bureauTestCodePanel').hidden=true;document.getElementById('accessNotice').hidden=true;document.getElementById('bulkAccessSummary').hidden=true;hideIssuedCode();document.getElementById('newMemberForm').reset();document.getElementById('bureauCodeForm').reset();document.getElementById('youthCodeForm').reset();['newMemberBtn','changeBureauCodeBtn','changeYouthCodeBtn','sendAllAccessCodes','refreshYouthProfiles','createBureauTestAccess'].forEach(id=>Ui.loading(id,false));}
   function loadMemberAccess(){
     if(!state.token)return;const session=state.session;
     google.script.run.withSuccessHandler(members=>{if(session!==state.session)return;state.accessMembers=members;document.getElementById('memberAccessPanel').hidden=false;renderMemberAccess();}).withFailureHandler(error=>{if(session!==state.session)return;Ui.notice('adminNotice',error.message || error);}).listMemberAccess(pin());
