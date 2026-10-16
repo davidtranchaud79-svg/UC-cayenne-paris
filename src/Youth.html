@@ -163,24 +163,37 @@
     </main>
   </div>
 <script>
-const youth={token:'',members:[],dashboard:null,editing:null,eventEditing:null,busy:false,docBusy:false,epoch:0,screen:'overview',year:'',attendanceRoster:null,attendanceRequest:0,eventDetailsRequest:0};
+const youth={token:'',session:{shared:true,actor:'',rights:[]},members:[],dashboard:null,editing:null,eventEditing:null,busy:false,docBusy:false,epoch:0,screen:'overview',year:'',attendanceRoster:null,attendanceRequest:0,eventDetailsRequest:0};
+function canYouth(right){return youth.session&&youth.session.shared===true||(youth.session&&Array.isArray(youth.session.rights)&&youth.session.rights.includes(right));}
+function youthScreenAllowed(name){return name==='overview'||(name==='events')||(name==='attendance'&&canYouth('attendance'))||(name==='members'&&canYouth('members'));}
+function applyYouthPermissions(){
+  const attendanceNav=document.querySelector('[data-youth-screen="attendance"]'),membersNav=document.querySelector('[data-youth-screen="members"]');
+  if(attendanceNav)attendanceNav.hidden=!canYouth('attendance');if(membersNav)membersNav.hidden=!canYouth('members');
+  document.getElementById('newYouthEvent').hidden=!canYouth('events');
+  document.getElementById('youthEventForm').hidden=!canYouth('events');
+  document.getElementById('youthImportPanel').hidden=!canYouth('import');
+  document.getElementById('showYouthNewMember').hidden=!canYouth('members');
+  document.getElementById('youthNewMemberDetails').hidden=!canYouth('members');
+  document.getElementById('youthSessionStatus').textContent='Accès actif · '+(youth.session.actor||'Bureau des jeunes');
+  if(!youthScreenAllowed(youth.screen))youth.screen='overview';
+}
 const youthTitles={overview:['Vue d’ensemble','La vie des Sociétaires et Aspirants, en un regard.'],events:['Les rendez-vous','Préparez les événements et suivez les réponses.'],attendance:['Pointage','Présences réelles des Sociétaires et Aspirants.'],members:['Les membres','Un suivi lisible des Sociétaires et Aspirants.']};
 const esc=Ui.escape;Ui.mountIcons();
 function notice(message,type='error'){Ui.notice('youthNotice',message,type);}
 function setScreen(name){
-  if(!youthTitles[name])return;youth.screen=name;
+  if(!youthTitles[name]||!youthScreenAllowed(name))return;youth.screen=name;
   document.querySelectorAll('[data-youth-panel]').forEach(panel=>{const active=panel.dataset.youthPanel===name;panel.hidden=!active;panel.classList.toggle('active',active);});
   document.querySelectorAll('[data-youth-screen]').forEach(button=>{const active=button.dataset.youthScreen===name;button.classList.toggle('active',active);if(active)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');});
   document.getElementById('youthScreenTitle').textContent=youthTitles[name][0];
   document.getElementById('youthScreenSubtitle').textContent=youthTitles[name][1];
   document.getElementById('youthBreadcrumbTitle').textContent=youthTitles[name][0];
 }
-function lockYouth(revoke=true){const token=youth.token;youth.epoch++;youth.token='';youth.members=[];youth.dashboard=null;youth.editing=null;youth.eventEditing=null;youth.attendanceRequest++;youth.eventDetailsRequest++;youth.attendanceRoster=null;document.getElementById('youthSpace').hidden=true;document.getElementById('youthLogin').hidden=false;document.getElementById('youthPin').value='';document.getElementById('youthMembers').textContent='';document.getElementById('youthEvents').textContent='';document.getElementById('youthDashboardEvents').textContent='';document.getElementById('youthFollowUps').textContent='';document.getElementById('youthAttendanceRoster').textContent='';document.getElementById('youthAttendanceSummary').textContent='';document.getElementById('youthEditForm').hidden=true;clearYouthEventForm();setScreen('overview');if(revoke&&token)google.script.run.withFailureHandler(()=>{}).logoutAccess(token);}
-function loadYouth(){if(!youth.token)return;const epoch=youth.epoch;Ui.loading('youthRefresh',true,'Actualisation…');google.script.run.withSuccessHandler(rows=>{if(epoch!==youth.epoch)return;youth.members=rows;loadYouthDashboard();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;Ui.loading('youthRefresh',false);notice(error.message||error);if(String(error.message||error).includes('SESSION_EXPIRED'))lockYouth(false);}).listYouthMemberAccess(youth.token);}
+function lockYouth(revoke=true){const token=youth.token;youth.epoch++;youth.token='';youth.session={shared:true,actor:'',rights:[]};youth.members=[];youth.dashboard=null;youth.editing=null;youth.eventEditing=null;youth.attendanceRequest++;youth.eventDetailsRequest++;youth.attendanceRoster=null;document.getElementById('youthSpace').hidden=true;document.getElementById('youthLogin').hidden=false;document.getElementById('youthPin').value='';document.getElementById('youthMembers').textContent='';document.getElementById('youthEvents').textContent='';document.getElementById('youthDashboardEvents').textContent='';document.getElementById('youthFollowUps').textContent='';document.getElementById('youthAttendanceRoster').textContent='';document.getElementById('youthAttendanceSummary').textContent='';document.getElementById('youthEditForm').hidden=true;clearYouthEventForm();setScreen('overview');if(revoke&&token)google.script.run.withFailureHandler(()=>{}).logoutAccess(token);}
+function loadYouth(){if(!youth.token)return;const epoch=youth.epoch;Ui.loading('youthRefresh',true,'Actualisation…');if(!canYouth('members')){youth.members=[];loadYouthDashboard();return;}google.script.run.withSuccessHandler(rows=>{if(epoch!==youth.epoch)return;youth.members=rows;loadYouthDashboard();}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;Ui.loading('youthRefresh',false);notice(error.message||error);if(String(error.message||error).includes('SESSION_EXPIRED'))lockYouth(false);}).listYouthMemberAccess(youth.token);}
 function loadYouthDashboard(){const epoch=youth.epoch;google.script.run.withSuccessHandler(data=>{if(epoch!==youth.epoch)return;youth.dashboard=data;youth.year=String(data.year);renderYearSelector();renderAll();Ui.loading('youthRefresh',false);document.getElementById('youthLogin').hidden=true;document.getElementById('youthSpace').hidden=false;}).withFailureHandler(error=>{if(epoch!==youth.epoch)return;Ui.loading('youthRefresh',false);notice(error.message||error);if(String(error.message||error).includes('SESSION_EXPIRED'))lockYouth(false);}).getYouthDashboardData(youth.year||'',youth.token);}
 function renderYearSelector(){const select=document.getElementById('youthYear'),year=Number(youth.year||new Date().getFullYear());const years=[year-1,year,year+1];select.innerHTML=years.map(y=>'<option value="'+y+'"'+(y===year?' selected':'')+'>'+y+'</option>').join('');}
 function renderEventSelectors(){const d=youth.dashboard||{};document.getElementById('youthEventType').innerHTML=(d.eventTypes||[]).filter(x=>x!=='Réunion compagnon').map(x=>'<option>'+esc(x)+'</option>').join('');document.getElementById('youthEventCayenne').innerHTML=(d.cayennes||['Paris','Autre']).map(x=>'<option>'+esc(x)+'</option>').join('');}
-function renderAll(){renderEventSelectors();renderOverview();renderEvents();renderYouthAttendanceSummary();renderMembers();setScreen(youth.screen);Ui.mountIcons();}
+function renderAll(){renderEventSelectors();renderOverview();renderEvents();if(canYouth('attendance'))renderYouthAttendanceSummary();else{document.getElementById('youthAttendanceSummary').textContent='';document.getElementById('youthAttendanceEvent').innerHTML='<option value="">Choisir un événement</option>';}if(canYouth('members'))renderMembers();else document.getElementById('youthMembers').textContent='';applyYouthPermissions();setScreen(youth.screen);Ui.mountIcons();}
 function renderOverview(){
   const d=youth.dashboard||{kpis:{},followUps:[],events:[]},k=d.kpis||{};
   const specs=[['Événements','events','calendar','', 'Au calendrier'],['Membres actifs','members','users','', 'Sociétaires & Aspirants'],['Présences annoncées','presents','check-circle','green','Intentions sur l’année'],['Absences excusées','excused','clock','amber','Cumul sur l’année'],['Sans réponse','noResponse','info','','Par membre et événement'],['Coups de main','aids','heart','blue','Présences avec aide']];
