@@ -25,8 +25,8 @@ const UC_APP = {
   defaults: {
     activeYear: 2026,
     adminPin: '1234',
-    webAppUrl: 'https://script.google.com/macros/s/AKfycbx1lvJ1X3P9luSlmibOo3E33mskuBPR7vBPHSlxrmGgbNDsY--T3NZYcMbRN4NY3lx7Vg/exec',
-    adminAppUrl: 'https://script.google.com/macros/s/AKfycbx1lvJ1X3P9luSlmibOo3E33mskuBPR7vBPHSlxrmGgbNDsY--T3NZYcMbRN4NY3lx7Vg/exec?page=admin',
+    webAppUrl: 'https://script.google.com/macros/s/AKfycbySGlJquG7Nz274UbTElCRw-rAeLnz4Q_JOnDpa2HOHaLvjS1DZVdXUK0GeJmK0M0Fc/exec',
+    adminAppUrl: 'https://script.google.com/macros/s/AKfycbySGlJquG7Nz274UbTElCRw-rAeLnz4Q_JOnDpa2HOHaLvjS1DZVdXUK0GeJmK0M0Fc/exec?page=admin',
     landingPageUrl: 'https://davidtranchaud79-svg.github.io/UC-cayenne-paris/',
     youthImportSpreadsheetId: '1I3XwVdrc0K7XXkCtvA9E3rzjnhXIBADkA-oXOF9_eTc',
     youthImportSpreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1I3XwVdrc0K7XXkCtvA9E3rzjnhXIBADkA-oXOF9_eTc/edit',

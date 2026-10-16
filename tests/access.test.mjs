@@ -297,7 +297,7 @@ test('a new deployment keeps bureau and member links on the same live app',()=>{
   const {c}=fixture();
   const current='https://script.google.com/macros/s/AKfy-current-deployment/exec';
   const fallback=vm.runInContext('UC_APP.defaults.webAppUrl',c);
-  assert.equal(fallback,'https://script.google.com/macros/s/AKfycbx1lvJ1X3P9luSlmibOo3E33mskuBPR7vBPHSlxrmGgbNDsY--T3NZYcMbRN4NY3lx7Vg/exec');
+  assert.equal(fallback,'https://script.google.com/macros/s/AKfycbySGlJquG7Nz274UbTElCRw-rAeLnz4Q_JOnDpa2HOHaLvjS1DZVdXUK0GeJmK0M0Fc/exec');
   c.ScriptApp={getService:()=>({getUrl:()=>current})};
   c.getSettings_=()=>{throw Error('Login page must not read private Sheet settings');};
   const urls=c.getAppUrls_({web_app_url:'https://script.google.com/macros/s/AKfy-obsolete/exec'});
