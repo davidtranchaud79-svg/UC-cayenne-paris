@@ -39,16 +39,16 @@
       <div id="youthNotice" class="notice" role="status" aria-live="polite" hidden></div>
 
       <section id="youthLogin" class="panel access-panel" aria-labelledby="youthAccessTitle">
-        <div class="access-copy"><div class="access-icon"><span data-icon="lock"></span></div><div><h2 id="youthAccessTitle">Bienvenue dans l’espace Bureau des jeunes.</h2><p>Entrez le code spécifique pour retrouver la vue d’ensemble, préparer les événements et suivre les Sociétaires et Aspirants.</p></div></div>
+        <div class="access-copy"><div class="access-icon"><span data-icon="lock"></span></div><div><h2 id="youthAccessTitle">Bienvenue dans l’espace Bureau des jeunes.</h2><p>Utilisez le code commun du Bureau des jeunes ou votre accès personnel si le Bureau principal vous a attribué un profil.</p></div></div>
         <form id="youthAccessForm" class="access-form">
           <input class="sr-only" type="text" name="username" autocomplete="username" value="bureau-jeunes-cayenne-paris" tabindex="-1" aria-hidden="true">
-          <div class="field"><label for="youthPin">Code Bureau des jeunes</label><input id="youthPin" name="password" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" placeholder="Code du Bureau des jeunes" required></div>
+          <div class="field"><label for="youthPin">Code ou mot de passe</label><input id="youthPin" name="password" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" placeholder="Code commun ou accès personnel" required></div>
           <button class="btn" id="youthLoginBtn" type="submit">Ouvrir l’espace <span data-icon="arrow"></span></button>
         </form>
       </section>
 
       <section id="youthSpace" hidden>
-        <div class="session-bar"><span class="dot"></span><span>Accès Bureau des jeunes actif</span><button class="text-button" type="button" id="youthLogout"><span data-icon="logout"></span>Verrouiller l’espace</button></div>
+        <div class="session-bar"><span class="dot"></span><span id="youthSessionStatus">Accès Bureau des jeunes actif</span><button class="text-button" type="button" id="youthLogout"><span data-icon="logout"></span>Verrouiller l’espace</button></div>
 
         <section id="youthOverviewScreen" class="screen active" data-youth-panel="overview" aria-label="Vue d’ensemble">
           <div class="kpi-grid" id="youthOverviewKpis"></div>
@@ -65,7 +65,7 @@
         </section>
 
         <section id="youthEventsScreen" class="screen" data-youth-panel="events" aria-label="Gestion des événements" hidden>
-          <div class="panel panel-pad" style="margin-bottom:22px">
+          <div class="panel panel-pad" id="youthImportPanel" style="margin-bottom:22px">
             <div class="section-head"><div><h2>Import massif d’événements</h2><p>Le tableau d’import reprend exactement les champs de création ci-dessous : date, nom, début, fin, lieu, choix proposés, type, Cayenne et commentaire. Il reste séparé du classeur principal.</p></div></div>
             <div class="button-row">
               <a id="youthImportLink" class="btn secondary" href="https://docs.google.com/spreadsheets/d/1I3XwVdrc0K7XXkCtvA9E3rzjnhXIBADkA-oXOF9_eTc/edit" target="_blank" rel="noopener">Ouvrir le tableau d’import</a>
