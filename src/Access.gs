@@ -302,22 +302,47 @@ function loginMember(code, remember) {
 
 function loginBureau(code) {
   return checkLogin_('bureau', function() {
-    const expected = clean_(getSettings_().admin_pin);
-    if (!expected || accessHash_(clean_(code)) !== accessHash_(expected)) return null;
-    return {token: createAccessSession_({role: 'bureau', version: accessHash_(expected)})};
+    const expected = clean_(getSettings_().admin_pin), hash = accessHash_(clean_(code)), testHash = bureauTestHash_();
+    if (expected && hash === accessHash_(expected)) return {token:createAccessSession_({role:'bureau',version:hash,test:false}),test:false};
+    if (testHash && hash === testHash) return {token:createAccessSession_({role:'bureau',version:hash,test:true}),test:true};
+    return null;
   }, 'Code du bureau incorrect.');
 }
 function loginYouthBureau(code) {
-  const expected = clean_(getSettings_().jeunes_pin);
-  if (!expected) throw new Error('Le code du Bureau des jeunes n’est pas encore configuré. Le bureau principal doit le définir dans Administration → Réglages.');
   return checkLogin_('youth', function() {
-    if (accessHash_(clean_(code)) !== accessHash_(expected)) return null;
-    return {token:createAccessSession_({role:'youth',version:accessHash_(expected)})};
-  }, 'Code du Bureau des jeunes incorrect.');
+    const expected = clean_(getSettings_().jeunes_pin), sharedHash = expected ? accessHash_(expected) : '', enteredHash = accessHash_(clean_(code));
+    if (sharedHash && enteredHash === sharedHash) {
+      const token = createAccessSession_({role:'youth',version:sharedHash,shared:true});
+      return {token:token,shared:true,actor:'Code commun du Bureau des jeunes',rights:youthRightIds_(),profile:null};
+    }
+    const props = PropertiesService.getScriptProperties(), candidates = credentialCandidates_(code);
+    for (let i=0;i<candidates.length;i++) {
+      const hash=candidates[i],key=props.getProperty('uc.code.'+hash);
+      if(!key)continue;
+      let member;try{member=memberByKey_(key);}catch(_){continue;}
+      if(!youthMemberAllowed_(member)||memberCodeHash_(member)!==hash)continue;
+      const grant=youthGrant_(memberKey_(member));
+      if(!grant.enabled)continue;
+      const token=createAccessSession_({role:'youth',key:memberKey_(member),version:hash,shared:false});
+      return {token:token,shared:false,actor:clean_(member.Prenom+' '+member.Nom),rights:grant.rights,profile:memberProfile_(member)};
+    }
+    return null;
+  }, 'Code Bureau des jeunes ou accès personnel incorrect, ou profil non autorisé.');
 }
 function assertYouthAdmin_(token) {
-  const session=accessSession_(token,'youth'),expected=clean_(getSettings_().jeunes_pin);
-  if(!expected||session.version!==accessHash_(expected))throw new Error('SESSION_EXPIRED: Reconnectez-vous avec le code du Bureau des jeunes.');
+  const session=accessSession_(token,'youth');
+  if(session.shared){
+    const expected=clean_(getSettings_().jeunes_pin);
+    if(!expected||session.version!==accessHash_(expected))throw new Error('SESSION_EXPIRED: Reconnectez-vous au Bureau des jeunes.');
+    return session;
+  }
+  const member=memberByKey_(session.key),hash=memberCodeHash_(member),grant=youthGrant_(memberKey_(member));
+  if(!youthMemberAllowed_(member)||!grant.enabled||!hash||hash!==session.version)throw new Error('SESSION_EXPIRED: Votre profil Bureau des jeunes a changé. Reconnectez-vous.');
+  return session;
+}
+function getYouthSessionInfo(token) {
+  const session=assertYouthAdmin_(token),info=youthSessionInfo_(session);
+  return {shared:info.shared,actor:info.actor,profile:info.profile,rights:info.rights,catalog:youthRightsCatalog_()};
 }
 function youthMemberAllowed_(member){return ['Sociétaire','Aspirant'].includes(clean_(member.Statut));}
 
