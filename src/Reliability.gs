@@ -413,22 +413,31 @@ function deleteEventRows_(sheetName, eventId) {
   rows.forEach(function(rowNumber) { sheet.deleteRow(rowNumber); });
   return rows.length;
 }
+function deleteEventData_(eventId) {
+  const id = clean_(eventId), table = getTableData_(UC_APP.sheets.calendrier);
+  const matches = table.rows.map(function(e,i) { return {e:e,i:i}; }).filter(function(x) { return clean_(x.e.ID_Evenement) === id; });
+  if (matches.length !== 1) throw new Error('Événement introuvable ou en double.');
+  const deletedResponses = deleteEventRows_(UC_APP.sheets.reponses, id);
+  const deletedAttendance = deleteEventRows_(UC_APP.sheets.pointages, id);
+  const deletedMails = deleteEventRows_(UC_APP.sheets.mails, id);
+  const deletedAgenda = deleteAgendaForEvent_(id);
+  const deletedReport = deleteReportForEvent_(id);
+  getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier).deleteRow(table.rowNumbers[matches[0].i]);
+  PropertiesService.getScriptProperties().deleteProperty('uc.job.event.' + accessHash_(id));
+  queueFollowup_([]);
+  return {ok:true,deletedResponses:deletedResponses,deletedAttendance:deletedAttendance,deletedMails:deletedMails,deletedAgenda:deletedAgenda,deletedReport:deletedReport,
+    message:'Événement supprimé définitivement avec ' + deletedResponses + ' réponse(s) associée(s).' + (deletedAgenda ? ' L’ordre du jour PDF a également été supprimé.' : '') + (deletedReport ? ' Le compte rendu PDF a également été supprimé.' : '')};
+}
 function deleteEvent(eventId, token) {
   assertAdmin_(token); setupSystemIfMissing_();
+  return accessLocked_(function() { return deleteEventData_(eventId); });
+}
+function deleteYouthEvent(eventId, token) {
+  assertYouthAdmin_(token); setupSystemIfMissing_();
   return accessLocked_(function() {
-    const id = clean_(eventId), table = getTableData_(UC_APP.sheets.calendrier);
-    const matches = table.rows.map(function(e,i) { return {e:e,i:i}; }).filter(function(x) { return clean_(x.e.ID_Evenement) === id; });
-    if (matches.length !== 1) throw new Error('Événement introuvable ou en double.');
-    const deletedResponses = deleteEventRows_(UC_APP.sheets.reponses, id);
-    const deletedAttendance = deleteEventRows_(UC_APP.sheets.pointages, id);
-    const deletedMails = deleteEventRows_(UC_APP.sheets.mails, id);
-    const deletedAgenda = deleteAgendaForEvent_(id);
-    const deletedReport = deleteReportForEvent_(id);
-    getSpreadsheet_().getSheetByName(UC_APP.sheets.calendrier).deleteRow(table.rowNumbers[matches[0].i]);
-    PropertiesService.getScriptProperties().deleteProperty('uc.job.event.' + accessHash_(id));
-    queueFollowup_([]);
-    return {ok:true,deletedResponses:deletedResponses,deletedAttendance:deletedAttendance,deletedMails:deletedMails,deletedAgenda:deletedAgenda,deletedReport:deletedReport,
-      message:'Événement supprimé définitivement avec ' + deletedResponses + ' réponse(s) associée(s).' + (deletedAgenda ? ' L’ordre du jour PDF a également été supprimé.' : '') + (deletedReport ? ' Le compte rendu PDF a également été supprimé.' : '')};
+    const id = clean_(eventId);
+    youthEventForManagement_(id);
+    return deleteEventData_(id);
   });
 }
 function updateMemberProfile(payload, token) {
