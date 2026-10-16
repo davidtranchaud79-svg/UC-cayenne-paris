@@ -1,6 +1,6 @@
 # Logiciel Présences, Engagements et Excuses - Cayenne
 
-Version **2026.09.23.2** : identifiants stables, événements modifiables et ciblés, traitements en arrière-plan, suivi des mails et comptes rendus sans motifs privés. Voir [les changements et la publication de cette version](docs/MISE_EN_OEUVRE_AUDIT.md).
+Version **2026.10.15.20** : identifiants stables, événements modifiables et ciblés, traitements en arrière-plan, suivi des mails et comptes rendus sans motifs privés. Voir [les changements et la publication de cette version](docs/MISE_EN_OEUVRE_AUDIT.md).
 
 Ce pack contient une base Google Sheets + Apps Script pour suivre les présences sur l'année :
 
@@ -17,8 +17,8 @@ Ce pack contient une base Google Sheets + Apps Script pour suivre les présences
 
 | Élément | Lien |
 |---|---|
-| Formulaire public | [Ouvrir le formulaire](https://script.google.com/macros/s/AKfycbz2mc3d0OJ3WjDV70n6M9NALjlAceoFDDljgAHpAK1CWb86q5DOYfsIDx7DVacOd-as3g/exec) |
-| Dashboard admin | [Ouvrir le dashboard](https://script.google.com/macros/s/AKfycbz2mc3d0OJ3WjDV70n6M9NALjlAceoFDDljgAHpAK1CWb86q5DOYfsIDx7DVacOd-as3g/exec?page=admin) |
+| Formulaire public | [Ouvrir le formulaire](https://script.google.com/macros/s/AKfycbySGlJquG7Nz274UbTElCRw-rAeLnz4Q_JOnDpa2HOHaLvjS1DZVdXUK0GeJmK0M0Fc/exec) |
+| Dashboard admin | [Ouvrir le dashboard](https://script.google.com/macros/s/AKfycbySGlJquG7Nz274UbTElCRw-rAeLnz4Q_JOnDpa2HOHaLvjS1DZVdXUK0GeJmK0M0Fc/exec?page=admin) |
 | Google Sheet de suivi | [Ouvrir le Sheet](https://docs.google.com/spreadsheets/d/1_atXm_AKfq2864aCabWhcyFerbix0xFPh2VUUC_pPs4/edit) |
 | Page GitHub | [Ouvrir la page](https://davidtranchaud79-svg.github.io/UC-cayenne-paris/) |
 | Dépôt GitHub | [Voir le code](https://github.com/davidtranchaud79-svg/UC-cayenne-paris) |
@@ -85,8 +85,8 @@ Structure conseillée :
    - Exécuter en tant que : `Moi`
    - Accès : selon votre choix, par exemple les personnes disposant du lien
 11. Liens Web App actuels :
-    - Public : https://script.google.com/macros/s/AKfycbz2mc3d0OJ3WjDV70n6M9NALjlAceoFDDljgAHpAK1CWb86q5DOYfsIDx7DVacOd-as3g/exec
-    - Admin : https://script.google.com/macros/s/AKfycbz2mc3d0OJ3WjDV70n6M9NALjlAceoFDDljgAHpAK1CWb86q5DOYfsIDx7DVacOd-as3g/exec?page=admin
+    - Public : https://script.google.com/macros/s/AKfycbySGlJquG7Nz274UbTElCRw-rAeLnz4Q_JOnDpa2HOHaLvjS1DZVdXUK0GeJmK0M0Fc/exec
+    - Admin : https://script.google.com/macros/s/AKfycbySGlJquG7Nz274UbTElCRw-rAeLnz4Q_JOnDpa2HOHaLvjS1DZVdXUK0GeJmK0M0Fc/exec?page=admin
 
 ## Utilisation bureau
 
