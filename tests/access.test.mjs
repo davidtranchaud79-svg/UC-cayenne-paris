@@ -389,11 +389,11 @@ test('Youth Bureau has a separate session, sees only youth profiles and cannot m
   assert.throws(()=>c.createYouthMemberProfile({nom:'Test',prenom:'Comp',statut:'Compagnon',cayenne:'Paris'},youth),/uniquement/);
 });
 
-test('Youth Bureau login reports its own code errors and missing configuration clearly',()=>{
+test('Youth Bureau login accepts either shared or authorized personal access and reports invalid credentials clearly',()=>{
   const {c,settings}=fixture();
-  assert.throws(()=>c.loginYouthBureau('mauvais-code'),/Code du Bureau des jeunes incorrect/);
+  assert.throws(()=>c.loginYouthBureau('mauvais-code'),/accès personnel incorrect|profil non autorisé/);
   settings.jeunes_pin='';
-  assert.throws(()=>c.loginYouthBureau('nimporte-quoi'),/n’est pas encore configuré/);
+  assert.throws(()=>c.loginYouthBureau('nimporte-quoi'),/accès personnel incorrect|profil non autorisé/);
 });
 
  test('bulk quota does not rotate existing credentials and reports every member',()=>{
