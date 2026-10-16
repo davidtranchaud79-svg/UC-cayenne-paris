@@ -321,6 +321,20 @@ test('Youth Bureau can create and modify youth events but never companion meetin
   assert.throws(()=>f.c.updateYouthEvent({id:'EVT-1',version:f.c.eventVersion_(f.c.calendarRows_().find(e=>e.ID_Evenement==='EVT-1')),date:'2026-09-22',title:'Compagnons',type:'Réunion des jeunes',cayenne:'Paris',modalites:'Standard'},f.youth),/ne sont pas accessibles/);
 });
 
+test('Youth Bureau can delete only events in its management scope and cleans linked records',()=>{
+  const f=fixture();f.c.ensureAuditSchema_();
+  const created=f.c.createYouthEvent({date:'2026-10-09',title:'Cours à supprimer',type:'Autre',cayenne:'Paris'},f.youth);
+  const id=created.event.id;
+  f.appendResponse({ID_Evenement:id,Cle_Personne:'alex@example.test',Nom:'Autre',Prenom:'Alex',Email:'alex@example.test'});
+  f.sheets.get('POINTAGES').grid.push(['PY',new Date('2026-10-09T12:00:00Z'),id,'alex@example.test','Présent']);
+  f.sheets.get('JOURNAL_MAILS').grid.push(['NY','CONFIRMATION',id,'','alex@example.test','alex@example.test','ENVOYE',new Date(),new Date(),'']);
+  const result=f.c.deleteYouthEvent(id,f.youth);
+  assert.equal(result.deletedResponses,1);assert.equal(result.deletedAttendance,1);assert.equal(result.deletedMails,1);
+  assert.equal(f.c.calendarRows_().some(e=>e.ID_Evenement===id),false);
+  assert.equal(f.c.responseRows_().some(r=>r.ID_Evenement===id),false);
+  assert.throws(()=>f.c.deleteYouthEvent('EVT-1',f.youth),/Compagnons/);
+});
+
 test('Youth Bureau can attach agenda and report PDFs only to meetings',()=>{
   const f=fixture();f.c.ensureAuditSchema_();
   const created=f.c.createYouthEvent({date:'2026-10-07',title:'Réunion jeunes documents',type:'Réunion des jeunes',cayenne:'Paris'},f.youth);
